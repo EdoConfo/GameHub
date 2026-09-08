@@ -13,10 +13,11 @@
 //       ctx: { storage, players, packs, router, root }
 //   }
 import misterWhite from './mister-white/index.js'
+import headsUp from './heads-up/index.js'
 
 export const games = [
-  misterWhite
-  // headsUp,  <-- next game drops in here
+  misterWhite,
+  headsUp
 ]
 
 export function getGame(id) {
