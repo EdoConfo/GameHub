@@ -1,60 +1,71 @@
-// Device-orientation handling for the "phone on forehead" tilt game.
-// Phone is held in landscape against the forehead, screen facing the others.
-// Tilt the top of the phone toward the floor to mark CORRECT, toward the
-// ceiling to PASS (or the reverse, via the invert flag).
+// Tilt handling for the "phone on forehead" game.
+//
+// The phone is held in landscape, vertical, screen facing the other players.
+// We DON'T use Euler angles (beta/gamma): held vertical they sit near ±90°
+// and hit gimbal lock, so gamma jitters and fires randomly.
+//
+// Instead we read gravity along the screen-normal axis (device Z) from
+// `devicemotion` -> accelerationIncludingGravity.z:
+//   screen vertical (facing forward)  -> z ≈ 0      (neutral)
+//   screen tilted to face the FLOOR   -> |z| grows toward 1g in one sign
+//   screen tilted to face the CEILING -> grows in the other sign
+// This is monotonic and independent of landscape-left vs landscape-right,
+// so there's no gimbal lock. The `invert` flag flips the sign mapping for
+// devices/orientations that report the opposite sign.
 //
 // iOS 13+ requires an explicit permission request from a user gesture.
-// If motion is unavailable or denied, screens.js provides tap fallbacks,
-// so the game is always playable.
+// Tap fallbacks in screens.js keep the game playable without any sensor.
 
-const TRIGGER = 45   // degrees from neutral to fire an action
-const RESET = 20     // must return within this of neutral before firing again
+const TRIGGER = 5.2   // m/s^2 of gravity on Z to fire (~32° tilt)
+const RESET = 3.0     // must fall back under this before firing again
 
 export function motionSupported() {
-  return typeof window !== 'undefined' && 'DeviceOrientationEvent' in window
+  return typeof window !== 'undefined' &&
+    ('DeviceMotionEvent' in window || 'ondevicemotion' in window)
 }
 
 export function needsPermission() {
   return (
-    motionSupported() &&
-    typeof DeviceOrientationEvent.requestPermission === 'function'
+    typeof DeviceMotionEvent !== 'undefined' &&
+    typeof DeviceMotionEvent.requestPermission === 'function'
   )
 }
 
-// Call from a user gesture (e.g. a button tap). Resolves to true if granted
-// or not required, false if denied.
+// Call from a user gesture. Resolves true if granted or not required.
 export async function ensurePermission() {
   if (!motionSupported()) return false
-  if (!needsPermission()) return true
+  const reqs = []
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    reqs.push(DeviceMotionEvent.requestPermission())
+  }
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    reqs.push(DeviceOrientationEvent.requestPermission())
+  }
+  if (!reqs.length) return true
   try {
-    const res = await DeviceOrientationEvent.requestPermission()
-    return res === 'granted'
+    const results = await Promise.all(reqs)
+    return results.every(r => r === 'granted')
   } catch {
     return false
   }
 }
 
 // Create a tilt watcher. onAction gets 'correct' | 'pass'.
-// invert swaps which direction means correct.
 export function createTilt({ onAction, invert = false }) {
-  let neutral = null
   let armed = true
   let active = false
   let gotReading = false
 
   function handle(e) {
-    // gamma is the left-right axis; in landscape it tracks the forehead tilt.
-    // Fall back to beta if gamma is null on some devices.
-    const raw = e.gamma != null ? e.gamma : e.beta
-    if (raw == null) return
+    const g = e.accelerationIncludingGravity
+    if (!g || g.z == null) return
     gotReading = true
-    if (neutral == null) neutral = raw
-    const delta = raw - neutral
+    const z = g.z
 
     if (armed) {
-      if (delta > TRIGGER) fire(invert ? 'pass' : 'correct')
-      else if (delta < -TRIGGER) fire(invert ? 'correct' : 'pass')
-    } else if (Math.abs(delta) < RESET) {
+      if (z > TRIGGER) fire(invert ? 'pass' : 'correct')
+      else if (z < -TRIGGER) fire(invert ? 'correct' : 'pass')
+    } else if (Math.abs(z) < RESET) {
       armed = true
     }
   }
@@ -69,16 +80,14 @@ export function createTilt({ onAction, invert = false }) {
     start() {
       if (active) return
       active = true
-      neutral = null
       armed = true
-      window.addEventListener('deviceorientation', handle, true)
+      window.addEventListener('devicemotion', handle, true)
     },
     stop() {
       active = false
-      window.removeEventListener('deviceorientation', handle, true)
+      window.removeEventListener('devicemotion', handle, true)
     },
-    // Re-read neutral (e.g. after the countdown, when the phone is in position).
-    recalibrate() { neutral = null },
+    recalibrate() { armed = true },
     hasReading() { return gotReading }
   }
 }

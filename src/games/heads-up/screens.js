@@ -170,6 +170,14 @@ export function renderPlay(api) {
     runtime.tilt = api.createTilt({ onAction: action, invert: state.invert })
     runtime.tilt.start()
     runtime.tilt.recalibrate()
+    // If no sensor reading arrives, make the tap fallback obvious.
+    setTimeout(() => {
+      if (state.phase === 'play' && runtime.tilt && !runtime.tilt.hasReading()) {
+        hint.textContent = 'Sensore assente — tocca: ← passo · giusto →'
+      }
+    }, 1800)
+  } else {
+    hint.textContent = 'Tocca: ← passo · giusto →'
   }
 
   // Timer.
