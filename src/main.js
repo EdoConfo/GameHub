@@ -9,13 +9,12 @@ import { clear, screen, el } from './shared/ui.js'
 
 const root = document.getElementById('app')
 
-// Apply persisted theme + visual skin before first paint of content.
+// Apply persisted theme before first paint of content.
 applyTheme(storage.get('theme', 'dark'))
-applySkin(storage.get('skin', 'glass'))
 
 // Shared services handed to every game. Word packs are NOT here: each game
 // owns and manages its own packs (see games/<id>/packs.js).
-const ctx = { storage, players, router, root, applyTheme, applySkin }
+const ctx = { storage, players, router, root, applyTheme }
 
 // A mounted game may return a cleanup fn (stop timers/sensors). Call it
 // whenever we leave the current screen.
@@ -57,11 +56,4 @@ export function applyTheme(theme) {
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', t === 'light' ? '#eaecf7' : '#0a0b16')
   storage.set('theme', t)
-}
-
-// Visual skin: 'glass' (Liquid Glass) or 'minimal' (flat, high-contrast).
-export function applySkin(skin) {
-  const s = skin === 'minimal' ? 'minimal' : 'glass'
-  document.documentElement.dataset.skin = s
-  storage.set('skin', s)
 }

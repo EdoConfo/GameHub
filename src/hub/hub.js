@@ -19,20 +19,23 @@ export function renderHub(root, ctx) {
     ])
   )
 
-  const grid = el('div', { class: 'game-grid' })
+  const list = el('div', { class: 'game-list' })
   for (const game of games) {
-    grid.append(
+    list.append(
       el('button', {
         class: 'game-card',
         onclick: () => ctx.router.go('/game/' + game.id)
       }, [
         el('span', { class: 'game-card-icon' }, game.icon || '🎲'),
-        el('span', { class: 'game-card-name' }, game.name),
-        el('span', { class: 'game-card-desc' }, game.description || '')
+        el('span', { class: 'game-card-text' }, [
+          el('span', { class: 'game-card-name' }, game.name),
+          el('span', { class: 'game-card-desc' }, game.description || '')
+        ]),
+        el('span', { class: 'game-card-arrow', 'aria-hidden': 'true' }, '›')
       ])
     )
   }
-  view.body.append(grid)
+  view.body.append(list)
 
   view.body.append(
     el('div', { class: 'offline-note' }, [
