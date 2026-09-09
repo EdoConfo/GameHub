@@ -22,14 +22,17 @@ export function renderHub(root, ctx) {
   ]))
 
   const stage = el('div', { class: 'arc-stage' })
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  const SVGNS = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(SVGNS, 'svg')
   svg.setAttribute('class', 'arc-svg')
-  const arcPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  arcPath.setAttribute('class', 'arc-line')
-  const arcDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+  // Full circle: centre sits off-screen left, only the right bulge is visible,
+  // entering/exiting the top and bottom edges (WOVE-style). overflow:hidden clips the rest.
+  const arcCircle = document.createElementNS(SVGNS, 'circle')
+  arcCircle.setAttribute('class', 'arc-line')
+  const arcDot = document.createElementNS(SVGNS, 'circle')
   arcDot.setAttribute('class', 'arc-dot')
   arcDot.setAttribute('r', '4')
-  svg.append(arcPath, arcDot)
+  svg.append(arcCircle, arcDot)
   stage.append(svg)
 
   // Number items
@@ -85,18 +88,10 @@ export function renderHub(root, ctx) {
       it.style.transform = `translate(-50%, -50%) scale(${Math.max(0.62, 1 - dist * 0.14)})`
       it.classList.toggle('on', Math.round(f) === i)
     }
-    // arc line + active dot
-    const aMin = (0 - f) * geom.step - 0.25
-    const aMax = (N - 1 - f) * geom.step + 0.25
-    let d = ''
-    const steps = 40
-    for (let s = 0; s <= steps; s++) {
-      const a = aMin + (aMax - aMin) * (s / steps)
-      const x = geom.Cx + geom.R * Math.cos(a)
-      const y = geom.Cy + geom.R * Math.sin(a)
-      d += (s === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' '
-    }
-    arcPath.setAttribute('d', d)
+    // full circle (only its right bulge is visible) + active dot
+    arcCircle.setAttribute('cx', String(geom.Cx))
+    arcCircle.setAttribute('cy', String(geom.Cy))
+    arcCircle.setAttribute('r', String(geom.R))
     arcDot.setAttribute('cx', String(geom.activeX))
     arcDot.setAttribute('cy', String(geom.Cy))
   }
