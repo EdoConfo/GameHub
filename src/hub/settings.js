@@ -22,6 +22,22 @@ function themeSection(ctx) {
     el('span', {}, 'Tema scuro'),
     toggle(current !== 'light', on => ctx.applyTheme(on ? 'dark' : 'light'))
   ]))
+
+  // Visual skin selector: Vetro (Liquid Glass) vs Minimal.
+  const skinRow = el('div', { class: 'chip-list' })
+  const options = [['glass', 'Vetro'], ['minimal', 'Minimal']]
+  function refreshSkin() {
+    skinRow.replaceChildren()
+    const sel = ctx.storage.get('skin', 'glass')
+    for (const [val, label] of options) {
+      skinRow.append(el('button', {
+        class: 'chip selectable' + (sel === val ? ' on' : ''),
+        onclick: () => { ctx.applySkin(val); refreshSkin() }
+      }, label))
+    }
+  }
+  refreshSkin()
+  section.append(el('div', { class: 'row space-between' }, [el('span', {}, 'Stile'), skinRow]))
   return section
 }
 

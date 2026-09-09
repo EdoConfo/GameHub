@@ -542,3 +542,124 @@ body::before {
 @media (orientation: landscape) {
   .play-word { font-size: clamp(48px, 14vh, 120px); }
 }
+
+/* ============================================================
+   MINIMAL SKIN — flat, high-contrast, no blur/mesh/gloss.
+   Activated by data-skin="minimal"; overrides the glass look.
+   ============================================================ */
+:root[data-skin="minimal"] {
+  --bg: #0f1117;
+  --text: #eef0f5;
+  --text-dim: #98a0ae;
+  --primary: #6d5efc;
+  --primary-2: #5a4be0;
+  --accent: #e6b23a;
+  --danger: #ff5d73;
+  --ok: #37c98f;
+
+  --glass-bg: #191c24;
+  --glass-bg-strong: #232733;
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-hi: transparent;
+  --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+
+  --radius: 16px;
+  --radius-sm: 12px;
+}
+:root[data-skin="minimal"][data-theme="light"] {
+  --bg: #f6f7f9;
+  --text: #14161f;
+  --text-dim: #5c6270;
+  --glass-bg: #ffffff;
+  --glass-bg-strong: #ffffff;
+  --glass-border: rgba(20, 22, 32, 0.10);
+  --glass-hi: transparent;
+  --glass-shadow: 0 4px 16px rgba(30, 35, 60, 0.08);
+}
+
+/* Kill the mesh + solid ground */
+:root[data-skin="minimal"] body { background: var(--bg); }
+:root[data-skin="minimal"] body::before { display: none; }
+
+/* Remove blur/gloss from every glass surface */
+:root[data-skin="minimal"] .card-section,
+:root[data-skin="minimal"] .game-card,
+:root[data-skin="minimal"] .offline-note,
+:root[data-skin="minimal"] .chip,
+:root[data-skin="minimal"] .vote-row,
+:root[data-skin="minimal"] .reveal-card,
+:root[data-skin="minimal"] .text-input,
+:root[data-skin="minimal"] .text-area,
+:root[data-skin="minimal"] .round-btn,
+:root[data-skin="minimal"] .btn-secondary,
+:root[data-skin="minimal"] .modal,
+:root[data-skin="minimal"] .toast,
+:root[data-skin="minimal"] .switch,
+:root[data-skin="minimal"] .topbar {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--glass-shadow);
+}
+:root[data-skin="minimal"] .card-section::before,
+:root[data-skin="minimal"] .game-card::before,
+:root[data-skin="minimal"] .reveal-card::before,
+:root[data-skin="minimal"] .modal::before,
+:root[data-skin="minimal"] .btn-primary::before { display: none; }
+
+:root[data-skin="minimal"] .topbar {
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  box-shadow: none;
+  border-bottom: 1px solid var(--glass-border);
+}
+:root[data-skin="minimal"] .offline-note { box-shadow: none; }
+
+/* Flat primary button + accents */
+:root[data-skin="minimal"] .btn-primary {
+  background: var(--primary);
+  border: 0;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+:root[data-skin="minimal"] .btn-ghost {
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid var(--glass-border);
+}
+:root[data-skin="minimal"] .chip.selectable.on {
+  background: var(--primary);
+  box-shadow: none;
+  border-color: transparent;
+}
+:root[data-skin="minimal"] .badge,
+:root[data-skin="minimal"] .timer-fill { background: var(--primary); box-shadow: none; }
+
+/* Solid title, no gradient text */
+:root[data-skin="minimal"] .hub-title {
+  background: none;
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+  text-shadow: none;
+}
+
+/* Reveal card open: simple accent ring */
+:root[data-skin="minimal"] .reveal-card.open {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+/* Heads Up screens: solid, max contrast */
+:root[data-skin="minimal"] .fullscreen.center-col {
+  background: var(--bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-skin="minimal"] .countdown-num { color: var(--primary); text-shadow: none; }
+:root[data-skin="minimal"] .play-area {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--text);
+}
+:root[data-skin="minimal"] .play-word,
+:root[data-skin="minimal"] .play-score { text-shadow: none; }
+:root[data-skin="minimal"] .play-hint { color: var(--text-dim); }
+:root[data-skin="minimal"] .timer-bar { background: color-mix(in srgb, var(--text) 14%, transparent); }
