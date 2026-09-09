@@ -4,9 +4,10 @@ import * as storage from './storage.js'
 
 const KEY = 'players'
 
+// Ordered on the colour wheel (red -> ... -> pink), neutrals last.
 export const COLORS = [
-  '#6d5efc', '#ff6079', '#37c98f', '#e6b23a', '#3aa0ff', '#ff8f3a',
-  '#c46bff', '#2fd0c8', '#ff5db1', '#9bd13a', '#ffffff', '#000000'
+  '#ff3b30', '#ff8f3a', '#e6b23a', '#9bd13a', '#2fe06a', '#37c98f', '#2fd0c8',
+  '#3aa0ff', '#6d5efc', '#c46bff', '#ff5db1', '#ff6079', '#ffffff', '#000000'
 ]
 export const EMOJIS = [
   '🦊', '🐼', '🐧', '🦁', '🐸', '🐙', '🦄', '🐝',
