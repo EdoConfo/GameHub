@@ -54,6 +54,6 @@ export function applyTheme(theme) {
   const t = theme === 'light' ? 'light' : 'dark'
   document.documentElement.dataset.theme = t
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', t === 'light' ? '#f4f4fb' : '#0f1020')
+  if (meta) meta.setAttribute('content', t === 'light' ? '#eaecf7' : '#0a0b16')
   storage.set('theme', t)
 }
