@@ -186,17 +186,20 @@ body {
 }
 .arc-item.on .arc-num { color: var(--text); }
 
-.arc-label {
+/* Name (+ description) hangs to the right of each number, inside the item,
+   so it fades together with the item when not highlighted. */
+.arc-info {
   position: absolute;
+  left: calc(100% + 18px);
+  top: 50%;
   transform: translateY(-50%);
-  background: none; border: 0; padding: 0; text-align: left;
-  max-width: 50%;
-  cursor: pointer;
-  will-change: left, top;
+  text-align: left;
+  width: max-content;
+  max-width: 46vw;
 }
-.arc-stage:not(.dragging) .arc-label { transition: left .38s cubic-bezier(.22,.61,.36,1), top .38s cubic-bezier(.22,.61,.36,1); }
-.arc-name { font-size: 21px; font-weight: 750; letter-spacing: -.3px; color: var(--text); }
-.arc-desc { font-size: 14px; color: var(--text-dim); margin-top: 5px; line-height: 1.35; }
+.arc-name { font-size: 20px; font-weight: 750; letter-spacing: -.3px; color: var(--text); white-space: nowrap; }
+.arc-desc { font-size: 14px; color: var(--text-dim); margin-top: 5px; line-height: 1.35; display: none; }
+.arc-item.on .arc-desc { display: block; }
 
 .hub-hint {
   text-align: center;

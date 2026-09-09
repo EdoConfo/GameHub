@@ -32,22 +32,23 @@ export function renderHub(root, ctx) {
   svg.append(arcCircle)
   stage.append(svg)
 
-  // Number items
+  // Number items. Each keeps its own name (fades with the item) + description
+  // (shown only when active). The name stays visible even when not highlighted.
   const items = games.map((game, i) =>
     el('button', {
       class: 'arc-item',
       'data-i': String(i),
       'aria-label': game.name,
       dataset: { i: String(i) }
-    }, el('span', { class: 'arc-num' }, String(i + 1).padStart(2, '0')))
+    }, [
+      el('span', { class: 'arc-num' }, String(i + 1).padStart(2, '0')),
+      el('div', { class: 'arc-info' }, [
+        el('div', { class: 'arc-name' }, game.name),
+        el('div', { class: 'arc-desc' }, game.description || '')
+      ])
+    ])
   )
   items.forEach(it => stage.append(it))
-
-  // Active label (name + description)
-  const nameEl = el('div', { class: 'arc-name' })
-  const descEl = el('div', { class: 'arc-desc' })
-  const label = el('button', { class: 'arc-label', onclick: () => open(active) }, [nameEl, descEl])
-  stage.append(label)
 
   hub.append(stage)
   hub.append(el('div', { class: 'hub-hint' }, 'scorri per scegliere · tocca per giocare'))
@@ -91,18 +92,9 @@ export function renderHub(root, ctx) {
     arcCircle.setAttribute('r', String(geom.R))
   }
 
-  function updateLabel(i) {
-    const g = games[i]
-    nameEl.textContent = g.name
-    descEl.textContent = g.description || ''
-    label.style.left = (geom.activeX + geom.W * 0.16) + 'px'
-    label.style.top = geom.Cy + 'px'
-  }
-
   function layout() {
     measure()
     placeItems(active)
-    updateLabel(active)
   }
 
   function setDragTransition(on) {
@@ -113,7 +105,6 @@ export function renderHub(root, ctx) {
     active = Math.max(0, Math.min(N - 1, i))
     setDragTransition(true)
     placeItems(active)
-    updateLabel(active)
   }
 
   function open(i) {
@@ -135,7 +126,6 @@ export function renderHub(root, ctx) {
     if (Math.abs(dy) > 6) moved = true
     const f = Math.max(0, Math.min(N - 1, baseActive - dy / geom.stepPx))
     placeItems(f)
-    updateLabel(Math.round(f))
   })
   function endDrag(e) {
     if (!dragging) return
