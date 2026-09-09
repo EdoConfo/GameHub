@@ -123,6 +123,7 @@ export function renderHub(root, ctx) {
   // pointer-capture quirks). A drag suppresses the click that follows it.
   let swallowClick = false
   stage.addEventListener('pointerdown', e => {
+    e.preventDefault() // stop the browser from starting a text selection on drag
     dragging = true
     moved = false
     swallowClick = false
