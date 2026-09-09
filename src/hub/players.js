@@ -2,7 +2,7 @@ import { el, screen, button, modal, clear } from '../shared/ui.js'
 import { COLORS, EMOJIS } from '../shared/players.js'
 
 const USER_SVG = size =>
-  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="#fff" aria-hidden="true"><path d="M12 12.6a4.3 4.3 0 1 0 0-8.6 4.3 4.3 0 0 0 0 8.6Zm0 1.6c-3.9 0-7 2.3-7 5.2v.9h14v-.9c0-2.9-3.1-5.2-7-5.2Z"/></svg>`
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.4" r="3.3"/><path d="M5.6 19.4a6.4 6.4 0 0 1 12.8 0"/></svg>`
 
 // A circular avatar: photo > emoji > generic user icon, on the profile color.
 export function avatar(p, size = 32) {

@@ -530,9 +530,10 @@ body {
 .swatch-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
 .swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
-.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .emoji-cell {
-  aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--border);
+  width: 40px; height: 40px; flex: 0 0 auto;
+  border-radius: 10px; border: 1px solid var(--border);
   background: var(--surface-2); font-size: 19px; cursor: pointer;
   display: grid; place-items: center;
 }
