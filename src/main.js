@@ -12,6 +12,15 @@ import { clear, screen, el } from './shared/ui.js'
 
 const root = document.getElementById('app')
 
+// Block pinch-to-zoom (iOS Safari ignores user-scalable=no): stop gesture
+// events and any multi-touch move. Double-tap zoom is handled by CSS
+// touch-action: manipulation.
+;['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault(), { passive: false }))
+document.addEventListener('touchmove', e => {
+  if (e.touches && e.touches.length > 1) e.preventDefault()
+}, { passive: false })
+
 // Apply persisted theme before first paint of content.
 applyTheme(storage.get('theme', 'dark'))
 
