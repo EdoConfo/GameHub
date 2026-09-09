@@ -13,7 +13,10 @@ export function renderPlayer(root, ctx, id) {
     const view = screen({
       title: p.name,
       onBack: () => ctx.router.go('/players'),
-      actions: [el('button', { class: 'icon-btn', 'aria-label': 'Modifica', onclick: () => openProfileEditor(ctx, p, draw) }, '✎')]
+      actions: [
+        el('button', { class: 'icon-btn', 'aria-label': 'Modifica', onclick: () => openProfileEditor(ctx, p, draw) }, '✎'),
+        el('button', { class: 'icon-btn danger-ink', 'aria-label': 'Elimina', onclick: () => confirmDelete(p) }, '🗑')
+      ]
     })
 
     // Hero
@@ -66,11 +69,6 @@ export function renderPlayer(root, ctx, id) {
       }
     }
     view.body.append(feedBox)
-
-    // Delete
-    view.body.append(button('Elimina giocatore', {
-      variant: 'ghost', full: true, onClick: () => confirmDelete(p)
-    }))
 
     root.append(view)
   }

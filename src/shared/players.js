@@ -32,7 +32,9 @@ function load() {
         id: item.id || newId(),
         name: String(item.name).trim(),
         color: item.color || COLORS[i % COLORS.length],
-        emoji: item.emoji || EMOJIS[i % EMOJIS.length],
+        // preserve an explicit emoji (including null = generic icon);
+        // only legacy profiles without the key get a default.
+        emoji: ('emoji' in item) ? (item.emoji || null) : EMOJIS[i % EMOJIS.length],
         photo: item.photo || null
       }
     }
@@ -59,7 +61,7 @@ export function add({ name, color, emoji, photo } = {}) {
     id: newId(),
     name: clean,
     color: color || nextColor(list),
-    emoji: emoji || nextEmoji(list),
+    emoji: emoji || null, // no emoji by default -> generic user icon
     photo: photo || null
   }
   list.push(profile)
@@ -73,7 +75,7 @@ export function update(id, patch = {}) {
   if (!p) return null
   if (patch.name != null) p.name = String(patch.name).trim() || p.name
   if (patch.color) p.color = patch.color
-  if (patch.emoji) p.emoji = patch.emoji
+  if ('emoji' in patch) p.emoji = patch.emoji || null // null clears -> generic icon
   if ('photo' in patch) p.photo = patch.photo || null // null removes the photo
   save(list)
   return p

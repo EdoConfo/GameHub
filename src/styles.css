@@ -73,13 +73,15 @@ body {
   top: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: var(--tap) 1fr var(--tap);
+  grid-template-columns: minmax(var(--tap), auto) 1fr minmax(var(--tap), auto);
   align-items: center;
   gap: 6px;
   padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   border-bottom: 1px solid var(--border);
 }
+.topbar-actions { gap: 2px; }
+.icon-btn.danger-ink { color: var(--danger); }
 .topbar-title { font-size: 18px; margin: 0; text-align: center; font-weight: 650; letter-spacing: -.2px; }
 .topbar-actions { display: flex; justify-content: flex-end; }
 
@@ -589,3 +591,8 @@ body {
 .feed-badge.win { background: color-mix(in srgb, var(--ok) 26%, transparent); color: var(--ok); }
 .feed-badge.lose { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); }
 .feed-time { flex: 0 0 auto; min-width: 42px; text-align: right; }
+
+/* ---- Profile editor head (big avatar + upload under) ---- */
+.edit-head { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 2px 0 6px; }
+.edit-avatar .avatar { box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), var(--shadow); }
+.edit-remove { align-self: center; }

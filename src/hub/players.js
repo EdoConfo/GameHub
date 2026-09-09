@@ -1,13 +1,20 @@
 import { el, screen, button, modal, clear } from '../shared/ui.js'
 import { COLORS, EMOJIS } from '../shared/players.js'
 
-// A circular avatar: photo if the profile has one, else colored emoji.
+const USER_SVG = size =>
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="#fff" aria-hidden="true"><path d="M12 12.6a4.3 4.3 0 1 0 0-8.6 4.3 4.3 0 0 0 0 8.6Zm0 1.6c-3.9 0-7 2.3-7 5.2v.9h14v-.9c0-2.9-3.1-5.2-7-5.2Z"/></svg>`
+
+// A circular avatar: photo > emoji > generic user icon, on the profile color.
 export function avatar(p, size = 32) {
-  const base = `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.52)}px`
+  const base = `width:${size}px;height:${size}px`
   if (p && p.photo) {
     return el('span', { class: 'avatar avatar-photo', style: `${base};background-image:url(${p.photo})` })
   }
-  return el('span', { class: 'avatar', style: `${base};background:${(p && p.color) || '#888'}` }, (p && p.emoji) || '🙂')
+  const bg = (p && p.color) || '#888'
+  if (p && p.emoji) {
+    return el('span', { class: 'avatar', style: `${base};background:${bg};font-size:${Math.round(size * 0.52)}px` }, p.emoji)
+  }
+  return el('span', { class: 'avatar', style: `${base};background:${bg}`, html: USER_SVG(Math.round(size * 0.64)) })
 }
 
 // Players portal — the shared "accounts" manager, opened from the hub header.
@@ -63,11 +70,11 @@ function fileToAvatar(file, max = 320, quality = 0.82) {
   })
 }
 
+// No `capture` attr -> on mobile the OS lets the user pick Camera or Library.
 function pickPhoto(onData) {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/*'
-  input.setAttribute('capture', 'environment') // hints the camera on mobile
   input.onchange = () => {
     const f = input.files && input.files[0]
     if (f) fileToAvatar(f).then(onData).catch(() => {})
@@ -77,35 +84,41 @@ function pickPhoto(onData) {
 
 // Add/edit modal, reusable from the portal and the player page.
 export function openProfileEditor(ctx, existing, onDone) {
-  const s = existing || ctx.players.suggest()
+  const suggested = existing || ctx.players.suggest()
   const state = {
     name: existing?.name || '',
-    color: existing?.color || s.color,
-    emoji: existing?.emoji || s.emoji,
+    color: existing?.color || suggested.color,
+    emoji: existing?.emoji || null, // default: no emoji (generic icon)
     photo: existing?.photo || null
   }
 
-  const head = el('div', { class: 'profile-edit-head' })
+  // Big avatar + "Carica foto" directly under it.
+  const bigAvatar = el('div', { class: 'edit-avatar' })
+  const photoBtn = button('Carica foto', { variant: 'secondary', onClick: () => pickPhoto(data => { state.photo = data; rebuild() }) })
+  const removeLink = el('button', { class: 'link-btn edit-remove', onclick: () => { state.photo = null; rebuild() } }, 'Rimuovi foto')
+  const head = el('div', { class: 'edit-head' }, [bigAvatar, photoBtn, removeLink])
+
   const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: 'Nome', maxlength: '20', value: state.name })
 
-  const photoBtn = button('📷 Foto', { variant: 'secondary', onClick: () => pickPhoto(data => { state.photo = data; rebuild() }) })
-  const removePhotoBtn = button('Rimuovi foto', { variant: 'ghost', onClick: () => { state.photo = null; rebuild() } })
-  const photoRow = el('div', { class: 'row' }, [photoBtn, removePhotoBtn])
-
   const colorRow = el('div', { class: 'swatch-row' })
-  const emojiRow = el('div', { class: 'emoji-grid' })
   for (const c of COLORS) colorRow.append(el('button', { class: 'swatch', style: `background:${c}`, onclick: () => { state.color = c; rebuild() } }))
-  for (const e of EMOJIS) emojiRow.append(el('button', { class: 'emoji-cell', onclick: () => { state.emoji = e; state.photo = null; rebuild() } }, e))
 
+  const emojiRow = el('div', { class: 'emoji-grid' })
+  for (const e of EMOJIS) {
+    emojiRow.append(el('button', {
+      class: 'emoji-cell',
+      // toggle: pick emoji (clears photo); tapping the active one clears it -> generic icon
+      onclick: () => { state.emoji = state.emoji === e ? null : e; if (state.emoji) state.photo = null; rebuild() }
+    }, e))
+  }
   const emojiBlock = el('div', { class: 'stack-gap' }, [
     el('div', { class: 'field-label' }, 'Colore'), colorRow,
-    el('div', { class: 'field-label' }, 'Avatar'), emojiRow
+    el('div', { class: 'field-label' }, 'Emoji (opzionale)'), emojiRow
   ])
 
   function rebuild() {
-    clear(head); head.append(avatar(state, 64))
-    removePhotoBtn.style.display = state.photo ? '' : 'none'
-    emojiBlock.style.opacity = state.photo ? '.4' : '1'
+    clear(bigAvatar); bigAvatar.append(avatar(state, 96))
+    removeLink.style.display = state.photo ? '' : 'none'
     colorRow.querySelectorAll('.swatch').forEach((b, i) => b.classList.toggle('on', COLORS[i] === state.color))
     emojiRow.querySelectorAll('.emoji-cell').forEach((b, i) => b.classList.toggle('on', !state.photo && EMOJIS[i] === state.emoji))
   }
@@ -113,7 +126,7 @@ export function openProfileEditor(ctx, existing, onDone) {
   const err = el('p', { class: 'error-text' })
   const m = modal({
     title: existing ? 'Modifica giocatore' : 'Nuovo giocatore',
-    content: [head, nameInput, photoRow, emojiBlock, err],
+    content: [head, nameInput, emojiBlock, err],
     actions: [
       button('Annulla', { variant: 'ghost', onClick: () => m.close() }),
       button('Salva', {
