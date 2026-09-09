@@ -1,4 +1,4 @@
-import { el, transitionTo } from '../shared/ui.js'
+import { el, icon, transitionTo } from '../shared/ui.js'
 import { games } from '../games/registry.js'
 
 // Hub = WOVE-style arc selector. Big ghosted numbers ride a vertical arc on the
@@ -19,8 +19,8 @@ export function renderHub(root, ctx) {
   hub.append(el('div', { class: 'hub-header' }, [
     el('span', { class: 'wordmark' }, 'GAMEHUB'),
     el('div', { class: 'hub-header-actions' }, [
-      el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => ctx.router.go('/players') }, '👥'),
-      el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => ctx.router.go('/settings') }, '⚙')
+      el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => ctx.router.go('/players') }, icon('players')),
+      el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => ctx.router.go('/settings') }, icon('settings'))
     ])
   ]))
 
