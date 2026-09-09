@@ -403,6 +403,23 @@ body {
 
 .game-root { min-height: 100vh; }
 
+/* Route iris transition overlay */
+.route-iris {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
+  pointer-events: none;
+  will-change: clip-path, opacity;
+}
+/* Game screen easing in under the iris */
+.game-root { animation: screen-in .4s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes screen-in {
+  from { opacity: 0; transform: scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-root { animation: none; }
+}
+
 /* ============================================================
    Heads Up
    ============================================================ */

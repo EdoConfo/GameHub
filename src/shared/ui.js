@@ -80,6 +80,43 @@ export function toast(message) {
   }, 2200)
 }
 
+// Iris route transition: a bg-colored disc bursts from (x,y), covers the
+// screen, we swap the route underneath, then it fades away revealing the new
+// screen. Falls back to an instant navigate when reduced motion is requested.
+export function transitionTo(x, y, navigate) {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduce || typeof document === 'undefined') { navigate(); return }
+
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const R = Math.hypot(Math.max(x, vw - x), Math.max(y, vh - y)) + 4
+
+  const ov = document.createElement('div')
+  ov.className = 'route-iris'
+  ov.style.clipPath = `circle(0px at ${x}px ${y}px)`
+  ov.style.webkitClipPath = `circle(0px at ${x}px ${y}px)`
+  document.body.appendChild(ov)
+  ov.getBoundingClientRect() // force reflow so the transition runs
+
+  ov.style.transition = 'clip-path .42s cubic-bezier(.4, 0, .2, 1), -webkit-clip-path .42s cubic-bezier(.4, 0, .2, 1)'
+  ov.style.clipPath = `circle(${R}px at ${x}px ${y}px)`
+  ov.style.webkitClipPath = `circle(${R}px at ${x}px ${y}px)`
+
+  let swapped = false
+  function swap() {
+    if (swapped) return
+    swapped = true
+    navigate()
+    requestAnimationFrame(() => {
+      ov.style.transition = 'opacity .3s ease'
+      ov.style.opacity = '0'
+      setTimeout(() => ov.remove(), 340)
+    })
+  }
+  ov.addEventListener('transitionend', swap, { once: true })
+  setTimeout(swap, 500) // fallback if transitionend doesn't fire
+}
+
 export function shuffle(arr) {
   const a = arr.slice()
   for (let i = a.length - 1; i > 0; i--) {

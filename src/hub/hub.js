@@ -1,4 +1,4 @@
-import { el } from '../shared/ui.js'
+import { el, transitionTo } from '../shared/ui.js'
 import { games } from '../games/registry.js'
 
 // Hub = WOVE-style arc selector. Big ghosted numbers ride a vertical arc on the
@@ -108,7 +108,10 @@ export function renderHub(root, ctx) {
   }
 
   function open(i) {
-    ctx.router.go('/game/' + games[i].id)
+    const r = items[i].getBoundingClientRect()
+    const x = r.left + r.width / 2
+    const y = r.top + r.height / 2
+    transitionTo(x, y, () => ctx.router.go('/game/' + games[i].id))
   }
 
   // ---- interaction ----
