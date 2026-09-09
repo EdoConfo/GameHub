@@ -118,13 +118,17 @@ export function renderHub(root, ctx) {
   }
 
   // ---- interaction ----
+  // Pointer/touch = rotate the wheel by dragging. Selection/opening is handled
+  // by a native click on each item (reliable across mouse, touch, and no
+  // pointer-capture quirks). A drag suppresses the click that follows it.
+  let swallowClick = false
   stage.addEventListener('pointerdown', e => {
     dragging = true
     moved = false
+    swallowClick = false
     startY = e.clientY
     baseActive = active
     setDragTransition(false)
-    stage.setPointerCapture?.(e.pointerId)
   })
   stage.addEventListener('pointermove', e => {
     if (!dragging) return
@@ -136,22 +140,20 @@ export function renderHub(root, ctx) {
   function endDrag(e) {
     if (!dragging) return
     dragging = false
-    const dy = e.clientY - startY
-    if (!moved) {
-      const t = e.target.closest?.('.arc-item')
-      if (t) {
-        const idx = Number(t.dataset.i)
-        if (idx === active) open(active)
-        else setActive(idx)
-      } else {
-        setActive(active)
-      }
-    } else {
-      setActive(Math.round(baseActive - dy / geom.stepPx))
+    if (moved) {
+      swallowClick = true // the click after a drag shouldn't select/open
+      setActive(Math.round(baseActive - (e.clientY - startY) / geom.stepPx))
     }
   }
   stage.addEventListener('pointerup', endDrag)
-  stage.addEventListener('pointercancel', () => { dragging = false; setActive(active) })
+  stage.addEventListener('pointercancel', () => { if (dragging) { dragging = false; setActive(active) } })
+
+  // Native click per item: select if not active, open if already active.
+  items.forEach((it, i) => it.addEventListener('click', () => {
+    if (swallowClick) { swallowClick = false; return }
+    if (i === active) open(active)
+    else setActive(i)
+  }))
 
   // Desktop convenience
   stage.addEventListener('wheel', e => {
