@@ -119,6 +119,7 @@ body {
   cursor: pointer;
   transition: background .15s ease;
 }
+.icon-btn { display: grid; place-items: center; }
 .icon-btn.ghost { visibility: hidden; }
 .icon-btn:active { background: var(--surface-2); }
 
@@ -527,12 +528,13 @@ body {
 .profile-edit-head { display: flex; justify-content: center; padding: 2px 0 6px; }
 .profile-edit-head .avatar { width: 56px; height: 56px; font-size: 30px; }
 .field-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); font-weight: 700; }
-.swatch-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+/* Justified: last item's right edge is flush with the content block edge. */
+.swatch-row { display: grid; grid-template-columns: repeat(5, 46px); justify-content: space-between; row-gap: 12px; }
+.swatch { width: 46px; height: 46px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; }
 .swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
-.emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 34px); justify-content: space-between; row-gap: 10px; }
 .emoji-cell {
-  width: 40px; height: 40px; flex: 0 0 auto;
+  width: 34px; height: 34px;
   border-radius: 10px; border: 1px solid var(--border);
   background: var(--surface-2); font-size: 19px; cursor: pointer;
   display: grid; place-items: center;

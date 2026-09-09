@@ -4,6 +4,9 @@ import { games, getGame } from '../games/registry.js'
 
 const gameIds = games.map(g => g.id)
 
+const PENCIL_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f2a83b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z"/><path d="M13 7l3 3"/></svg>'
+const TRASH_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5d73" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M6.5 7l.9 12a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>'
+
 export function renderPlayer(root, ctx, id) {
   function draw() {
     clear(root)
@@ -11,11 +14,11 @@ export function renderPlayer(root, ctx, id) {
     if (!p) { ctx.router.go('/players'); return }
 
     const view = screen({
-      title: p.name,
+      title: '',
       onBack: () => ctx.router.go('/players'),
       actions: [
-        el('button', { class: 'icon-btn', 'aria-label': 'Modifica', onclick: () => openProfileEditor(ctx, p, draw) }, '✎'),
-        el('button', { class: 'icon-btn danger-ink', 'aria-label': 'Elimina', onclick: () => confirmDelete(p) }, '🗑')
+        el('button', { class: 'icon-btn', 'aria-label': 'Modifica', html: PENCIL_SVG, onclick: () => openProfileEditor(ctx, p, draw) }),
+        el('button', { class: 'icon-btn', 'aria-label': 'Elimina', html: TRASH_SVG, onclick: () => confirmDelete(p) })
       ]
     })
 
