@@ -1,46 +1,77 @@
 import { el, screen, button, modal, toast, clear } from '../../shared/ui.js'
 import { renderPackManager } from '../../shared/packManagerScreen.js'
+import { avatar } from '../../hub/players.js'
 import {
   ROLE, roleLabel, suggestCounts, validateSetup,
   buildRound, checkWinner, guessMatches
 } from './engine.js'
 
-// ---------- SETUP ----------
-export function renderSetup(api) {
+// ---------- HOME (game menu, PS-app style) ----------
+export function renderHome(api) {
   const { ctx, state } = api
   const view = screen({ title: 'Mister White', onBack: () => ctx.router.go('/') })
 
-  // --- Players ---
+  view.body.append(el('div', { class: 'game-hero' }, [
+    el('div', { class: 'game-hero-icon' }, '🕵️'),
+    el('h1', { class: 'game-hero-title' }, 'Mister White'),
+    el('p', { class: 'game-hero-tag' }, 'Trova l’impostore che non conosce la parola.')
+  ]))
+
+  const menu = el('div', { class: 'game-menu' }, [
+    menuItem('Gioca', 'Nuova partita', () => api.goPhase('setup'), true),
+    menuItem('Parole', 'Pacchetti e coppie', () => api.goPhase('packs')),
+    menuItem('Come si gioca', 'Regole e ruoli', () => api.goPhase('rules')),
+    menuItem('Statistiche', 'Partite e vittorie', () => api.goPhase('stats'))
+  ])
+  view.body.append(menu)
+  return view
+}
+
+function menuItem(title, sub, onClick, primary) {
+  return el('button', { class: 'game-menu-item' + (primary ? ' primary' : ''), onclick: onClick }, [
+    el('span', { class: 'game-menu-text' }, [
+      el('span', { class: 'game-menu-title' }, title),
+      el('span', { class: 'game-menu-sub' }, sub)
+    ]),
+    el('span', { class: 'game-menu-arrow', 'aria-hidden': 'true' }, '›')
+  ])
+}
+
+// ---------- SETUP ----------
+export function renderSetup(api) {
+  const { ctx, state } = api
+  const view = screen({ title: 'Nuova partita', onBack: () => api.goPhase('home') })
+
+  // --- Players (from the shared roster) ---
   const sec1 = section('Chi gioca?')
   const chips = el('div', { class: 'chip-list' })
-  const selected = new Set(state.selectedPlayers)
+  const selected = new Set(state.selectedIds)
 
   function refreshChips() {
     clear(chips)
     const roster = ctx.players.all()
     if (!roster.length) {
-      chips.append(el('p', { class: 'muted' }, 'Aggiungi i giocatori qui sotto.'))
+      chips.append(el('p', { class: 'muted' }, 'Nessun giocatore. Aggiungine uno qui sotto o dall’icona 👥.'))
     }
-    for (const name of roster) {
-      const on = selected.has(name)
+    for (const p of roster) {
+      const on = selected.has(p.id)
       chips.append(el('button', {
-        class: 'chip selectable' + (on ? ' on' : ''),
+        class: 'chip selectable player-chip' + (on ? ' on' : ''),
         onclick: () => {
-          if (on) selected.delete(name); else selected.add(name)
-          state.selectedPlayers = [...selected]
+          if (on) selected.delete(p.id); else selected.add(p.id)
+          state.selectedIds = [...selected]
           refreshChips(); refreshValidity()
         }
-      }, name))
+      }, [avatar(p, 22), el('span', {}, p.name)]))
     }
   }
 
-  const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: 'Nuovo giocatore…', maxlength: '24' })
+  const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: 'Nuovo giocatore…', maxlength: '20' })
   function addPlayer() {
     const v = nameInput.value.trim()
     if (!v) return
-    ctx.players.add(v)
-    selected.add(v)
-    state.selectedPlayers = [...selected]
+    const p = ctx.players.add({ name: v })
+    if (p) { selected.add(p.id); state.selectedIds = [...selected] }
     nameInput.value = ''
     refreshChips(); refreshValidity()
   }
@@ -87,15 +118,19 @@ export function renderSetup(api) {
   }
 
   function startRound() {
-    const names = [...selected]
+    const people = [...selected].map(id => {
+      const p = ctx.players.get(id)
+      return { name: p ? p.name : '???', pid: id }
+    })
     const pairs = api.packs.enabledItems()
     if (!pairs.length) return
     const pair = pairs[Math.floor(Math.random() * pairs.length)]
-    state.round = buildRound(names, pair, { ...state.counts })
+    state.round = buildRound(people, pair, { ...state.counts })
     state.dealIndex = 0
     state.revealed = false
     state.winner = null
     state.mrWhiteGuess = null
+    state.recorded = false
     api.goPhase('deal')
   }
 
@@ -266,11 +301,27 @@ export function renderVote(api) {
   return view
 }
 
+// Which players won, given the outcome (used for stats).
+function winnerPids(state) {
+  const players = state.round.players
+  if (state.winner === 'civili') return players.filter(p => p.role === ROLE.CIVILE).map(p => p.pid)
+  if (state.winner === 'mrwhite-guess') return players.filter(p => p.role === ROLE.MRWHITE).map(p => p.pid)
+  return players.filter(p => p.role !== ROLE.CIVILE).map(p => p.pid) // impostori
+}
+
 // ---------- RESULTS ----------
 export function renderResults(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Risultato', onBack: () => ctx.router.go('/') })
+  const view = screen({ title: 'Risultato', onBack: () => api.goPhase('home') })
   const players = state.round.players
+
+  // Record stats once per finished round.
+  if (!state.recorded) {
+    state.recorded = true
+    const playerPids = players.map(p => p.pid).filter(Boolean)
+    const wins = winnerPids(state).filter(Boolean)
+    if (playerPids.length) ctx.stats.record('mister-white', playerPids, wins)
+  }
 
   let headline, sub
   if (state.winner === 'civili') {
@@ -309,17 +360,71 @@ export function renderResults(api) {
   view.body.append(el('div', { class: 'row stack' }, [
     button('Rigioca (stessi giocatori)', {
       variant: 'primary', full: true, onClick: () => {
-        const names = state.round.players.map(p => p.name)
+        const people = state.round.players.map(p => ({ name: p.name, pid: p.pid }))
         const pairs = api.packs.enabledItems()
         const pair = pairs[Math.floor(Math.random() * pairs.length)]
-        state.round = buildRound(names, pair, { ...state.counts })
+        state.round = buildRound(people, pair, { ...state.counts })
         state.dealIndex = 0; state.revealed = false
-        state.winner = null; state.mrWhiteGuess = null
+        state.winner = null; state.mrWhiteGuess = null; state.recorded = false
         api.goPhase('deal')
       }
     }),
-    button('Torna alla home', { variant: 'ghost', full: true, onClick: () => ctx.router.go('/') })
+    button('Torna al menu', { variant: 'ghost', full: true, onClick: () => api.goPhase('home') })
   ]))
+  return view
+}
+
+// ---------- RULES ----------
+export function renderRules(api) {
+  const view = screen({ title: 'Come si gioca', onBack: () => api.goPhase('home') })
+  const rule = (t, d) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, t), el('div', { class: 'rule-desc muted' }, d)])
+  view.body.append(section('Ruoli', [
+    rule('Civili', 'Ricevono la parola segreta.'),
+    rule('Undercover', 'Ricevono una parola simile ma diversa.'),
+    rule('Mister White', 'Non riceve nessuna parola: deve fingere di saperla.')
+  ]))
+  view.body.append(section('Come si svolge', [
+    rule('1 · Distribuzione', 'Passa il telefono: ognuno vede in privato la sua parola (o scopre di essere Mister White).'),
+    rule('2 · Indizi', 'A turno, ognuno dice a voce una parola collegata alla propria. Non scriverla.'),
+    rule('3 · Votazione', 'Discutete ed eliminate un sospetto. Si scopre il suo ruolo.')
+  ]))
+  view.body.append(section('Chi vince', [
+    rule('Civili', 'Se eliminano tutti gli impostori (Undercover + Mister White).'),
+    rule('Impostori', 'Se sopravvivono fino a pareggiare i civili.'),
+    rule('Mister White', 'Se, una volta eliminato, indovina la parola dei civili.')
+  ]))
+  return view
+}
+
+// ---------- STATS ----------
+export function renderStats(api) {
+  const { ctx } = api
+  const view = screen({ title: 'Statistiche', onBack: () => api.goPhase('home') })
+  const data = ctx.stats.get('mister-white')
+  const rows = Object.entries(data)
+    .map(([id, s]) => ({ p: ctx.players.get(id), ...s }))
+    .filter(r => r.p)
+    .sort((a, b) => b.won - a.won || b.played - a.played)
+
+  if (!rows.length) {
+    view.body.append(el('p', { class: 'muted center' }, 'Ancora nessuna partita registrata. Gioca per vedere le statistiche!'))
+    return view
+  }
+
+  const table = el('div', { class: 'stats-table' })
+  table.append(el('div', { class: 'stats-head' }, [
+    el('span', {}, 'Giocatore'), el('span', {}, 'Giocate'), el('span', {}, 'Vinte'), el('span', {}, '%')
+  ]))
+  for (const r of rows) {
+    const pct = r.played ? Math.round((r.won / r.played) * 100) : 0
+    table.append(el('div', { class: 'stats-row' }, [
+      el('span', { class: 'stats-player' }, [avatar(r.p, 26), el('span', {}, r.p.name)]),
+      el('span', {}, String(r.played)),
+      el('span', {}, String(r.won)),
+      el('span', {}, pct + '%')
+    ]))
+  }
+  view.body.append(table)
   return view
 }
 

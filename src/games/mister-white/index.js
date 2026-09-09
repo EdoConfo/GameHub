@@ -5,16 +5,18 @@ import { suggestCounts } from './engine.js'
 import packs from './packs.js'
 
 function createState(ctx) {
-  const saved = ctx.players.all()
+  const roster = ctx.players.all()
+  const ids = roster.slice(0, 20).map(p => p.id)
   return {
-    phase: 'setup',
-    selectedPlayers: saved.slice(0, 20),
-    counts: suggestCounts(Math.max(saved.length, 3)),
+    phase: 'home',
+    selectedIds: ids,
+    counts: suggestCounts(Math.max(ids.length, 3)),
     round: null,
     dealIndex: 0,
     revealed: false,
     winner: null,
-    mrWhiteGuess: null // { name, correct }
+    mrWhiteGuess: null, // { name, correct }
+    recorded: false
   }
 }
 
@@ -32,14 +34,17 @@ function mount(container, ctx) {
   function render() {
     clear(container)
     const map = {
+      home: screens.renderHome,
       setup: screens.renderSetup,
       packs: screens.renderPacks,
+      rules: screens.renderRules,
+      stats: screens.renderStats,
       deal: screens.renderDeal,
       play: screens.renderPlay,
       vote: screens.renderVote,
       results: screens.renderResults
     }
-    const fn = map[state.phase] || screens.renderSetup
+    const fn = map[state.phase] || screens.renderHome
     container.append(fn(api))
   }
 

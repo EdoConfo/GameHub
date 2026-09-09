@@ -471,3 +471,84 @@ body {
 @media (orientation: landscape) {
   .play-word { font-size: clamp(48px, 14vh, 120px); }
 }
+
+/* ============================================================
+   Profiles · game home menu · stats
+   ============================================================ */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  font-size: 17px; color: #fff; flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+}
+
+.hub-header-actions { display: flex; align-items: center; gap: 2px; }
+
+/* Game home (PS-app menu) */
+.game-hero { text-align: center; padding: 18px 0 6px; }
+.game-hero-icon { font-size: 54px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.28)); }
+.game-hero-title { font-size: 30px; font-weight: 800; margin: 10px 0 4px; letter-spacing: -.5px; }
+.game-hero-tag { color: var(--text-dim); margin: 0; }
+
+.game-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.game-menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; text-align: left; padding: 16px 18px;
+  border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  color: var(--text); cursor: pointer; transition: transform .1s ease;
+}
+.game-menu-item:active { transform: scale(.99); }
+.game-menu-item.primary {
+  background: var(--primary); color: #fff; border-color: transparent;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.game-menu-text { display: flex; flex-direction: column; gap: 2px; }
+.game-menu-title { font-size: 19px; font-weight: 750; }
+.game-menu-sub { font-size: 13px; color: var(--text-dim); }
+.game-menu-item.primary .game-menu-sub { color: rgba(255,255,255,.82); }
+.game-menu-arrow { font-size: 26px; color: var(--text-dim); line-height: 1; }
+.game-menu-item.primary .game-menu-arrow { color: rgba(255,255,255,.9); }
+
+.player-chip { padding-left: 6px; }
+
+/* Players portal */
+.profile-list { display: flex; flex-direction: column; gap: 10px; }
+.profile-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow);
+}
+.profile-name { flex: 1; font-weight: 650; }
+.profile-actions { display: flex; gap: 4px; }
+.profile-actions .chip-x { font-size: 16px; }
+.profile-edit-head { display: flex; justify-content: center; padding: 2px 0 6px; }
+.profile-edit-head .avatar { width: 56px; height: 56px; font-size: 30px; }
+.field-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); font-weight: 700; }
+.swatch-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.emoji-cell {
+  aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); font-size: 19px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.emoji-cell.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 18%, transparent); }
+
+/* Rules */
+.rule { display: flex; flex-direction: column; gap: 2px; }
+.rule-title { font-weight: 700; }
+.rule-desc { font-size: 14px; }
+
+/* Stats */
+.stats-table { display: flex; flex-direction: column; }
+.stats-head, .stats-row {
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px;
+  align-items: center; padding: 11px 4px;
+}
+.stats-head { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+.stats-head > span:not(:first-child), .stats-row > span:not(.stats-player) { text-align: right; min-width: 48px; }
+.stats-row { border-bottom: 1px solid var(--border); }
+.stats-row:last-child { border-bottom: 0; }
+.stats-player { display: flex; align-items: center; gap: 10px; font-weight: 650; }

@@ -30,20 +30,22 @@ export function validateSetup(numPlayers, counts) {
 }
 
 // Build a round: assign roles + words. Returns { players, pair, order }.
-// names: string[]; pair: { civilian, undercover }; counts: { mrwhite, undercover }
-export function buildRound(names, pair, counts) {
+// people: array of { name, pid } (pid = shared player profile id, optional).
+// pair: { civilian, undercover }; counts: { mrwhite, undercover }
+export function buildRound(people, pair, counts) {
+  const list = people.map(p => (typeof p === 'string' ? { name: p, pid: null } : p))
   const roles = []
   for (let i = 0; i < counts.mrwhite; i++) roles.push(ROLE.MRWHITE)
   for (let i = 0; i < counts.undercover; i++) roles.push(ROLE.UNDERCOVER)
-  while (roles.length < names.length) roles.push(ROLE.CIVILE)
+  while (roles.length < list.length) roles.push(ROLE.CIVILE)
 
   const shuffledRoles = shuffle(roles)
-  const players = names.map((name, i) => {
+  const players = list.map((person, i) => {
     const role = shuffledRoles[i]
     let word = ''
     if (role === ROLE.CIVILE) word = pair.civilian
     else if (role === ROLE.UNDERCOVER) word = pair.undercover
-    return { id: i, name, role, word, alive: true }
+    return { id: i, name: person.name, pid: person.pid || null, role, word, alive: true }
   })
 
   // Turn order: seating order (as entered), random starting player.

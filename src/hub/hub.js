@@ -18,7 +18,10 @@ export function renderHub(root, ctx) {
   // Header: wordmark + settings
   hub.append(el('div', { class: 'hub-header' }, [
     el('span', { class: 'wordmark' }, 'GAMEHUB'),
-    el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => ctx.router.go('/settings') }, '⚙')
+    el('div', { class: 'hub-header-actions' }, [
+      el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => ctx.router.go('/players') }, '👥'),
+      el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => ctx.router.go('/settings') }, '⚙')
+    ])
   ]))
 
   const stage = el('div', { class: 'arc-stage' })
