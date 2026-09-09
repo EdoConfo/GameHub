@@ -1,0 +1,14 @@
+{
+  "id": "animali",
+  "name": "Animali",
+  "language": "it",
+  "words": [
+    "Leone", "Tigre", "Elefante", "Giraffa", "Zebra", "Rinoceronte",
+    "Scimmia", "Gorilla", "Canguro", "Koala", "Panda", "Orso",
+    "Lupo", "Volpe", "Cervo", "Coniglio", "Riccio", "Scoiattolo",
+    "Cane", "Gatto", "Cavallo", "Mucca", "Maiale", "Pecora",
+    "Gallina", "Anatra", "Pinguino", "Aquila", "Gufo", "Pappagallo",
+    "Squalo", "Delfino", "Balena", "Polpo", "Granchio", "Tartaruga",
+    "Serpente", "Coccodrillo", "Rana", "Farfalla", "Ape", "Ragno"
+  ]
+}

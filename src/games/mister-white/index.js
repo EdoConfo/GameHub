@@ -2,6 +2,7 @@
 import { clear } from '../../shared/ui.js'
 import * as screens from './screens.js'
 import { suggestCounts } from './engine.js'
+import packs from './packs.js'
 
 function createState(ctx) {
   const saved = ctx.players.all()
@@ -23,6 +24,7 @@ function mount(container, ctx) {
   const api = {
     ctx,
     state,
+    packs,
     render,
     goPhase(phase) { state.phase = phase; render() }
   }
@@ -31,6 +33,7 @@ function mount(container, ctx) {
     clear(container)
     const map = {
       setup: screens.renderSetup,
+      packs: screens.renderPacks,
       deal: screens.renderDeal,
       play: screens.renderPlay,
       vote: screens.renderVote,

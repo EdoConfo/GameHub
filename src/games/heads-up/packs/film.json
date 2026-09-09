@@ -1,0 +1,16 @@
+{
+  "id": "film",
+  "name": "Film & Serie",
+  "language": "it",
+  "words": [
+    "Titanic", "Avatar", "Star Wars", "Jurassic Park", "Matrix",
+    "Il Signore degli Anelli", "Harry Potter", "Pirati dei Caraibi",
+    "Il Re Leone", "Frozen", "Toy Story", "Shrek", "Ratatouille",
+    "Il Padrino", "Pulp Fiction", "Forrest Gump", "Rocky", "Gladiatore",
+    "Ritorno al Futuro", "E.T.", "Lo Squalo", "Il Gladiatore",
+    "Breaking Bad", "Game of Thrones", "Stranger Things", "La Casa di Carta",
+    "Friends", "The Office", "Squid Game", "Il Trono di Spade",
+    "I Simpson", "SpongeBob", "Pokémon", "Dragon Ball",
+    "Mission Impossible", "Fast and Furious", "Il Diavolo veste Prada", "Mamma Mia"
+  ]
+}

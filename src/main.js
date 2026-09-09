@@ -2,7 +2,6 @@ import './styles.css'
 import * as router from './router.js'
 import * as storage from './shared/storage.js'
 import * as players from './shared/players.js'
-import * as packs from './shared/packs.js'
 import { renderHub } from './hub/hub.js'
 import { renderSettings } from './hub/settings.js'
 import { getGame } from './games/registry.js'
@@ -13,8 +12,9 @@ const root = document.getElementById('app')
 // Apply persisted theme before first paint of content.
 applyTheme(storage.get('theme', 'dark'))
 
-// Shared services handed to every game.
-const ctx = { storage, players, packs, router, root, applyTheme }
+// Shared services handed to every game. Word packs are NOT here: each game
+// owns and manages its own packs (see games/<id>/packs.js).
+const ctx = { storage, players, router, root, applyTheme }
 
 // A mounted game may return a cleanup fn (stop timers/sensors). Call it
 // whenever we leave the current screen.

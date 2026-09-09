@@ -2,14 +2,15 @@
 import { clear } from '../../shared/ui.js'
 import * as screens from './screens.js'
 import { createTilt } from './motion.js'
+import packs from './packs.js'
 
 const DURATIONS = [30, 60, 90]
 
-function createState(ctx) {
-  const packs = ctx.packs.allPacks()
+function createState() {
+  const list = packs.enabledPacks()
   return {
     phase: 'setup',
-    packId: packs[0]?.id || null,
+    packId: list[0]?.id || packs.allPacks()[0]?.id || null,
     duration: 60,
     invert: false,
     words: [],
@@ -21,7 +22,7 @@ function createState(ctx) {
 }
 
 function mount(container, ctx) {
-  const state = createState(ctx)
+  const state = createState()
 
   // Shared runtime handles that must be torn down on leave.
   const runtime = { timer: null, tilt: null, countdown: null }
@@ -35,6 +36,7 @@ function mount(container, ctx) {
   const api = {
     ctx,
     state,
+    packs,
     runtime,
     DURATIONS,
     createTilt,
@@ -47,6 +49,7 @@ function mount(container, ctx) {
     clear(container)
     const map = {
       setup: screens.renderSetup,
+      packs: screens.renderPacks,
       ready: screens.renderReady,
       countdown: screens.renderCountdown,
       play: screens.renderPlay,

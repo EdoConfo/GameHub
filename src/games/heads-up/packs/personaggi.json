@@ -1,0 +1,17 @@
+{
+  "id": "personaggi",
+  "name": "VIP & Personaggi",
+  "language": "it",
+  "words": [
+    "Albert Einstein", "Leonardo da Vinci", "Cristiano Ronaldo", "Lionel Messi",
+    "Michael Jackson", "Freddie Mercury", "Madonna", "Lady Gaga",
+    "Barack Obama", "Papa Francesco", "Steve Jobs", "Elon Musk",
+    "Harry Potter", "Darth Vader", "Spiderman", "Batman",
+    "Superman", "Iron Man", "Topolino", "Paperino",
+    "Homer Simpson", "SpongeBob", "Super Mario", "Pikachu",
+    "Sherlock Holmes", "James Bond", "Rocky Balboa", "Forrest Gump",
+    "Julia Roberts", "Leonardo DiCaprio", "Brad Pitt", "Angelina Jolie",
+    "Totò", "Roberto Benigni", "Sofia Loren", "Alberto Sordi",
+    "Valentino Rossi", "Alberto Tomba", "Cleopatra", "Napoleone"
+  ]
+}

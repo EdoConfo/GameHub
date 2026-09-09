@@ -1,0 +1,14 @@
+{
+  "id": "default",
+  "name": "Da mimare",
+  "language": "it",
+  "words": [
+    "Ballare", "Nuotare", "Dormire", "Piangere", "Ridere", "Correre",
+    "Guidare", "Cucinare", "Cantare", "Suonare la chitarra", "Sciare", "Pescare",
+    "Starnutire", "Applaudire", "Telefonare", "Fare le foto", "Lavarsi i denti", "Pettinarsi",
+    "Boxare", "Giocare a tennis", "Saltare la corda", "Arrampicarsi", "Volare", "Tuffarsi",
+    "Fare yoga", "Dipingere", "Scrivere", "Leggere", "Salutare", "Abbracciare",
+    "Aprire un regalo", "Soffiare le candeline", "Fare il bucato", "Innaffiare le piante",
+    "Fingere di dormire", "Camminare sulla luna", "Fare il robot", "Suonare la batteria"
+  ]
+}

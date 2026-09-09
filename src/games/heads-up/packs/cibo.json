@@ -1,0 +1,14 @@
+{
+  "id": "cibo",
+  "name": "Cibo & Bevande",
+  "language": "it",
+  "words": [
+    "Pizza", "Spaghetti", "Lasagne", "Risotto", "Gnocchi", "Ravioli",
+    "Hamburger", "Patatine fritte", "Hot dog", "Sushi", "Tacos", "Kebab",
+    "Gelato", "Tiramisù", "Cannolo", "Cornetto", "Cioccolato", "Nutella",
+    "Parmigiano", "Mozzarella", "Prosciutto", "Salame", "Pane", "Focaccia",
+    "Mela", "Banana", "Fragola", "Anguria", "Ananas", "Limone",
+    "Caffè", "Cappuccino", "Tè", "Spremuta", "Vino", "Birra",
+    "Pomodoro", "Insalata", "Uovo", "Formaggio", "Popcorn", "Caramella"
+  ]
+}

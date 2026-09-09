@@ -62,13 +62,20 @@ Se **rinomini il repository**, cambia `BASE` con `/<nuovo-nome>/` (barre inizial
 2. Menu del browser → **Aggiungi alla schermata Home** (Android/Chrome) o **Condividi → Aggiungi a Home** (iOS/Safari).
 3. Dopo la prima apertura funziona anche senza rete: il service worker mette in cache app e pacchetti di parole.
 
-## Aggiungere pacchetti di parole
+## Parole e pacchetti (per gioco)
 
-Dall'app: **Impostazioni ⚙ → Pacchetti di parole → + Aggiungi pacchetto**.
+I pacchetti di parole **non sono condivisi tra i giochi**: ogni gioco ha i suoi,
+con un formato adatto. Le Impostazioni globali gestiscono solo tema e giocatori.
 
-Due formati accettati:
+Per gestirli: entra nel gioco → **Gestisci parole**. Lì attivi/disattivi le
+categorie, ne aggiungi di tue (salvate nel browser, `localStorage`, per quel
+gioco) e le elimini. Ogni gioco ha il suo spazio di archiviazione separato.
 
-**Formato righe** (una coppia per riga, `parola,parola-simile`):
+### Mister White — coppie
+
+Servono **coppie** (parola dei civili + parola simile per gli undercover).
+
+**Formato righe** (`parola,parola-simile` per riga):
 
 ```
 cane,lupo
@@ -87,13 +94,33 @@ mare,lago
 }
 ```
 
-I pacchetti custom restano salvati nel browser (`localStorage`) e sono attivabili/eliminabili.
-Puoi tenere attivi più pacchetti insieme: le coppie vengono unite.
+Puoi tenere attive più categorie insieme: le coppie vengono unite in un pool.
 
-I pacchetti predefiniti stanno in [`src/packs/`](src/packs/) come file JSON
-(`default.json`, `cibo.json`, `sport.json`, `film.json`, `animali.json`).
-Per aggiungerne uno "di fabbrica": crea un nuovo `.json` con lo stesso schema
-(`{ id, name, language, pairs }`) — viene caricato automaticamente al build.
+Pacchetti "di fabbrica" in [`src/games/mister-white/packs/`](src/games/mister-white/packs/)
+— JSON con schema `{ id, name, language, pairs }`. Un nuovo `.json` lì viene caricato al build.
+
+### Heads Up — parole singole
+
+Serve una **parola (o nome/frase) per riga**:
+
+```
+Spiderman
+Pizza
+Ballare la macarena
+```
+
+Formato JSON: `{ "words": ["Spiderman", "Pizza"] }`.
+Pacchetti "di fabbrica" in [`src/games/heads-up/packs/`](src/games/heads-up/packs/)
+— schema `{ id, name, language, words }`.
+
+### Come funziona sotto
+
+La logica comune (storage, attivazione, parsing, custom) sta in
+[`src/shared/packStore.js`](src/shared/packStore.js): una factory `createPackStore`
+che ogni gioco istanzia con un `namespace` proprio e un `codec` che descrive la
+forma dei suoi item. La UI di gestione è riusabile
+([`src/shared/packManagerScreen.js`](src/shared/packManagerScreen.js)) ma viene
+aperta **dentro** il gioco, non dalle Impostazioni.
 
 ## Aggiungere un nuovo gioco
 
@@ -108,8 +135,10 @@ Ogni gioco è un modulo autonomo. Il resto dell'app (hub, router, impostazioni) 
      description: 'Indovina la parola sulla fronte.',
      icon: '📱',
      mount(container, ctx) {
-       // ctx = { storage, players, packs, router, root, applyTheme }
+       // ctx = { storage, players, router, root, applyTheme }
        // disegna dentro container; ritorna una funzione di cleanup se serve
+       // (chiamata quando si lascia il gioco: ferma timer/sensori)
+       // I pacchetti di parole li crea il gioco stesso (games/<id>/packs.js).
      }
    }
    ```
@@ -130,12 +159,12 @@ src/
   main.js              boot + rotte
   router.js            router hash (#/, #/game/<id>, #/settings)
   styles.css           token tema + UI condivisa
-  shared/              storage, giocatori, pacchetti, helper UI (riusabili da ogni gioco)
-  hub/                 home + impostazioni
+  shared/              storage, giocatori, packStore + packManagerScreen, helper UI
+  hub/                 home + impostazioni (solo tema + giocatori)
   games/
     registry.js        elenco giochi
-    mister-white/      engine (regole pure) + screens (UI)
-  packs/               pacchetti di parole (JSON)
+    mister-white/      engine + screens + packs.js + packs/*.json (coppie)
+    heads-up/          screens + motion + packs.js + packs/*.json (parole)
 ```
 
 ## Come si gioca a Mister White

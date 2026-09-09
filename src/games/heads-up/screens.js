@@ -1,34 +1,51 @@
 import { el, screen, button, shuffle } from '../../shared/ui.js'
+import { renderPackManager } from '../../shared/packManagerScreen.js'
 import { ensurePermission, motionSupported } from './motion.js'
 
-// Build the word list for a game from the chosen pack (uses the "civilian"
-// side of each pair as the word to guess). Falls back to all enabled pairs.
-function buildWords(ctx, packId) {
-  const pack = ctx.packs.getPack(packId)
-  const pairs = pack ? pack.pairs : ctx.packs.enabledPairs()
-  return shuffle(pairs.map(p => p.civilian))
+// Build the word list from the chosen pack (single words). Falls back to
+// all enabled words if the pack is gone.
+function buildWords(store, packId) {
+  const pack = store.getPack(packId)
+  const words = pack ? pack.items : store.enabledItems()
+  return shuffle(words.slice())
+}
+
+// ---------- PACKS (manage words for this game) ----------
+export function renderPacks(api) {
+  return renderPackManager(api.packs, {
+    title: 'Parole',
+    help: 'Parole e nomi da indovinare. Attiva le categorie da giocare; puoi aggiungerne di tue.',
+    onBack: () => api.goPhase('setup')
+  })
 }
 
 // ---------- SETUP ----------
 export function renderSetup(api) {
   const { ctx, state } = api
   const view = screen({ title: 'Heads Up', onBack: () => ctx.router.go('/') })
-  const packs = ctx.packs.allPacks()
+  const packs = api.packs.enabledPacks()
+
+  // Keep the selection valid against the currently enabled packs.
+  if (!packs.some(p => p.id === state.packId)) state.packId = packs[0]?.id || null
 
   // Pack picker
   const sec1 = section('Categoria')
   const chips = el('div', { class: 'chip-list' })
   function refreshPacks() {
     chips.replaceChildren()
+    if (!packs.length) {
+      chips.append(el('p', { class: 'muted' }, 'Nessuna categoria attiva. Aggiungine o attivane una in “Gestisci parole”.'))
+    }
     for (const p of packs) {
       chips.append(el('button', {
         class: 'chip selectable' + (state.packId === p.id ? ' on' : ''),
         onclick: () => { state.packId = p.id; refreshPacks() }
-      }, `${p.name} (${p.pairs.length})`))
+      }, `${p.name} (${p.items.length})`))
     }
   }
   refreshPacks()
   sec1.append(chips)
+  sec1.append(el('button', { class: 'link-btn', onclick: () => api.goPhase('packs') }, 'Gestisci parole'))
 
   // Duration
   const sec2 = section('Durata')
@@ -56,7 +73,11 @@ export function renderSetup(api) {
     el('input', { type: 'checkbox', checked: state.invert, onchange: e => { state.invert = e.target.checked } })
   ]))
 
-  const startBtn = button('Continua', { variant: 'primary', full: true, onClick: () => api.goPhase('ready') })
+  const startBtn = button('Continua', {
+    variant: 'primary', full: true,
+    disabled: !state.packId,
+    onClick: () => { if (state.packId) api.goPhase('ready') }
+  })
 
   view.body.append(sec1, sec2, sec3, startBtn)
   return view
@@ -81,7 +102,7 @@ export function renderReady(api) {
     variant: 'primary', full: true, onClick: async () => {
       // Permission must be requested from this user gesture (iOS).
       state.motionGranted = await ensurePermission()
-      state.words = buildWords(ctx, state.packId)
+      state.words = buildWords(api.packs, state.packId)
       state.index = 0
       state.score = 0
       state.results = []

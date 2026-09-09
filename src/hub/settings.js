@@ -1,10 +1,14 @@
-import { el, screen, button, clear, modal, toast } from '../shared/ui.js'
+import { el, screen, button, clear } from '../shared/ui.js'
 
+// Global settings = things common to the whole app: theme and the player
+// roster. Word packs are NOT here — each game manages its own packs from
+// inside the game.
 export function renderSettings(root, ctx) {
   const view = screen({ title: 'Impostazioni', onBack: () => ctx.router.go('/') })
   view.body.append(themeSection(ctx))
   view.body.append(playersSection(ctx))
-  view.body.append(packsSection(ctx))
+  view.body.append(el('p', { class: 'muted small center' },
+    'Le parole e i pacchetti si gestiscono dentro ogni gioco.'))
   root.append(view)
 }
 
@@ -14,11 +18,10 @@ function themeSection(ctx) {
   const section = el('section', { class: 'card-section' }, [
     el('h2', { class: 'section-title' }, 'Aspetto')
   ])
-  const row = el('div', { class: 'row space-between' }, [
+  section.append(el('div', { class: 'row space-between' }, [
     el('span', {}, 'Tema scuro'),
     toggle(current !== 'light', on => ctx.applyTheme(on ? 'dark' : 'light'))
-  ])
-  section.append(row)
+  ]))
   return section
 }
 
@@ -70,79 +73,9 @@ function playersSection(ctx) {
   }
 
   input.addEventListener('keydown', e => { if (e.key === 'Enter') submit() })
-  const addBtn = button('Aggiungi', { variant: 'secondary', onClick: submit })
 
   section.append(list)
-  section.append(el('div', { class: 'row' }, [input, addBtn]))
+  section.append(el('div', { class: 'row' }, [input, button('Aggiungi', { variant: 'secondary', onClick: submit })]))
   refresh()
   return section
-}
-
-// ---- Word packs ----
-function packsSection(ctx) {
-  const section = el('section', { class: 'card-section' }, [
-    el('h2', { class: 'section-title' }, 'Pacchetti di parole'),
-    el('p', { class: 'muted' }, 'Usati dai giochi di parole (es. Mister White). Attiva quelli che vuoi in gioco.')
-  ])
-  const list = el('div', { class: 'pack-list' })
-
-  function refresh() {
-    clear(list)
-    const enabled = new Set(ctx.packs.enabledIds())
-    for (const pack of ctx.packs.allPacks()) {
-      const isOn = enabled.has(pack.id)
-      const row = el('div', { class: 'pack-row' }, [
-        el('label', { class: 'pack-main' }, [
-          el('input', {
-            type: 'checkbox',
-            checked: isOn,
-            onchange: () => { ctx.packs.toggleEnabled(pack.id); refresh() }
-          }),
-          el('span', { class: 'pack-name' }, pack.name),
-          el('span', { class: 'pack-count' }, `${pack.pairs.length} coppie${pack.custom ? ' · tuo' : ''}`)
-        ]),
-        pack.custom
-          ? el('button', { class: 'chip-x', 'aria-label': 'Elimina', onclick: () => { ctx.packs.deleteCustomPack(pack.id); refresh() } }, '×')
-          : null
-      ])
-      list.append(row)
-    }
-  }
-
-  section.append(list)
-  section.append(button('+ Aggiungi pacchetto', { variant: 'secondary', onClick: () => openAddPack(ctx, refresh) }))
-  refresh()
-  return section
-}
-
-function openAddPack(ctx, onAdded) {
-  const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: 'Nome pacchetto', maxlength: '40' })
-  const textArea = el('textarea', {
-    class: 'text-area',
-    rows: '8',
-    placeholder: 'Un accoppiamento per riga:\ncane,lupo\npizza,focaccia\n\n…oppure incolla JSON con { "pairs": [...] }'
-  })
-  const errBox = el('p', { class: 'error-text' })
-
-  const m = modal({
-    title: 'Nuovo pacchetto',
-    content: [nameInput, textArea, errBox],
-    actions: [
-      button('Annulla', { variant: 'ghost', onClick: () => m.close() }),
-      button('Salva', {
-        variant: 'primary',
-        onClick: () => {
-          try {
-            const pack = ctx.packs.addCustomPack(nameInput.value, textArea.value)
-            m.close()
-            toast(`Aggiunto “${pack.name}” (${pack.pairs.length} coppie)`)
-            onAdded()
-          } catch (err) {
-            errBox.textContent = err.message
-          }
-        }
-      })
-    ]
-  })
-  nameInput.focus()
 }

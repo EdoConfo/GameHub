@@ -1,4 +1,5 @@
 import { el, screen, button, modal, toast, clear } from '../../shared/ui.js'
+import { renderPackManager } from '../../shared/packManagerScreen.js'
 import {
   ROLE, roleLabel, suggestCounts, validateSetup,
   buildRound, checkWinner, guessMatches
@@ -65,7 +66,7 @@ export function renderSetup(api) {
   const sec3 = section('Parole')
   const packInfo = el('p', { class: 'muted' })
   sec3.append(packInfo)
-  sec3.append(el('button', { class: 'link-btn', onclick: () => ctx.router.go('/settings') }, 'Gestisci pacchetti'))
+  sec3.append(el('button', { class: 'link-btn', onclick: () => api.goPhase('packs') }, 'Gestisci parole'))
 
   // --- Validation + start ---
   const errBox = el('p', { class: 'error-text' })
@@ -73,10 +74,10 @@ export function renderSetup(api) {
 
   function refreshValidity() {
     const n = selected.size
-    const pairs = ctx.packs.enabledPairs()
+    const pairs = api.packs.enabledItems()
     packInfo.textContent = pairs.length
       ? `${pairs.length} coppie disponibili dai pacchetti attivi.`
-      : 'Nessun pacchetto attivo: attivane uno in “Gestisci pacchetti”.'
+      : 'Nessun pacchetto attivo: attivane uno in “Gestisci parole”.'
     const setup = validateSetup(n, state.counts)
     let msg = ''
     if (!setup.ok) msg = setup.message
@@ -87,7 +88,7 @@ export function renderSetup(api) {
 
   function startRound() {
     const names = [...selected]
-    const pairs = ctx.packs.enabledPairs()
+    const pairs = api.packs.enabledItems()
     if (!pairs.length) return
     const pair = pairs[Math.floor(Math.random() * pairs.length)]
     state.round = buildRound(names, pair, { ...state.counts })
@@ -101,6 +102,15 @@ export function renderSetup(api) {
   view.body.append(sec1, sec2, sec3, errBox, startBtn)
   refreshChips(); refreshValidity()
   return view
+}
+
+// ---------- PACKS (manage words for this game) ----------
+export function renderPacks(api) {
+  return renderPackManager(api.packs, {
+    title: 'Parole',
+    help: 'Coppie di parole (una segreta, una simile). Attiva i pacchetti da usare; puoi aggiungerne di tuoi.',
+    onBack: () => api.goPhase('setup')
+  })
 }
 
 // ---------- DEAL ----------
@@ -300,7 +310,7 @@ export function renderResults(api) {
     button('Rigioca (stessi giocatori)', {
       variant: 'primary', full: true, onClick: () => {
         const names = state.round.players.map(p => p.name)
-        const pairs = ctx.packs.enabledPairs()
+        const pairs = api.packs.enabledItems()
         const pair = pairs[Math.floor(Math.random() * pairs.length)]
         state.round = buildRound(names, pair, { ...state.counts })
         state.dealIndex = 0; state.revealed = false
