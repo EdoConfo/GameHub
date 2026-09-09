@@ -1,16 +1,11 @@
 import { el, screen, button, modal, clear } from '../shared/ui.js'
 import { COLORS, EMOJIS } from '../shared/players.js'
 
-const USER_SVG = (size, ink) =>
-  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${ink}" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.4" r="3.3"/><path d="M5.6 19.4a6.4 6.4 0 0 1 12.8 0"/></svg>`
-
-// Pick dark or light ink depending on background luminance (for white/black).
-function inkFor(hex) {
-  const c = String(hex || '#888').replace('#', '')
-  if (c.length < 6) return '#fff'
-  const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16)
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#111' : '#fff'
-}
+// Generic user icon: always the same neutral grey, visible on any colour
+// (including white and black backgrounds).
+const USER_INK = '#9aa0aa'
+const USER_SVG = size =>
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${USER_INK}" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.4" r="3.3"/><path d="M5.6 19.4a6.4 6.4 0 0 1 12.8 0"/></svg>`
 
 // A circular avatar: photo > emoji > generic user icon, on the profile color.
 export function avatar(p, size = 32) {
@@ -22,7 +17,7 @@ export function avatar(p, size = 32) {
   if (p && p.emoji) {
     return el('span', { class: 'avatar', style: `${base};background:${bg};font-size:${Math.round(size * 0.52)}px` }, p.emoji)
   }
-  return el('span', { class: 'avatar', style: `${base};background:${bg}`, html: USER_SVG(Math.round(size * 0.64), inkFor(bg)) })
+  return el('span', { class: 'avatar', style: `${base};background:${bg}`, html: USER_SVG(Math.round(size * 0.64)) })
 }
 
 // Players portal — the shared "accounts" manager, opened from the hub header.

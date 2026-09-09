@@ -537,7 +537,8 @@ body {
   width: 34px; height: 34px;
   border-radius: 10px; border: 1px solid var(--border);
   background: var(--surface-2); font-size: 19px; cursor: pointer;
-  display: grid; place-items: center;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1; padding: 0; text-align: center;
 }
 .emoji-cell.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 18%, transparent); }
 
