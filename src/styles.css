@@ -129,6 +129,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .icon-btn { display: grid; place-items: center; }
 .icon-btn.ghost { visibility: hidden; }
+.icon-btn .icon { width: 24px; height: 24px; display: block; }
 .icon-btn:active { background: var(--surface-2); }
 
 .link-btn {
