@@ -320,7 +320,10 @@ export function renderResults(api) {
     state.recorded = true
     const playerPids = players.map(p => p.pid).filter(Boolean)
     const wins = winnerPids(state).filter(Boolean)
-    if (playerPids.length) ctx.stats.record('mister-white', playerPids, wins)
+    const result = state.winner === 'civili' ? 'Vittoria Civili'
+      : state.winner === 'mrwhite-guess' ? 'Mister White ha indovinato'
+        : 'Vittoria Impostori'
+    if (playerPids.length) ctx.stats.record('mister-white', playerPids, wins, { result })
   }
 
   let headline, sub

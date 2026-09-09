@@ -6,6 +6,7 @@ import * as stats from './shared/stats.js'
 import { renderHub } from './hub/hub.js'
 import { renderSettings } from './hub/settings.js'
 import { renderPlayers } from './hub/players.js'
+import { renderPlayer } from './hub/playerPage.js'
 import { getGame } from './games/registry.js'
 import { clear, screen, el } from './shared/ui.js'
 
@@ -42,6 +43,11 @@ router.on('/players', () => {
   leaveCurrent()
   clear(root)
   renderPlayers(root, ctx)
+})
+
+router.on('/player/:id', ({ id }) => {
+  leaveCurrent()
+  renderPlayer(root, ctx, id)
 })
 
 router.on('/game/:id', ({ id }) => {

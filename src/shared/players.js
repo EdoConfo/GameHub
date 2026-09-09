@@ -32,7 +32,8 @@ function load() {
         id: item.id || newId(),
         name: String(item.name).trim(),
         color: item.color || COLORS[i % COLORS.length],
-        emoji: item.emoji || EMOJIS[i % EMOJIS.length]
+        emoji: item.emoji || EMOJIS[i % EMOJIS.length],
+        photo: item.photo || null
       }
     }
     return null
@@ -50,7 +51,7 @@ export function get(id) { return load().find(p => p.id === id) || null }
 function nextColor(list) { return COLORS.find(c => !list.some(p => p.color === c)) || COLORS[list.length % COLORS.length] }
 function nextEmoji(list) { return EMOJIS.find(e => !list.some(p => p.emoji === e)) || EMOJIS[list.length % EMOJIS.length] }
 
-export function add({ name, color, emoji } = {}) {
+export function add({ name, color, emoji, photo } = {}) {
   const clean = String(name || '').trim()
   if (!clean) return null
   const list = load()
@@ -58,7 +59,8 @@ export function add({ name, color, emoji } = {}) {
     id: newId(),
     name: clean,
     color: color || nextColor(list),
-    emoji: emoji || nextEmoji(list)
+    emoji: emoji || nextEmoji(list),
+    photo: photo || null
   }
   list.push(profile)
   save(list)
@@ -72,6 +74,7 @@ export function update(id, patch = {}) {
   if (patch.name != null) p.name = String(patch.name).trim() || p.name
   if (patch.color) p.color = patch.color
   if (patch.emoji) p.emoji = patch.emoji
+  if ('photo' in patch) p.photo = patch.photo || null // null removes the photo
   save(list)
   return p
 }
