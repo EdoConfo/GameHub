@@ -482,7 +482,7 @@ body {
   display: inline-flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; border-radius: 50%;
   font-size: 17px; color: #fff; flex: 0 0 auto;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+  box-shadow: inset 0 0 0 1px rgba(128,128,128,.3);
 }
 
 .hub-header-actions { display: flex; align-items: center; gap: 2px; }
@@ -529,8 +529,8 @@ body {
 .profile-edit-head .avatar { width: 56px; height: 56px; font-size: 30px; }
 .field-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); font-weight: 700; }
 /* Justified: last item's right edge is flush with the content block edge. */
-.swatch-row { display: grid; grid-template-columns: repeat(5, 46px); justify-content: space-between; row-gap: 12px; }
-.swatch { width: 46px; height: 46px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; }
+.swatch-row { display: grid; grid-template-columns: repeat(6, 40px); justify-content: space-between; row-gap: 12px; }
+.swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .35); }
 .swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
 .emoji-grid { display: grid; grid-template-columns: repeat(8, 34px); justify-content: space-between; row-gap: 10px; }
 .emoji-cell {

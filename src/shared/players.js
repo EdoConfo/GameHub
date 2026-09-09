@@ -5,8 +5,8 @@ import * as storage from './storage.js'
 const KEY = 'players'
 
 export const COLORS = [
-  '#6d5efc', '#ff6079', '#37c98f', '#e6b23a', '#3aa0ff',
-  '#ff8f3a', '#c46bff', '#2fd0c8', '#ff5db1', '#9bd13a'
+  '#6d5efc', '#ff6079', '#37c98f', '#e6b23a', '#3aa0ff', '#ff8f3a',
+  '#c46bff', '#2fd0c8', '#ff5db1', '#9bd13a', '#ffffff', '#000000'
 ]
 export const EMOJIS = [
   '🦊', '🐼', '🐧', '🦁', '🐸', '🐙', '🦄', '🐝',
