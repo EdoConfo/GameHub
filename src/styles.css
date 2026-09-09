@@ -165,7 +165,6 @@ body {
 .arc-stage:active { cursor: grabbing; }
 .arc-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .arc-line { fill: none; stroke: color-mix(in srgb, var(--text) 16%, transparent); stroke-width: 1.5; }
-.arc-dot { fill: var(--text); }
 
 .arc-item {
   position: absolute;

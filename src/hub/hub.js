@@ -29,10 +29,7 @@ export function renderHub(root, ctx) {
   // entering/exiting the top and bottom edges (WOVE-style). overflow:hidden clips the rest.
   const arcCircle = document.createElementNS(SVGNS, 'circle')
   arcCircle.setAttribute('class', 'arc-line')
-  const arcDot = document.createElementNS(SVGNS, 'circle')
-  arcDot.setAttribute('class', 'arc-dot')
-  arcDot.setAttribute('r', '4')
-  svg.append(arcCircle, arcDot)
+  svg.append(arcCircle)
   stage.append(svg)
 
   // Number items
@@ -88,12 +85,10 @@ export function renderHub(root, ctx) {
       it.style.transform = `translate(-50%, -50%) scale(${Math.max(0.62, 1 - dist * 0.14)})`
       it.classList.toggle('on', Math.round(f) === i)
     }
-    // full circle (only its right bulge is visible) + active dot
+    // full circle (only its right bulge is visible)
     arcCircle.setAttribute('cx', String(geom.Cx))
     arcCircle.setAttribute('cy', String(geom.Cy))
     arcCircle.setAttribute('r', String(geom.R))
-    arcDot.setAttribute('cx', String(geom.activeX))
-    arcDot.setAttribute('cy', String(geom.Cy))
   }
 
   function updateLabel(i) {
