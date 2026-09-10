@@ -1,5 +1,5 @@
 import { el, icon } from '../shared/ui.js'
-import { createArcWheel } from '../shared/arcWheel.js'
+import { createArcWheel, arcGeometry } from '../shared/arcWheel.js'
 import { openProfileEditor } from './players.js'
 import { games } from '../games/registry.js'
 
@@ -20,9 +20,39 @@ export function renderHub(root, ctx, startMenuId) {
   let sideKind = 'players'
 
   const canvas = el('div', { class: 'canvas' })
+
+  // ONE circle for the whole hub, drawn above the strip and slid on its own.
+  // At rest it lands exactly on the active page's arc; while you move between
+  // pages its centre crosses the screen, so you see the whole circle go by.
+  const SVGNS = 'http://www.w3.org/2000/svg'
+  const circleSvg = document.createElementNS(SVGNS, 'svg')
+  circleSvg.setAttribute('class', 'hub-circle')
+  const circleEl = document.createElementNS(SVGNS, 'circle')
+  circleEl.setAttribute('class', 'arc-line')
+  circleSvg.append(circleEl)
+  canvas.append(circleSvg)
+
   const track = el('div', { class: 'canvas-track' })
   canvas.append(track)
   root.append(canvas)
+
+  // side of the circle for each page: games hugs the left, its neighbours mirror
+  const sideOf = i => (i === P_GAMES ? 'left' : 'right')
+  let circleShift = 0
+
+  function layoutCircle(animate = true) {
+    const r = canvas.getBoundingClientRect()
+    if (!r.width || !r.height) return
+    const base = arcGeometry(r.width, r.height, 'left')
+    const mirrored = arcGeometry(r.width, r.height, 'right')
+    circleEl.setAttribute('cx', String(base.Cx))
+    circleEl.setAttribute('cy', String(base.Cy))
+    circleEl.setAttribute('r', String(base.R))
+    circleShift = mirrored.Cx - base.Cx
+    if (!animate) circleSvg.classList.add('no-anim')
+    circleSvg.style.transform = `translateX(${sideOf(index) === 'left' ? 0 : circleShift}px)`
+    if (!animate) requestAnimationFrame(() => circleSvg.classList.remove('no-anim'))
+  }
 
   const pages = []
   function makePage(i, hint) {
@@ -44,6 +74,7 @@ export function renderHub(root, ctx, startMenuId) {
     if (!animate) track.classList.add('no-anim')
     track.style.setProperty('--i', String(index))
     if (!animate) requestAnimationFrame(() => track.classList.remove('no-anim'))
+    layoutCircle(animate)
   }
 
   function goto(i) {
@@ -143,6 +174,13 @@ export function renderHub(root, ctx, startMenuId) {
     else if (dx < -55) goto(index + 1)
   }, true)
   canvas.addEventListener('click', e => { if (hSwipe) { e.stopPropagation(); e.preventDefault(); hSwipe = false } }, true)
+
+  const ro = new ResizeObserver(() => {
+    if (!canvas.isConnected) { ro.disconnect(); return }
+    layoutCircle(false)
+  })
+  ro.observe(canvas)
+  requestAnimationFrame(() => layoutCircle(false))
 
   // Start on games, or straight on a game's menu (back from a game screen).
   if (startMenuId) {

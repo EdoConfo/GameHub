@@ -8,6 +8,16 @@ import { el } from './ui.js'
 //   items: [{ title, sub }]
 //   onActivate(index): called when the already-active item is tapped
 // Returns { stage, setActive, layout, destroy }.
+// Geometry of the circle a wheel rides. R is half the stage height, so the
+// circle touches the top and bottom edges; its centre sits off-screen on the
+// given side. The hub draws this circle once, above the strip, and slides it.
+export function arcGeometry(W, H, side) {
+  const sign = side === 'left' ? 1 : -1
+  const R = H * 0.5
+  const activeX = W * (side === 'left' ? 0.24 : 0.76)
+  return { sign, R, activeX, Cx: activeX - sign * R, Cy: H * 0.5 }
+}
+
 export function createArcWheel(host, { side = 'left', items, onActivate, step = 0.2 }) {
   const N = items.length
   const sign = side === 'left' ? 1 : -1
@@ -20,13 +30,6 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
   const geom = { W: 0, H: 0, Cx: 0, Cy: 0, R: 0, activeX: 0, step, stepPx: 120 }
 
   const stage = el('div', { class: 'arc-stage' + (side === 'right' ? ' right' : '') })
-  const SVGNS = 'http://www.w3.org/2000/svg'
-  const svg = document.createElementNS(SVGNS, 'svg')
-  svg.setAttribute('class', 'arc-svg')
-  const arcCircle = document.createElementNS(SVGNS, 'circle')
-  arcCircle.setAttribute('class', 'arc-line')
-  svg.append(arcCircle)
-  stage.append(svg)
 
   const nodes = items.map((it, i) =>
     el('button', { class: 'arc-item', 'aria-label': it.title, dataset: { i: String(i) } }, [
@@ -44,10 +47,7 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
     const r = stage.getBoundingClientRect()
     geom.W = r.width
     geom.H = r.height
-    geom.R = geom.H * 0.62
-    geom.activeX = geom.W * (side === 'left' ? 0.24 : 0.76)
-    geom.Cx = geom.activeX - sign * geom.R
-    geom.Cy = geom.H * 0.5
+    Object.assign(geom, arcGeometry(geom.W, geom.H, side))
     geom.stepPx = Math.max(52, geom.R * Math.sin(geom.step))
   }
 
@@ -64,9 +64,6 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
       it.style.transform = `translate(-50%, -50%) scale(${Math.max(0.62, 1 - dist * 0.14)})`
       it.classList.toggle('on', Math.round(f) === i)
     }
-    arcCircle.setAttribute('cx', String(geom.Cx))
-    arcCircle.setAttribute('cy', String(geom.Cy))
-    arcCircle.setAttribute('r', String(geom.R))
   }
 
   function layout() { measure(); placeItems(active) }

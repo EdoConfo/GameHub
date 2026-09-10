@@ -160,11 +160,23 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 :root { --num-ghost: rgba(238, 240, 245, 0.13); --pan: .6s; --pan-ease: cubic-bezier(.4, 0, .18, 1); }
 :root[data-theme="light"] { --num-ghost: rgba(20, 22, 31, 0.13); }
 
-.hub { min-height: 100vh; display: flex; flex-direction: column; }
+/* The wheel stage fills the whole page; header and hint float over it, so the
+   circle can run edge to edge (it touches the top and bottom of the screen). */
+.hub { position: relative; height: 100vh; }
 .hub-header {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3;
   display: flex; align-items: center; justify-content: space-between;
   padding: calc(10px + env(safe-area-inset-top)) 18px 6px;
 }
+
+/* One circle for the whole hub, above the strip, sliding on its own. */
+.hub-circle {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  overflow: visible; z-index: 0; pointer-events: none;
+  transition: transform var(--pan) var(--pan-ease);
+  will-change: transform;
+}
+.hub-circle.no-anim { transition: none; }
 .wordmark { font-weight: 800; letter-spacing: 4px; font-size: 17px; }
 
 .arc-stage {
@@ -180,8 +192,8 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .arc-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .arc-line { fill: none; stroke: color-mix(in srgb, var(--text) 16%, transparent); stroke-width: 1.5; }
 
-/* Host that gives the wheel the remaining height. */
-.arc-host { position: relative; flex: 1; display: flex; }
+/* The wheel stage covers the whole page. */
+.arc-host { position: absolute; inset: 0; display: flex; }
 .arc-host .arc-stage { flex: 1; }
 /* Mirror (right side): label hangs to the LEFT of the number. */
 .arc-stage.right .arc-info { left: auto; right: calc(100% + 18px); text-align: right; }
@@ -223,8 +235,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .arc-item.on .arc-desc { display: block; }
 
 .hub-hint {
+  position: absolute; left: 0; right: 0; z-index: 3;
+  bottom: calc(6px + env(safe-area-inset-bottom));
+  pointer-events: none;
   text-align: center;
-  padding: 8px 0 6px;
   color: var(--text-dim);
   font-size: 12px; letter-spacing: .6px;
 }
