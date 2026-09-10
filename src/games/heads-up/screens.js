@@ -1,5 +1,6 @@
-import { el, screen, button, shuffle } from '../../shared/ui.js'
+import { el, screen, button, shuffle, icon } from '../../shared/ui.js'
 import { renderPackManager } from '../../shared/packManagerScreen.js'
+import { createArcWheel } from '../../shared/arcWheel.js'
 import { ensurePermission, motionSupported } from './motion.js'
 
 // Build the word list from the chosen pack (single words). Falls back to
@@ -10,19 +11,57 @@ function buildWords(store, packId) {
   return shuffle(words.slice())
 }
 
+// ---------- HOME (mirrored arc menu on the right) ----------
+export function renderHome(api) {
+  const { ctx } = api
+  const wrap = el('div', { class: 'hub game-home' })
+
+  wrap.append(el('div', { class: 'hub-header' }, [
+    el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => ctx.router.go('/') }, icon('back')),
+    el('span', { class: 'wordmark game-home-title' }, 'HEADS UP')
+  ]))
+
+  const host = el('div', { class: 'arc-host' })
+  wrap.append(host)
+  wrap.append(el('div', { class: 'hub-hint' }, 'scorri per scegliere · tocca per aprire'))
+
+  const entries = [
+    { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
+    { title: 'Parole', sub: 'Categorie', phase: 'packs' },
+    { title: 'Come si gioca', sub: 'Regole', phase: 'rules' }
+  ]
+  createArcWheel(host, { side: 'right', items: entries, onActivate: i => api.goPhase(entries[i].phase) })
+  return wrap
+}
+
+// ---------- RULES ----------
+export function renderRules(api) {
+  const view = screen({ title: 'Come si gioca', onBack: () => api.goPhase('home') })
+  const rule = (t, d) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, t), el('div', { class: 'rule-desc muted' }, d)])
+  view.body.append(section('In breve', [
+    rule('Telefono in fronte', 'Un giocatore tiene il telefono sulla fronte, schermo verso gli altri.'),
+    rule('Gli altri danno indizi', 'Descrivono la parola senza dirla, finché non la indovini.'),
+    rule('Inclina', 'Giù = indovinata, su = passo. In alternativa tocca lo schermo (destra = giusto, sinistra = passo).')
+  ]))
+  view.body.append(section('Obiettivo', [
+    rule('Più parole possibili', 'Indovinane il più possibile prima che scada il tempo.')
+  ]))
+  return view
+}
+
 // ---------- PACKS (manage words for this game) ----------
 export function renderPacks(api) {
   return renderPackManager(api.packs, {
     title: 'Parole',
     help: 'Parole e nomi da indovinare. Attiva le categorie da giocare; puoi aggiungerne di tue.',
-    onBack: () => api.goPhase('setup')
+    onBack: () => api.goPhase('home')
   })
 }
 
 // ---------- SETUP ----------
 export function renderSetup(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Heads Up', onBack: () => ctx.router.go('/') })
+  const view = screen({ title: 'Heads Up', onBack: () => api.goPhase('home') })
   const packs = api.packs.enabledPacks()
 
   // Keep the selection valid against the currently enabled packs.

@@ -9,7 +9,7 @@ const DURATIONS = [30, 60, 90]
 function createState() {
   const list = packs.enabledPacks()
   return {
-    phase: 'setup',
+    phase: 'home',
     packId: list[0]?.id || packs.allPacks()[0]?.id || null,
     duration: 60,
     invert: false,
@@ -48,14 +48,16 @@ function mount(container, ctx) {
   function render() {
     clear(container)
     const map = {
+      home: screens.renderHome,
       setup: screens.renderSetup,
       packs: screens.renderPacks,
+      rules: screens.renderRules,
       ready: screens.renderReady,
       countdown: screens.renderCountdown,
       play: screens.renderPlay,
       results: screens.renderResults
     }
-    const fn = map[state.phase] || screens.renderSetup
+    const fn = map[state.phase] || screens.renderHome
     container.append(fn(api))
   }
 
