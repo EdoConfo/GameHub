@@ -157,7 +157,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .round-btn:active { background: var(--primary); color: #fff; }
 
 /* ---- Hub: arc selector ---- */
-:root { --num-ghost: rgba(238, 240, 245, 0.13); }
+:root { --num-ghost: rgba(238, 240, 245, 0.13); --pan: .6s; --pan-ease: cubic-bezier(.4, 0, .18, 1); }
 :root[data-theme="light"] { --num-ghost: rgba(20, 22, 31, 0.13); }
 
 .hub { min-height: 100vh; display: flex; flex-direction: column; }
@@ -195,9 +195,9 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   will-change: left, top, opacity, transform;
 }
 .arc-stage:not(.dragging) .arc-item {
-  transition: left .38s cubic-bezier(.22,.61,.36,1),
-              top .38s cubic-bezier(.22,.61,.36,1),
-              opacity .3s ease, transform .38s cubic-bezier(.22,.61,.36,1);
+  transition: left var(--pan) var(--pan-ease),
+              top var(--pan) var(--pan-ease),
+              opacity var(--pan) ease, transform var(--pan) var(--pan-ease);
 }
 .arc-num {
   font-size: clamp(56px, 17vw, 88px);
@@ -431,7 +431,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   display: flex;
   width: 200%;
   height: 100vh;
-  transition: transform .72s cubic-bezier(.4, 0, .18, 1);
+  transition: transform var(--pan) var(--pan-ease);
   will-change: transform;
 }
 .canvas-track.at-menu { transform: translateX(-50%); }
