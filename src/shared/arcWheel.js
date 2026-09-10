@@ -105,5 +105,5 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
   layout() // immediate (rAF may be throttled when the tab isn't visible)
   requestAnimationFrame(layout)
 
-  return { stage, setActive, layout, destroy: () => ro.disconnect() }
+  return { stage, setActive, layout, getActive: () => active, destroy: () => ro.disconnect() }
 }

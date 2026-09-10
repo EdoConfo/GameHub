@@ -30,7 +30,7 @@ export function renderHub(root, ctx, startMenuId) {
   gp.append(el('div', { class: 'hub-hint' }, 'scorri per scegliere · tocca per aprire'))
   pageGames.append(gp)
 
-  createArcWheel(gHost, {
+  const gamesWheel = createArcWheel(gHost, {
     side: 'left',
     items: games.map(g => ({ title: g.name, sub: g.description })),
     onActivate: i => showMenu(i)
@@ -60,6 +60,27 @@ export function renderHub(root, ctx, startMenuId) {
 
   function showMenu(i) { buildMenu(i); track.classList.add('at-menu') }
   function toGames() { track.classList.remove('at-menu') }
+  function atMenu() { return track.classList.contains('at-menu') }
+
+  // Horizontal swipe to pan pages (vertical gestures stay with the wheels).
+  // Capture phase so we can veto the click a horizontal swipe would trigger.
+  let sx = 0, sy = 0, tracking = false, hSwipe = false
+  canvas.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; tracking = true; hSwipe = false }, true)
+  canvas.addEventListener('pointermove', e => {
+    if (!tracking || hSwipe) return
+    const dx = e.clientX - sx, dy = e.clientY - sy
+    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) hSwipe = true
+  }, true)
+  canvas.addEventListener('pointerup', e => {
+    if (!tracking) return
+    tracking = false
+    if (!hSwipe) return
+    const dx = e.clientX - sx
+    if (dx > 55 && atMenu()) toGames()
+    else if (dx < -55 && !atMenu()) showMenu(gamesWheel.getActive())
+  }, true)
+  // Swallow the click a swipe would otherwise fire on a wheel item.
+  canvas.addEventListener('click', e => { if (hSwipe) { e.stopPropagation(); e.preventDefault(); hSwipe = false } }, true)
 
   // Opened directly on a game's menu (e.g. back from a game screen): show it
   // without the slide animation.
