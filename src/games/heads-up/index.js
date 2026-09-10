@@ -49,7 +49,7 @@ function mount(container, ctx, initialPhase) {
     stopRuntime,
     render,
     goPhase(phase) { state.phase = phase; render() },
-    toMenu() { stopRuntime(); if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/menu/heads-up') }
+    toMenu() { stopRuntime(); if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/') }
   }
 
   function render() {

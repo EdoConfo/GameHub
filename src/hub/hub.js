@@ -1,87 +1,73 @@
 import { el, icon } from '../shared/ui.js'
-import { createArcWheel } from '../shared/arcWheel.js'
-import { createGameShell } from '../shared/gameShell.js'
 import { games } from '../games/registry.js'
 
-// One horizontal canvas. Depth 0 = games wheel. Depth 1 = a game "shell"
-// (fixed circle + persistent header + menu/content lanes). Selecting a game
-// slides to its shell; the shell handles menu <-> voice internally.
-export function renderHub(root, ctx, startMenuId) {
-  const canvas = el('div', { class: 'canvas' })
-  const track = el('div', { class: 'canvas-track' })
-  canvas.append(track)
-  root.append(canvas)
+// One real, whole circle: its diameter equals the screen height, so it touches
+// the top and bottom edges (the sides run off-screen on a phone). Games live on
+// the LEFT of the circle, the selected game's menu on the RIGHT.
+export function renderHub(root, ctx) {
+  let active = 0
 
-  let depth = 0
-  let shell = null
-  const setDepth = i => { depth = i; track.style.setProperty('--i', String(i)) }
+  const dial = el('div', { class: 'dial' })
 
-  // ---- depth 0: games wheel ----
-  const gamesPanel = el('div', { class: 'canvas-page' })
-  const gp = el('div', { class: 'hub' })
-  gp.append(el('div', { class: 'hub-header' }, [
+  // The circle (parametric: R = H/2, centred).
+  const SVGNS = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(SVGNS, 'svg')
+  svg.setAttribute('class', 'dial-circle')
+  const circle = document.createElementNS(SVGNS, 'circle')
+  circle.setAttribute('class', 'arc-line')
+  svg.append(circle)
+  dial.append(svg)
+
+  // Header.
+  dial.append(el('div', { class: 'hub-header dial-header' }, [
     el('span', { class: 'wordmark' }, 'GAMEHUB'),
     el('div', { class: 'hub-header-actions' }, [
       el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => ctx.router.go('/players') }, icon('players')),
       el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => ctx.router.go('/settings') }, icon('settings'))
     ])
   ]))
-  const gHost = el('div', { class: 'arc-host' })
-  gp.append(gHost)
-  gp.append(el('div', { class: 'hub-hint' }, 'scorri per scegliere · tocca per aprire'))
-  gamesPanel.append(gp)
-  track.append(gamesPanel)
 
-  const gamesWheel = createArcWheel(gHost, {
-    side: 'left',
-    items: games.map(g => ({ title: g.name, sub: g.description })),
-    onActivate: i => openGame(i)
-  })
+  const leftCol = el('div', { class: 'dial-side dial-left' })
+  const rightCol = el('div', { class: 'dial-side dial-right' })
+  dial.append(leftCol, rightCol)
+  root.append(dial)
 
-  function openGame(i) {
-    teardownShell()
-    shell = createGameShell(games[i], ctx, { onExit: () => backToGames() })
-    track.append(shell.node)
-    requestAnimationFrame(() => setDepth(1))
+  function renderGames() {
+    leftCol.replaceChildren()
+    games.forEach((g, i) => {
+      leftCol.append(el('button', {
+        class: 'dial-item' + (i === active ? ' on' : ''),
+        onclick: () => { active = i; renderGames(); renderMenu() }
+      }, [
+        el('span', { class: 'dial-num' }, String(i + 1).padStart(2, '0')),
+        el('span', { class: 'dial-label' }, g.name)
+      ]))
+    })
   }
 
-  function backToGames() {
-    setDepth(0)
-    setTimeout(teardownShell, 660)
+  function renderMenu() {
+    rightCol.replaceChildren()
+    const menu = games[active].menu || []
+    menu.forEach(v => {
+      rightCol.append(el('button', {
+        class: 'dial-item voice',
+        onclick: () => ctx.router.go('/game/' + games[active].id + '/' + v.phase)
+      }, [
+        el('span', { class: 'dial-label' }, v.title)
+      ]))
+    })
   }
 
-  function teardownShell() {
-    if (shell) { try { shell.destroy() } catch {} shell.node.remove(); shell = null }
+  function layoutCircle() {
+    const r = dial.getBoundingClientRect()
+    circle.setAttribute('cx', String(r.width / 2))
+    circle.setAttribute('cy', String(r.height / 2))
+    circle.setAttribute('r', String(r.height / 2))
   }
+  const ro = new ResizeObserver(() => { if (!dial.isConnected) { ro.disconnect(); return } layoutCircle() })
+  ro.observe(dial)
+  requestAnimationFrame(layoutCircle)
 
-  // ---- horizontal swipe ----
-  let sx = 0, sy = 0, tracking = false, hSwipe = false
-  canvas.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; tracking = true; hSwipe = false }, true)
-  canvas.addEventListener('pointermove', e => {
-    if (!tracking || hSwipe) return
-    const dx = e.clientX - sx, dy = e.clientY - sy
-    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) hSwipe = true
-  }, true)
-  canvas.addEventListener('pointerup', e => {
-    if (!tracking) return
-    tracking = false
-    if (!hSwipe) return
-    const dx = e.clientX - sx
-    if (dx > 55) { if (depth === 1 && shell) shell.back() }        // right = back a level
-    else if (dx < -55) {                                            // left = go deeper
-      if (depth === 0) openGame(gamesWheel.getActive())
-      else if (shell && shell.atMenu()) shell.openActive()
-    }
-  }, true)
-  canvas.addEventListener('click', e => { if (hSwipe) { e.stopPropagation(); e.preventDefault(); hSwipe = false } }, true)
-
-  // Deep entry straight into a game (old /menu/:id links).
-  if (startMenuId) {
-    const idx = games.findIndex(g => g.id === startMenuId)
-    if (idx >= 0) {
-      track.classList.add('no-anim')
-      openGame(idx)
-      requestAnimationFrame(() => { setDepth(1); requestAnimationFrame(() => track.classList.remove('no-anim')) })
-    }
-  }
+  renderGames()
+  renderMenu()
 }
