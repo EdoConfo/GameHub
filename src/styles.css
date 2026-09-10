@@ -429,14 +429,15 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .canvas { position: relative; height: 100vh; overflow: hidden; }
 .canvas-track {
   display: flex;
-  width: 200%;
+  width: max-content;
   height: 100vh;
+  transform: translateX(calc(var(--i, 0) * -100vw));
   transition: transform var(--pan) var(--pan-ease);
   will-change: transform;
 }
-.canvas-track.at-menu { transform: translateX(-50%); }
 .canvas-track.no-anim { transition: none; }
-.canvas-page { flex: 0 0 50%; width: 50%; height: 100vh; }
+.canvas-page { flex: 0 0 100vw; width: 100vw; height: 100vh; }
+.canvas-scroll { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
 .canvas-page .hub { height: 100vh; min-height: 0; }
 
 /* Entering an actual game screen slides it in from the right. */
