@@ -102,8 +102,10 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
 
   const ro = new ResizeObserver(() => { if (!stage.isConnected) { ro.disconnect(); return } layout() })
   ro.observe(stage)
+  // First placement must not animate: items would otherwise fly in from 0,0.
+  stage.classList.add('dragging')
   layout() // immediate (rAF may be throttled when the tab isn't visible)
-  requestAnimationFrame(layout)
+  requestAnimationFrame(() => { layout(); stage.classList.remove('dragging') })
 
   return { stage, setActive, layout, getActive: () => active, destroy: () => ro.disconnect() }
 }
