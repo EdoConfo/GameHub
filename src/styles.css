@@ -431,7 +431,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   display: flex;
   width: 200%;
   height: 100vh;
-  transition: transform .5s cubic-bezier(.7, 0, .18, 1);
+  transition: transform .72s cubic-bezier(.4, 0, .18, 1);
   will-change: transform;
 }
 .canvas-track.at-menu { transform: translateX(-50%); }
