@@ -101,9 +101,12 @@ export function toast(message) {
   }, 2200)
 }
 
-// Iris route transition: a bg-colored disc bursts from (x,y), covers the
-// screen, we swap the route underneath, then it fades away revealing the new
-// screen. Falls back to an instant navigate when reduced motion is requested.
+// Route transition into a game — same choreography for every game:
+//  1) a disc bursts from the tapped point and covers the screen,
+//  2) the route swaps underneath,
+//  3) the cover lifts away like a curved curtain, revealing the game while its
+//     sections rise in (the stagger lives in CSS on .game-root).
+// Falls back to an instant navigate when reduced motion is requested.
 export function transitionTo(x, y, navigate) {
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (reduce || typeof document === 'undefined') { navigate(); return }
@@ -119,7 +122,8 @@ export function transitionTo(x, y, navigate) {
   document.body.appendChild(ov)
   ov.getBoundingClientRect() // force reflow so the transition runs
 
-  ov.style.transition = 'clip-path .42s cubic-bezier(.4, 0, .2, 1), -webkit-clip-path .42s cubic-bezier(.4, 0, .2, 1)'
+  // Phase 1: cover from the tapped point.
+  ov.style.transition = 'clip-path .3s cubic-bezier(.66,0,.34,1), -webkit-clip-path .3s cubic-bezier(.66,0,.34,1)'
   ov.style.clipPath = `circle(${R}px at ${x}px ${y}px)`
   ov.style.webkitClipPath = `circle(${R}px at ${x}px ${y}px)`
 
@@ -127,15 +131,23 @@ export function transitionTo(x, y, navigate) {
   function swap() {
     if (swapped) return
     swapped = true
-    navigate()
+    navigate() // game mounts behind the cover (its stagger starts now)
+
+    // Phase 2: lift the curtain up with a curved bottom edge.
     requestAnimationFrame(() => {
-      ov.style.transition = 'opacity .3s ease'
-      ov.style.opacity = '0'
-      setTimeout(() => ov.remove(), 340)
+      ov.classList.add('lifting') // rounds the bottom edge
+      ov.style.clipPath = 'none'
+      ov.style.webkitClipPath = 'none'
+      ov.getBoundingClientRect()
+      ov.style.transition = 'transform .5s cubic-bezier(.6,0,.12,1)'
+      ov.style.transform = 'translateY(-102%)'
+      const done = () => ov.remove()
+      ov.addEventListener('transitionend', done, { once: true })
+      setTimeout(done, 700)
     })
   }
   ov.addEventListener('transitionend', swap, { once: true })
-  setTimeout(swap, 500) // fallback if transitionend doesn't fire
+  setTimeout(swap, 360) // fallback if transitionend doesn't fire
 }
 
 export function shuffle(arr) {

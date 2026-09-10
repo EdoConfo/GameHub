@@ -417,21 +417,39 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 .game-root { min-height: 100vh; }
 
-/* Route iris transition overlay */
+/* Route transition overlay: covers, then lifts like a curved curtain. */
 .route-iris {
   position: fixed; inset: 0; z-index: 100;
   background: var(--bg);
   pointer-events: none;
-  will-change: clip-path, opacity;
+  will-change: clip-path, transform;
 }
-/* Game screen easing in under the iris */
-.game-root { animation: screen-in .4s cubic-bezier(.22,.61,.36,1) both; }
-@keyframes screen-in {
-  from { opacity: 0; transform: scale(.985); }
-  to   { opacity: 1; transform: none; }
+.route-iris.lifting {
+  border-radius: 0 0 50% 50% / 0 0 18% 18%;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
 }
+
+/* Game screen entrance: the whole thing fades up, then its sections rise in
+   sequence (staggered) — same articulated entrance for every game. */
+.game-root { animation: screen-fade .45s ease both; }
+@keyframes screen-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.game-root .screen-body > * {
+  animation: rise-in .52s cubic-bezier(.22,.61,.36,1) both;
+}
+.game-root .screen-body > *:nth-child(1) { animation-delay: .10s; }
+.game-root .screen-body > *:nth-child(2) { animation-delay: .17s; }
+.game-root .screen-body > *:nth-child(3) { animation-delay: .24s; }
+.game-root .screen-body > *:nth-child(4) { animation-delay: .31s; }
+.game-root .screen-body > *:nth-child(5) { animation-delay: .38s; }
+.game-root .screen-body > *:nth-child(6) { animation-delay: .45s; }
+.game-root .screen-body > *:nth-child(n+7) { animation-delay: .5s; }
+.game-root .topbar { animation: drop-in .4s ease both; }
+@keyframes rise-in { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .game-root { animation: none; }
+  .game-root, .game-root .screen-body > *, .game-root .topbar { animation: none; }
 }
 
 /* ============================================================
