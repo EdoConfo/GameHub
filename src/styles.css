@@ -627,48 +627,4 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .edit-avatar .avatar { box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), var(--shadow); }
 .edit-remove { align-self: center; }
 
-/* ---- Game shell: fixed circle + persistent header + sliding lanes ---- */
-.game-shell { position: relative; height: 100vh; overflow: hidden; }
-.shell-circle { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-.game-shell .arc-stage .arc-line { display: none; } /* hide the wheel's own circle; the shell draws a fixed one */
 
-.shell-lanes {
-  position: absolute; inset: 0; z-index: 1;
-  display: flex; width: 200%;
-  transform: translateX(calc(var(--li, 0) * -100vw));
-  transition: transform var(--pan) var(--pan-ease);
-  will-change: transform;
-}
-.shell-lane { flex: 0 0 100vw; width: 100vw; height: 100vh; position: relative; }
-.shell-lane.canvas-scroll { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
-.shell-lane .arc-host { position: absolute; inset: 0; }
-.shell-hint { position: absolute; left: 0; right: 0; bottom: 0; }
-
-.shell-header { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
-
-/* Content screens live under the persistent header, without their own top bar. */
-.game-shell .game-root { animation: none; min-height: 100vh; }
-.game-shell .game-root .topbar { display: none; }
-.game-shell .game-root .screen { min-height: 100vh; }
-.game-shell .game-root .screen-body { padding-top: calc(var(--tap) + env(safe-area-inset-top) + 16px); }
-
-/* ---- Dial hub: one circle that slides between its two sides ---- */
-.dial { position: relative; height: 100vh; overflow: hidden; }
-.dial-group { position: absolute; inset: 0; transition: transform var(--pan) var(--pan-ease); will-change: transform; }
-.dial-circle { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; }
-.dial-layer { position: absolute; inset: 0; z-index: 1; }
-.dial-header { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
-.dial-hint { position: absolute; bottom: 0; left: 0; right: 0; z-index: 3; }
-
-.dial-item {
-  position: absolute;
-  background: none; border: 0; padding: 0; cursor: pointer;
-  display: flex; align-items: center; gap: 12px; white-space: nowrap;
-}
-.dial-item.left { transform: translate(0, -50%); }          /* grows right from the arc point */
-.dial-item.right { transform: translate(-100%, -50%); }     /* grows left from the arc point */
-.dial-num { font-size: clamp(40px, 13vw, 66px); font-weight: 800; letter-spacing: -2px; line-height: 1; color: var(--num-ghost); }
-.dial-item.on .dial-num { color: var(--text); }
-.dial-label { font-size: 20px; font-weight: 750; letter-spacing: -.3px; color: var(--text-dim); }
-.dial-item.on .dial-label { color: var(--text); }
-.dial-item.right .dial-label { color: var(--text); }

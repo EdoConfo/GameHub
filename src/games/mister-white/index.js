@@ -37,7 +37,7 @@ function mount(container, ctx, initialPhase) {
     packs,
     render,
     goPhase(phase) { state.phase = phase; render() },
-    toMenu() { if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/') }
+    toMenu() { if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/menu/mister-white') }
   }
 
   function render() {
