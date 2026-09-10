@@ -1,153 +1,171 @@
 import { el, icon } from '../shared/ui.js'
-import { createArcWheel, arcGeometry } from '../shared/arcWheel.js'
+import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor } from './players.js'
 import { games } from '../games/registry.js'
 
-// The hub is a strip of three circles, symmetric around the games one:
+// The hub is a fixed scene with TWO still circles; the app is a window panning
+// across it. Nothing rotates or drifts on its own: circles and the labels that
+// ride them live in the same world and move together, 1:1 with the camera.
 //
-//   [ Giocatori / Impostazioni ] [ GIOCHI ] [ Menu del gioco ]
-//            circle right         left            right
+//   circle A: left arc = Giocatori / Impostazioni · right arc = GIOCHI
+//   circle B: left arc = menu del gioco           · right arc = (libero)
 //
-// From the games circle you cross the circle either way: tap a game and it
-// slides left while the game's circle sweeps in from the right; tap giocatori
-// or impostazioni and it slides right while that circle sweeps in from the
-// left. Both side pages share one slot, so you never fly past a page.
-const P_SIDE = 0, P_GAMES = 1, P_MENU = 2
+// Header and hint are not part of the scene: they stay put and swap content.
+const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
 
 export function renderHub(root, ctx, startMenuId) {
-  let index = P_GAMES
+  let index = V_GAMES
   let selected = 0
   let sideKind = 'players'
+  let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
+  const scene = el('div', { class: 'world' })
+  canvas.append(scene)
 
-  // ONE circle for the whole hub, drawn above the strip and slid on its own.
-  // At rest it lands exactly on the active page's arc; while you move between
-  // pages its centre crosses the screen, so you see the whole circle go by.
   const SVGNS = 'http://www.w3.org/2000/svg'
-  const circleSvg = document.createElementNS(SVGNS, 'svg')
-  circleSvg.setAttribute('class', 'hub-circle')
-  const circleEl = document.createElementNS(SVGNS, 'circle')
-  circleEl.setAttribute('class', 'arc-line')
-  circleSvg.append(circleEl)
-  canvas.append(circleSvg)
+  const svg = document.createElementNS(SVGNS, 'svg')
+  svg.setAttribute('class', 'world-circles')
+  const circleA = document.createElementNS(SVGNS, 'circle')
+  const circleB = document.createElementNS(SVGNS, 'circle')
+  circleA.setAttribute('class', 'arc-line')
+  circleB.setAttribute('class', 'arc-line')
+  svg.append(circleA, circleB)
+  scene.append(svg)
 
-  const track = el('div', { class: 'canvas-track' })
-  canvas.append(track)
+  // One host per view: a window-sized box parked at that view's camera spot.
+  const hosts = [0, 1, 2].map(() => {
+    const h = el('div', { class: 'arc-host' })
+    scene.append(h)
+    return h
+  })
+
+  const header = el('div', { class: 'hub-header' })
+  const hint = el('div', { class: 'hub-hint' })
+  canvas.append(header, hint)
   root.append(canvas)
 
-  // side of the circle for each page: games hugs the left, its neighbours mirror
-  const sideOf = i => (i === P_GAMES ? 'left' : 'right')
-  let circleShift = 0
-
-  function layoutCircle(animate = true) {
+  // ---- scene geometry ----
+  function measure() {
     const r = canvas.getBoundingClientRect()
-    if (!r.width || !r.height) return
-    const base = arcGeometry(r.width, r.height, 'left')
-    const mirrored = arcGeometry(r.width, r.height, 'right')
-    circleEl.setAttribute('cx', String(base.Cx))
-    circleEl.setAttribute('cy', String(base.Cy))
-    circleEl.setAttribute('r', String(base.R))
-    circleShift = mirrored.Cx - base.Cx
-    if (!animate) circleSvg.classList.add('no-anim')
-    circleSvg.style.transform = `translateX(${sideOf(index) === 'left' ? 0 : circleShift}px)`
-    if (!animate) requestAnimationFrame(() => circleSvg.classList.remove('no-anim'))
+    if (!r.width || !r.height) return false
+    const W = r.width, H = r.height
+    const R = H * 0.5                 // circles touch the top and bottom edges
+    const xA = R + 0.76 * W           // puts the leftmost view at world 0
+    const xB = xA + 2 * R + 0.9 * W   // close enough that an arc is always in sight
+    world = { W, H, R, xA, xB, cam: [0, 2 * R + 0.52 * W, 2 * R + 0.9 * W], width: xB + R + W }
+    return true
   }
 
-  const pages = []
-  function makePage(i, hint) {
-    const page = el('div', { class: 'canvas-page' })
-    const hub = el('div', { class: 'hub' })
-    const header = el('div', { class: 'hub-header' })
-    const host = el('div', { class: 'arc-host' })
-    hub.append(header, host, el('div', { class: 'hub-hint' }, hint))
-    page.append(hub)
-    track.append(page)
-    pages[i] = { page, header, host }
+  function layout(animate = false) {
+    if (!measure()) return
+    const { W, H, R, xA, xB, cam, width } = world
+    svg.setAttribute('width', String(width))
+    svg.setAttribute('height', String(H))
+    for (const [c, x] of [[circleA, xA], [circleB, xB]]) {
+      c.setAttribute('cx', String(x)); c.setAttribute('cy', String(H / 2)); c.setAttribute('r', String(R))
+    }
+    hosts.forEach((h, i) => { h.style.left = cam[i] + 'px'; h.style.width = W + 'px' })
+    moveCamera(index, animate)
   }
-  makePage(P_SIDE, 'tocca per aprire')
-  makePage(P_GAMES, 'scorri per scegliere · tocca per aprire')
-  makePage(P_MENU, 'scorri per scegliere · tocca per aprire')
 
-  function setIndex(i, animate = true) {
-    index = Math.max(0, Math.min(pages.length - 1, i))
-    if (!animate) track.classList.add('no-anim')
-    track.style.setProperty('--i', String(index))
-    if (!animate) requestAnimationFrame(() => track.classList.remove('no-anim'))
-    layoutCircle(animate)
+  function moveCamera(i, animate = true) {
+    const from = world.cam[index]
+    index = Math.max(0, Math.min(2, i))
+    const to = world.cam[index]
+    // constant-ish speed: crossing a circle takes longer than hopping to the next
+    const dist = Math.abs(to - from)
+    const secs = Math.min(0.8, Math.max(0.34, 0.6 * Math.sqrt(dist / 1000)))
+    scene.style.transitionDuration = animate ? secs + 's' : '0s'
+    hosts.forEach((h, k) => {
+      h.style.transitionDuration = animate ? secs + 's' : '0s'
+      h.classList.toggle('here', k === index)
+    })
+    scene.style.transform = `translateX(${-to}px)`
+    renderHeader()
+    if (!animate) requestAnimationFrame(() => {
+      scene.style.transitionDuration = ''
+      hosts.forEach(h => { h.style.transitionDuration = '' })
+    })
   }
 
   function goto(i) {
-    if (i === P_MENU) { selected = gamesWheel.getActive(); buildMenu() }
-    if (i === P_SIDE) buildSide(sideKind)
-    setIndex(i)
+    if (i === V_MENU) { selected = gamesWheel.getActive(); buildMenu() }
+    if (i === V_SIDE) buildSide(sideKind)
+    moveCamera(i)
   }
 
-  // Header for a page on the RIGHT of games: back arrow left, name right.
-  const headerRight = label => [
-    el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(P_GAMES) }, icon('back')),
-    el('span', { class: 'wordmark game-home-title' }, label)
-  ]
-  // Mirrored header for the page on the LEFT of games: name left, arrow right.
-  const headerLeft = label => [
-    el('span', { class: 'wordmark game-home-title' }, label),
-    el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(P_GAMES) }, icon('forward'))
-  ]
+  // ---- header (fixed, swaps with the view) ----
+  function renderHeader() {
+    if (index === V_GAMES) {
+      header.replaceChildren(
+        el('span', { class: 'wordmark' }, 'GAMEHUB'),
+        el('div', { class: 'hub-header-actions' }, [
+          el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => { buildSide('players'); moveCamera(V_SIDE) } }, icon('players')),
+          el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
+        ])
+      )
+      hint.textContent = 'scorri per scegliere · tocca per aprire'
+    } else if (index === V_MENU) {
+      // page on the right of its circle: back arrow left, name right
+      header.replaceChildren(
+        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(V_GAMES) }, icon('back')),
+        el('span', { class: 'wordmark game-home-title' }, games[selected].name.toUpperCase())
+      )
+      hint.textContent = 'scorri per scegliere · tocca per aprire'
+    } else {
+      // page on the left of its circle: mirrored — name left, arrow right
+      header.replaceChildren(
+        el('span', { class: 'wordmark game-home-title' }, sideKind === 'settings' ? 'IMPOSTAZIONI' : 'GIOCATORI'),
+        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(V_GAMES) }, icon('forward'))
+      )
+      hint.textContent = 'tocca per aprire'
+    }
+  }
 
-  // ---- Side circle: Giocatori or Impostazioni (same slot) ----
+  // ---- circle A, left arc: Giocatori / Impostazioni ----
   function buildSide(kind) {
     sideKind = kind
-    const { header, host } = pages[P_SIDE]
-    host.replaceChildren()
+    hosts[V_SIDE].replaceChildren()
     if (kind === 'settings') {
-      header.replaceChildren(...headerLeft('IMPOSTAZIONI'))
       const dark = ctx.storage.get('theme', 'dark') !== 'light'
-      createArcWheel(host, {
+      createArcWheel(hosts[V_SIDE], {
         side: 'right',
         items: [
           { title: 'Tema', sub: dark ? 'Scuro' : 'Chiaro' },
           { title: 'Offline', sub: 'Installabile · funziona senza rete' }
         ],
-        onActivate: i => { if (i === 0) { ctx.applyTheme(dark ? 'light' : 'dark'); buildSide('settings') } }
+        onActivate: i => { if (i === 0) { ctx.applyTheme(dark ? 'light' : 'dark'); buildSide('settings'); renderHeader() } }
       })
     } else {
-      header.replaceChildren(...headerLeft('GIOCATORI'))
       const list = ctx.players.all()
       const items = list.map(p => ({ title: p.name, sub: 'Profilo' }))
       items.push({ title: 'Nuovo', sub: 'Aggiungi giocatore' })
-      createArcWheel(host, {
+      createArcWheel(hosts[V_SIDE], {
         side: 'right',
         items,
         onActivate: i => {
           if (i < list.length) ctx.router.go('/player/' + list[i].id)
-          else openProfileEditor(ctx, null, () => buildSide('players'))
+          else openProfileEditor(ctx, null, () => { buildSide('players'); renderHeader() })
         }
       })
     }
+    renderHeader()
   }
 
-  // ---- Games circle ----
-  pages[P_GAMES].header.replaceChildren(
-    el('span', { class: 'wordmark' }, 'GAMEHUB'),
-    el('div', { class: 'hub-header-actions' }, [
-      el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => { buildSide('players'); setIndex(P_SIDE) } }, icon('players')),
-      el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => { buildSide('settings'); setIndex(P_SIDE) } }, icon('settings'))
-    ])
-  )
-  const gamesWheel = createArcWheel(pages[P_GAMES].host, {
+  // ---- circle A, right arc: GIOCHI ----
+  const gamesWheel = createArcWheel(hosts[V_GAMES], {
     side: 'left',
     items: games.map(g => ({ title: g.name, sub: g.description })),
-    onActivate: () => goto(P_MENU)
+    onActivate: () => goto(V_MENU)
   })
 
-  // ---- Game menu circle ----
+  // ---- circle B, left arc: menu del gioco ----
   function buildMenu() {
     const game = games[selected]
-    pages[P_MENU].header.replaceChildren(...headerRight(game.name.toUpperCase()))
-    const host = pages[P_MENU].host
-    host.replaceChildren()
+    hosts[V_MENU].replaceChildren()
     const menu = game.menu || []
-    createArcWheel(host, {
+    createArcWheel(hosts[V_MENU], {
       side: 'right',
       items: menu.map(m => ({ title: m.title, sub: m.sub })),
       onActivate: j => ctx.router.go('/game/' + game.id + '/' + menu[j].phase)
@@ -157,7 +175,7 @@ export function renderHub(root, ctx, startMenuId) {
   buildSide('players')
   buildMenu()
 
-  // ---- horizontal swipe between circles ----
+  // ---- horizontal swipe pans the window ----
   let sx = 0, sy = 0, tracking = false, hSwipe = false
   canvas.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; tracking = true; hSwipe = false }, true)
   canvas.addEventListener('pointermove', e => {
@@ -175,23 +193,13 @@ export function renderHub(root, ctx, startMenuId) {
   }, true)
   canvas.addEventListener('click', e => { if (hSwipe) { e.stopPropagation(); e.preventDefault(); hSwipe = false } }, true)
 
-  const ro = new ResizeObserver(() => {
-    if (!canvas.isConnected) { ro.disconnect(); return }
-    layoutCircle(false)
-  })
+  const ro = new ResizeObserver(() => { if (!canvas.isConnected) { ro.disconnect(); return } layout(false) })
   ro.observe(canvas)
-  requestAnimationFrame(() => layoutCircle(false))
 
-  // Start on games, or straight on a game's menu (back from a game screen).
   if (startMenuId) {
     const i = games.findIndex(g => g.id === startMenuId)
-    if (i >= 0) {
-      gamesWheel.setActive(i)
-      selected = i
-      buildMenu()
-      setIndex(P_MENU, false)
-      return
-    }
+    if (i >= 0) { gamesWheel.setActive(i); selected = i; buildMenu(); index = V_MENU }
   }
-  setIndex(P_GAMES, false)
+  layout(false)
+  requestAnimationFrame(() => layout(false))
 }

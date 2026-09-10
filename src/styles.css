@@ -169,14 +169,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   padding: calc(10px + env(safe-area-inset-top)) 18px 6px;
 }
 
-/* One circle for the whole hub, above the strip, sliding on its own. */
-.hub-circle {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  overflow: visible; z-index: 0; pointer-events: none;
-  transition: transform var(--pan) var(--pan-ease);
-  will-change: transform;
-}
-.hub-circle.no-anim { transition: none; }
+
 .wordmark { font-weight: 800; letter-spacing: 4px; font-size: 17px; }
 
 .arc-stage {
@@ -192,8 +185,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .arc-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .arc-line { fill: none; stroke: color-mix(in srgb, var(--text) 16%, transparent); stroke-width: 1.5; }
 
-/* The wheel stage covers the whole page. */
-.arc-host { position: absolute; inset: 0; display: flex; }
 .arc-host .arc-stage { flex: 1; }
 /* Mirror (right side): label hangs to the LEFT of the number. */
 .arc-stage.right .arc-info { left: auto; right: calc(100% + 18px); text-align: right; }
@@ -438,28 +429,30 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 .game-root { min-height: 100vh; }
 
-/* One horizontal canvas: two full-width pages (games wheel, game menu wheel)
-   side by side; picking a game slides the canvas left to reveal the menu. */
+/* A fixed scene with two still circles; the window pans across it. Circles,
+   arcs and labels all live in the same world and move together, 1:1. */
 .canvas { position: relative; height: 100vh; overflow: hidden; }
-.canvas-track {
-  display: flex;
-  width: max-content;
-  height: 100vh;
-  transform: translateX(calc(var(--i, 0) * -100vw));
+.world {
+  position: absolute; top: 0; left: 0; height: 100%;
   transition: transform var(--pan) var(--pan-ease);
   will-change: transform;
 }
-.canvas-track.no-anim { transition: none; }
-.canvas-page { flex: 0 0 100vw; width: 100vw; height: 100vh; }
-.canvas-scroll { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
-.canvas-page .hub { height: 100vh; min-height: 0; }
+.world-circles { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+/* One wheel host per view, parked at that view's spot in the world. Only the
+   view you're on is lit and interactive. */
+.arc-host {
+  position: absolute; top: 0; bottom: 0; display: flex;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--pan) var(--pan-ease);
+}
+.arc-host.here { opacity: 1; pointer-events: auto; }
 
 /* Entering an actual game screen slides it in from the right. */
 .game-root { animation: game-in .4s cubic-bezier(.22,.61,.36,1) both; }
 @keyframes game-in { from { opacity: 0; transform: translateX(12%); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .canvas-track { transition: none; }
+  .world { transition: none; }
   .game-root { animation: none; }
 }
 
