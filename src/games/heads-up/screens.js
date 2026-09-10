@@ -1,6 +1,5 @@
-import { el, screen, button, shuffle, icon } from '../../shared/ui.js'
+import { el, screen, button, shuffle } from '../../shared/ui.js'
 import { renderPackManager } from '../../shared/packManagerScreen.js'
-import { createArcWheel } from '../../shared/arcWheel.js'
 import { ensurePermission, motionSupported } from './motion.js'
 
 // Build the word list from the chosen pack (single words). Falls back to
@@ -11,32 +10,9 @@ function buildWords(store, packId) {
   return shuffle(words.slice())
 }
 
-// ---------- HOME (mirrored arc menu on the right) ----------
-export function renderHome(api) {
-  const { ctx } = api
-  const wrap = el('div', { class: 'hub game-home' })
-
-  wrap.append(el('div', { class: 'hub-header' }, [
-    el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => ctx.router.go('/') }, icon('back')),
-    el('span', { class: 'wordmark game-home-title' }, 'HEADS UP')
-  ]))
-
-  const host = el('div', { class: 'arc-host' })
-  wrap.append(host)
-  wrap.append(el('div', { class: 'hub-hint' }, 'scorri per scegliere · tocca per aprire'))
-
-  const entries = [
-    { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
-    { title: 'Parole', sub: 'Categorie', phase: 'packs' },
-    { title: 'Come si gioca', sub: 'Regole', phase: 'rules' }
-  ]
-  createArcWheel(host, { side: 'right', items: entries, onActivate: i => api.goPhase(entries[i].phase) })
-  return wrap
-}
-
 // ---------- RULES ----------
 export function renderRules(api) {
-  const view = screen({ title: 'Come si gioca', onBack: () => api.goPhase('home') })
+  const view = screen({ title: 'Come si gioca', onBack: () => api.toMenu() })
   const rule = (t, d) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, t), el('div', { class: 'rule-desc muted' }, d)])
   view.body.append(section('In breve', [
     rule('Telefono in fronte', 'Un giocatore tiene il telefono sulla fronte, schermo verso gli altri.'),
@@ -54,14 +30,14 @@ export function renderPacks(api) {
   return renderPackManager(api.packs, {
     title: 'Parole',
     help: 'Parole e nomi da indovinare. Attiva le categorie da giocare; puoi aggiungerne di tue.',
-    onBack: () => api.goPhase('home')
+    onBack: () => api.toMenu()
   })
 }
 
 // ---------- SETUP ----------
 export function renderSetup(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Heads Up', onBack: () => api.goPhase('home') })
+  const view = screen({ title: 'Heads Up', onBack: () => api.toMenu() })
   const packs = api.packs.enabledPacks()
 
   // Keep the selection valid against the currently enabled packs.
@@ -260,7 +236,7 @@ export function renderPlay(api) {
 // ---------- RESULTS ----------
 export function renderResults(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Risultato', onBack: () => ctx.router.go('/') })
+  const view = screen({ title: 'Risultato', onBack: () => api.toMenu() })
 
   const correct = state.results.filter(r => r.correct)
   const passed = state.results.filter(r => !r.correct)
@@ -283,7 +259,7 @@ export function renderResults(api) {
   view.body.append(el('div', { class: 'row stack' }, [
     button('Rigioca', { variant: 'primary', full: true, onClick: () => api.goPhase('ready') }),
     button('Cambia categoria', { variant: 'secondary', full: true, onClick: () => api.goPhase('setup') }),
-    button('Torna alla home', { variant: 'ghost', full: true, onClick: () => ctx.router.go('/') })
+    button('Torna alla home', { variant: 'ghost', full: true, onClick: () => api.toMenu() })
   ]))
   return view
 }

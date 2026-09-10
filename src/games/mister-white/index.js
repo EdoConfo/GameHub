@@ -4,11 +4,19 @@ import * as screens from './screens.js'
 import { suggestCounts } from './engine.js'
 import packs from './packs.js'
 
-function createState(ctx) {
+// Menu shown by the hub canvas (the game's own home wheel).
+const MENU = [
+  { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
+  { title: 'Parole', sub: 'Pacchetti e coppie', phase: 'packs' },
+  { title: 'Come si gioca', sub: 'Regole e ruoli', phase: 'rules' },
+  { title: 'Statistiche', sub: 'Partite e vittorie', phase: 'stats' }
+]
+
+function createState(ctx, initialPhase) {
   const roster = ctx.players.all()
   const ids = roster.slice(0, 20).map(p => p.id)
   return {
-    phase: 'home',
+    phase: initialPhase || 'setup',
     selectedIds: ids,
     counts: suggestCounts(Math.max(ids.length, 3)),
     round: null,
@@ -20,21 +28,21 @@ function createState(ctx) {
   }
 }
 
-function mount(container, ctx) {
-  const state = createState(ctx)
+function mount(container, ctx, initialPhase) {
+  const state = createState(ctx, initialPhase)
 
   const api = {
     ctx,
     state,
     packs,
     render,
-    goPhase(phase) { state.phase = phase; render() }
+    goPhase(phase) { state.phase = phase; render() },
+    toMenu() { ctx.router.go('/menu/mister-white') }
   }
 
   function render() {
     clear(container)
     const map = {
-      home: screens.renderHome,
       setup: screens.renderSetup,
       packs: screens.renderPacks,
       rules: screens.renderRules,
@@ -44,7 +52,7 @@ function mount(container, ctx) {
       vote: screens.renderVote,
       results: screens.renderResults
     }
-    const fn = map[state.phase] || screens.renderHome
+    const fn = map[state.phase] || screens.renderSetup
     container.append(fn(api))
   }
 
@@ -57,5 +65,6 @@ export default {
   name: 'Mister White',
   description: 'Trova l’impostore che non conosce la parola.',
   icon: '🕵️',
+  menu: MENU,
   mount
 }

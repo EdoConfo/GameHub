@@ -8,7 +8,7 @@ import { el } from './ui.js'
 //   items: [{ title, sub }]
 //   onActivate(index): called when the already-active item is tapped
 // Returns { stage, setActive, layout, destroy }.
-export function createArcWheel(host, { side = 'left', items, onActivate }) {
+export function createArcWheel(host, { side = 'left', items, onActivate, step = 0.2 }) {
   const N = items.length
   const sign = side === 'left' ? 1 : -1
   let active = 0
@@ -17,7 +17,7 @@ export function createArcWheel(host, { side = 'left', items, onActivate }) {
   let swallowClick = false
   let startY = 0
   let baseActive = 0
-  const geom = { W: 0, H: 0, Cx: 0, Cy: 0, R: 0, activeX: 0, step: 0.384, stepPx: 120 }
+  const geom = { W: 0, H: 0, Cx: 0, Cy: 0, R: 0, activeX: 0, step, stepPx: 120 }
 
   const stage = el('div', { class: 'arc-stage' + (side === 'right' ? ' right' : '') })
   const SVGNS = 'http://www.w3.org/2000/svg'
@@ -48,7 +48,7 @@ export function createArcWheel(host, { side = 'left', items, onActivate }) {
     geom.activeX = geom.W * (side === 'left' ? 0.24 : 0.76)
     geom.Cx = geom.activeX - sign * geom.R
     geom.Cy = geom.H * 0.5
-    geom.stepPx = Math.max(70, geom.H * 0.2)
+    geom.stepPx = Math.max(52, geom.R * Math.sin(geom.step))
   }
 
   function placeItems(f) {

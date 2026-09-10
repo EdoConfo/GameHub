@@ -1,45 +1,15 @@
-import { el, screen, button, modal, toast, clear, icon } from '../../shared/ui.js'
+import { el, screen, button, modal, toast, clear } from '../../shared/ui.js'
 import { renderPackManager } from '../../shared/packManagerScreen.js'
-import { createArcWheel } from '../../shared/arcWheel.js'
 import { avatar } from '../../hub/players.js'
 import {
   ROLE, roleLabel, suggestCounts, validateSetup,
   buildRound, checkWinner, guessMatches
 } from './engine.js'
 
-// ---------- HOME (mirrored arc menu on the right) ----------
-export function renderHome(api) {
-  const { ctx } = api
-  const wrap = el('div', { class: 'hub game-home' })
-
-  wrap.append(el('div', { class: 'hub-header' }, [
-    el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => ctx.router.go('/') }, icon('back')),
-    el('span', { class: 'wordmark game-home-title' }, 'MISTER WHITE')
-  ]))
-
-  const host = el('div', { class: 'arc-host' })
-  wrap.append(host)
-  wrap.append(el('div', { class: 'hub-hint' }, 'scorri per scegliere · tocca per aprire'))
-
-  const entries = [
-    { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
-    { title: 'Parole', sub: 'Pacchetti e coppie', phase: 'packs' },
-    { title: 'Come si gioca', sub: 'Regole e ruoli', phase: 'rules' },
-    { title: 'Statistiche', sub: 'Partite e vittorie', phase: 'stats' }
-  ]
-  createArcWheel(host, {
-    side: 'right',
-    items: entries,
-    onActivate: i => api.goPhase(entries[i].phase)
-  })
-
-  return wrap
-}
-
 // ---------- SETUP ----------
 export function renderSetup(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Nuova partita', onBack: () => api.goPhase('home') })
+  const view = screen({ title: 'Nuova partita', onBack: () => api.toMenu() })
 
   // --- Players (from the shared roster) ---
   const sec1 = section('Chi gioca?')
@@ -143,7 +113,7 @@ export function renderPacks(api) {
   return renderPackManager(api.packs, {
     title: 'Parole',
     help: 'Coppie di parole (una segreta, una simile). Attiva i pacchetti da usare; puoi aggiungerne di tuoi.',
-    onBack: () => api.goPhase('setup')
+    onBack: () => api.toMenu()
   })
 }
 
@@ -311,7 +281,7 @@ function winnerPids(state) {
 // ---------- RESULTS ----------
 export function renderResults(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Risultato', onBack: () => api.goPhase('home') })
+  const view = screen({ title: 'Risultato', onBack: () => api.toMenu() })
   const players = state.round.players
 
   // Record stats once per finished round.
@@ -371,14 +341,14 @@ export function renderResults(api) {
         api.goPhase('deal')
       }
     }),
-    button('Torna al menu', { variant: 'ghost', full: true, onClick: () => api.goPhase('home') })
+    button('Torna al menu', { variant: 'ghost', full: true, onClick: () => api.toMenu() })
   ]))
   return view
 }
 
 // ---------- RULES ----------
 export function renderRules(api) {
-  const view = screen({ title: 'Come si gioca', onBack: () => api.goPhase('home') })
+  const view = screen({ title: 'Come si gioca', onBack: () => api.toMenu() })
   const rule = (t, d) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, t), el('div', { class: 'rule-desc muted' }, d)])
   view.body.append(section('Ruoli', [
     rule('Civili', 'Ricevono la parola segreta.'),
@@ -401,7 +371,7 @@ export function renderRules(api) {
 // ---------- STATS ----------
 export function renderStats(api) {
   const { ctx } = api
-  const view = screen({ title: 'Statistiche', onBack: () => api.goPhase('home') })
+  const view = screen({ title: 'Statistiche', onBack: () => api.toMenu() })
   const data = ctx.stats.get('mister-white')
   const rows = Object.entries(data)
     .map(([id, s]) => ({ p: ctx.players.get(id), ...s }))

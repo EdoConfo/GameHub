@@ -424,18 +424,28 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 .game-root { min-height: 100vh; }
 
-/* Horizontal swap: hub slides out left, the game (with its mirrored menu
-   wheel on the right) slides in from the right. Returning reverses it. */
-.hub { animation: hub-in .4s cubic-bezier(.22,.61,.36,1) both; }
-.hub.exit-left { animation: hub-out .3s cubic-bezier(.4,0,.2,1) forwards; }
-.game-root { animation: game-in .42s cubic-bezier(.22,.61,.36,1) both; }
-.game-root .hub { animation: none; } /* the game-root already handles the entrance */
-@keyframes hub-in  { from { opacity: 0; transform: translateX(-12%); } to { opacity: 1; transform: none; } }
-@keyframes hub-out { to   { opacity: 0; transform: translateX(-16%); } }
-@keyframes game-in { from { opacity: 0; transform: translateX(14%); } to { opacity: 1; transform: none; } }
+/* One horizontal canvas: two full-width pages (games wheel, game menu wheel)
+   side by side; picking a game slides the canvas left to reveal the menu. */
+.canvas { position: relative; height: 100vh; overflow: hidden; }
+.canvas-track {
+  display: flex;
+  width: 200%;
+  height: 100vh;
+  transition: transform .5s cubic-bezier(.7, 0, .18, 1);
+  will-change: transform;
+}
+.canvas-track.at-menu { transform: translateX(-50%); }
+.canvas-track.no-anim { transition: none; }
+.canvas-page { flex: 0 0 50%; width: 50%; height: 100vh; }
+.canvas-page .hub { height: 100vh; min-height: 0; }
+
+/* Entering an actual game screen slides it in from the right. */
+.game-root { animation: game-in .4s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes game-in { from { opacity: 0; transform: translateX(12%); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .hub, .hub.exit-left, .game-root { animation: none; }
+  .canvas-track { transition: none; }
+  .game-root { animation: none; }
 }
 
 /* ============================================================

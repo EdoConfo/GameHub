@@ -42,6 +42,13 @@ router.on('/', () => {
   renderHub(root, ctx)
 })
 
+// Hub opened straight on a game's menu page (e.g. back from a game screen).
+router.on('/menu/:id', ({ id }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, id)
+})
+
 router.on('/settings', () => {
   leaveCurrent()
   clear(root)
@@ -59,15 +66,17 @@ router.on('/player/:id', ({ id }) => {
   renderPlayer(root, ctx, id)
 })
 
-router.on('/game/:id', ({ id }) => {
+function mountGame(id, phase) {
   leaveCurrent()
   const game = getGame(id)
   clear(root)
   if (!game) return router.go('/')
   const container = el('div', { class: 'game-root' })
   root.append(container)
-  currentCleanup = game.mount(container, ctx) || null
-})
+  currentCleanup = game.mount(container, ctx, phase) || null
+}
+router.on('/game/:id/:phase', ({ id, phase }) => mountGame(id, phase))
+router.on('/game/:id', ({ id }) => mountGame(id))
 
 router.setNotFound(() => router.go('/'))
 

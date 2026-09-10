@@ -6,10 +6,16 @@ import packs from './packs.js'
 
 const DURATIONS = [30, 60, 90]
 
-function createState() {
+const MENU = [
+  { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
+  { title: 'Parole', sub: 'Categorie', phase: 'packs' },
+  { title: 'Come si gioca', sub: 'Regole', phase: 'rules' }
+]
+
+function createState(initialPhase) {
   const list = packs.enabledPacks()
   return {
-    phase: 'home',
+    phase: initialPhase || 'setup',
     packId: list[0]?.id || packs.allPacks()[0]?.id || null,
     duration: 60,
     invert: false,
@@ -21,8 +27,8 @@ function createState() {
   }
 }
 
-function mount(container, ctx) {
-  const state = createState()
+function mount(container, ctx, initialPhase) {
+  const state = createState(initialPhase)
 
   // Shared runtime handles that must be torn down on leave.
   const runtime = { timer: null, tilt: null, countdown: null }
@@ -42,13 +48,13 @@ function mount(container, ctx) {
     createTilt,
     stopRuntime,
     render,
-    goPhase(phase) { state.phase = phase; render() }
+    goPhase(phase) { state.phase = phase; render() },
+    toMenu() { stopRuntime(); ctx.router.go('/menu/heads-up') }
   }
 
   function render() {
     clear(container)
     const map = {
-      home: screens.renderHome,
       setup: screens.renderSetup,
       packs: screens.renderPacks,
       rules: screens.renderRules,
@@ -57,7 +63,7 @@ function mount(container, ctx) {
       play: screens.renderPlay,
       results: screens.renderResults
     }
-    const fn = map[state.phase] || screens.renderHome
+    const fn = map[state.phase] || screens.renderSetup
     container.append(fn(api))
   }
 
@@ -72,5 +78,6 @@ export default {
   name: 'Heads Up',
   description: 'Telefono in fronte: indovina la parola dagli indizi.',
   icon: '📱',
+  menu: MENU,
   mount
 }
