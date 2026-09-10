@@ -652,28 +652,23 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .game-shell .game-root .screen { min-height: 100vh; }
 .game-shell .game-root .screen-body { padding-top: calc(var(--tap) + env(safe-area-inset-top) + 16px); }
 
-/* ---- Dial hub: one real circle, games left / menu right ---- */
+/* ---- Dial hub: one circle that slides between its two sides ---- */
 .dial { position: relative; height: 100vh; overflow: hidden; }
-.dial-circle { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.dial-group { position: absolute; inset: 0; transition: transform var(--pan) var(--pan-ease); will-change: transform; }
+.dial-circle { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; }
+.dial-layer { position: absolute; inset: 0; z-index: 1; }
 .dial-header { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
-
-.dial-side {
-  position: absolute; top: 0; bottom: 0; z-index: 2;
-  display: flex; flex-direction: column; justify-content: center; gap: 26px;
-  padding: 0 20px; max-width: 52%;
-}
-.dial-left { left: 0; align-items: flex-start; text-align: left; }
-.dial-right { right: 0; align-items: flex-end; text-align: right; }
+.dial-hint { position: absolute; bottom: 0; left: 0; right: 0; z-index: 3; }
 
 .dial-item {
+  position: absolute;
   background: none; border: 0; padding: 0; cursor: pointer;
-  display: flex; align-items: baseline; gap: 12px; color: var(--text-dim);
-  transition: color .2s ease, transform .1s ease;
+  display: flex; align-items: center; gap: 12px; white-space: nowrap;
 }
-.dial-item:active { transform: scale(.97); }
-.dial-item.on { color: var(--text); }
-.dial-num { font-size: clamp(34px, 11vw, 52px); font-weight: 800; letter-spacing: -2px; line-height: 1; color: var(--num-ghost); }
+.dial-item.left { transform: translate(0, -50%); }          /* grows right from the arc point */
+.dial-item.right { transform: translate(-100%, -50%); }     /* grows left from the arc point */
+.dial-num { font-size: clamp(40px, 13vw, 66px); font-weight: 800; letter-spacing: -2px; line-height: 1; color: var(--num-ghost); }
 .dial-item.on .dial-num { color: var(--text); }
-.dial-label { font-size: 20px; font-weight: 750; letter-spacing: -.3px; }
-.dial-right .dial-item { color: var(--text); }
-.dial-right .dial-label { font-size: 19px; }
+.dial-label { font-size: 20px; font-weight: 750; letter-spacing: -.3px; color: var(--text-dim); }
+.dial-item.on .dial-label { color: var(--text); }
+.dial-item.right .dial-label { color: var(--text); }
