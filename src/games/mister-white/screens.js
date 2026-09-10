@@ -1,40 +1,39 @@
-import { el, screen, button, modal, toast, clear } from '../../shared/ui.js'
+import { el, screen, button, modal, toast, clear, icon } from '../../shared/ui.js'
 import { renderPackManager } from '../../shared/packManagerScreen.js'
+import { createArcWheel } from '../../shared/arcWheel.js'
 import { avatar } from '../../hub/players.js'
 import {
   ROLE, roleLabel, suggestCounts, validateSetup,
   buildRound, checkWinner, guessMatches
 } from './engine.js'
 
-// ---------- HOME (game menu, PS-app style) ----------
+// ---------- HOME (mirrored arc menu on the right) ----------
 export function renderHome(api) {
-  const { ctx, state } = api
-  const view = screen({ title: 'Mister White', onBack: () => ctx.router.go('/') })
+  const { ctx } = api
+  const wrap = el('div', { class: 'hub game-home' })
 
-  view.body.append(el('div', { class: 'game-hero' }, [
-    el('div', { class: 'game-hero-icon' }, '🕵️'),
-    el('h1', { class: 'game-hero-title' }, 'Mister White'),
-    el('p', { class: 'game-hero-tag' }, 'Trova l’impostore che non conosce la parola.')
+  wrap.append(el('div', { class: 'hub-header' }, [
+    el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => ctx.router.go('/') }, icon('back')),
+    el('span', { class: 'wordmark game-home-title' }, 'MISTER WHITE')
   ]))
 
-  const menu = el('div', { class: 'game-menu' }, [
-    menuItem('Gioca', 'Nuova partita', () => api.goPhase('setup'), true),
-    menuItem('Parole', 'Pacchetti e coppie', () => api.goPhase('packs')),
-    menuItem('Come si gioca', 'Regole e ruoli', () => api.goPhase('rules')),
-    menuItem('Statistiche', 'Partite e vittorie', () => api.goPhase('stats'))
-  ])
-  view.body.append(menu)
-  return view
-}
+  const host = el('div', { class: 'arc-host' })
+  wrap.append(host)
+  wrap.append(el('div', { class: 'hub-hint' }, 'scorri per scegliere · tocca per aprire'))
 
-function menuItem(title, sub, onClick, primary) {
-  return el('button', { class: 'game-menu-item' + (primary ? ' primary' : ''), onclick: onClick }, [
-    el('span', { class: 'game-menu-text' }, [
-      el('span', { class: 'game-menu-title' }, title),
-      el('span', { class: 'game-menu-sub' }, sub)
-    ]),
-    el('span', { class: 'game-menu-arrow', 'aria-hidden': 'true' }, '›')
-  ])
+  const entries = [
+    { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
+    { title: 'Parole', sub: 'Pacchetti e coppie', phase: 'packs' },
+    { title: 'Come si gioca', sub: 'Regole e ruoli', phase: 'rules' },
+    { title: 'Statistiche', sub: 'Partite e vittorie', phase: 'stats' }
+  ]
+  createArcWheel(host, {
+    side: 'right',
+    items: entries,
+    onActivate: i => api.goPhase(entries[i].phase)
+  })
+
+  return wrap
 }
 
 // ---------- SETUP ----------
