@@ -8,6 +8,9 @@ const BASE = '/GameHub/'
 
 export default defineConfig({
   base: BASE,
+  // Always the same address (bookmarked on the phone): if 5173 is taken,
+  // fail loudly instead of quietly moving to 5174.
+  server: { port: 5173, strictPort: true },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
