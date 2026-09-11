@@ -16,10 +16,15 @@ const root = document.getElementById('app')
 // Block pinch-to-zoom (iOS Safari ignores user-scalable=no): stop gesture
 // events and any multi-touch move. Double-tap zoom is handled by CSS
 // touch-action: manipulation.
+// App screens (hub, table) must never scroll or pan like a web page, and iOS
+// doesn't always honour touch-action: stop the move itself. Only the drawer's
+// own lists may scroll.
 ;['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
   document.addEventListener(ev, e => e.preventDefault(), { passive: false }))
 document.addEventListener('touchmove', e => {
-  if (e.touches && e.touches.length > 1) e.preventDefault()
+  if (e.touches && e.touches.length > 1) { e.preventDefault(); return }
+  const t = e.target
+  if (t && t.closest && t.closest('.canvas') && !t.closest('.drawer-body, .pick-row')) e.preventDefault()
 }, { passive: false })
 
 // Apply persisted theme before first paint of content.

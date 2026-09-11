@@ -43,13 +43,13 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+/* no rubber-band bounce: an app, not a web page */
+html, body { margin: 0; height: 100%; overscroll-behavior: none; }
 body {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: contain;
   /* Feel like a native app: no text selection, no long-press callout,
      no double-tap zoom. */
   user-select: none;
@@ -390,8 +390,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .game-root { min-height: 100vh; }
 
 /* A fixed scene with two still circles; the window pans across it. Circles,
-   arcs and labels all live in the same world and move together, 1:1. */
-.canvas { position: relative; height: 100vh; overflow: hidden; }
+   arcs and labels all live in the same world and move together, 1:1.
+   Pinned to exactly the visible screen (on iOS 100vh is taller than the view
+   while Safari's bars show): nothing to scroll, nothing hidden under the bars. */
+.canvas { position: fixed; inset: 0; overflow: hidden; }
 .world {
   position: absolute; top: 0; left: 0; height: 100%;
   transition: transform var(--pan) var(--pan-ease);
@@ -599,14 +601,15 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .canvas.tabling .arc-host.here { opacity: 0; pointer-events: none; transition-duration: .22s !important; }
 .hub-hint { transition: opacity .3s ease; }
 .canvas.tabling .hub-hint { opacity: 0; }
-.game-root.no-enter { animation: none; }
+/* a match screen continues the hub's scene: no slide-in, no page height of its own */
+.game-root.on-table { min-height: 0; animation: none; }
 
 .table-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .table-view { position: absolute; inset: 0; }
-.table-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; touch-action: none; }
+.table-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 /* the table top: grab it to turn the table (only where turning is allowed) */
-.table-pad { fill: transparent; stroke: none; pointer-events: none; }
-.table-view.spinnable .table-pad { pointer-events: all; cursor: grab; }
+.table-pad { position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none; touch-action: none; }
+.table-view.spinnable .table-pad { pointer-events: auto; cursor: grab; }
 .table-view.spinning .table-pad { cursor: grabbing; }
 .table-ticks {
   fill: none; stroke: color-mix(in srgb, var(--text) 40%, transparent);

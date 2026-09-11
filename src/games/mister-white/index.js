@@ -78,7 +78,7 @@ function mount(container, ctx, initialPhase) {
   }
 
   // The table screen continues the hub's scene: no slide-in.
-  if (TABLE_PHASES.includes(state.phase)) container.classList.add('no-enter')
+  if (TABLE_PHASES.includes(state.phase)) container.classList.add('on-table')
   render()
   return teardown
 }
