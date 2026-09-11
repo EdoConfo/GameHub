@@ -5,13 +5,17 @@ const SVGNS = 'http://www.w3.org/2000/svg'
 const TAU = Math.PI * 2
 const BASE = 56 // a seat at full size (px); crowded or small tables scale it down
 
-const slot = (i, n) => -Math.PI / 2 + (i * TAU) / n
+// Seat 0 is always at the bottom — whoever holds the phone, facing the screen —
+// and the rest follow clockwise: 3 seats make a triangle pointing down, 4 a
+// diamond, 5 an upside-down pentagon. The host builds the table from there.
+const START = Math.PI / 2
+const slot = (i, n) => START + (i * TAU) / n
 const wrap = a => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI // -> [-π, π)
 
-// The table seen from above. Seats are threaded on the circle like beads,
-// clockwise from the top in the order the phone goes round; each name lies on
-// the table in front of its seat, like a place card. Seats glide along the
-// circle (never across it) when they move, arrive or leave.
+// The table seen from above. Seats are threaded on the circle like beads, in
+// the order the phone goes round; each name lies on the table in front of its
+// seat, like a place card. Seats glide along the circle (never across it)
+// when they move, arrive or leave.
 //   set(items)  items: [{ key, p: profile | null, name, note?, cls? }]
 //   fit(geo)    geo: { cx, cy, r } in host px — instant; call per frame to animate
 //   reveal(t)   seats fade and grow in with the table (0..1)
@@ -178,7 +182,7 @@ export function createTableView(host, { onTap, onMove } = {}) {
     }
     s.a = Math.atan2(e.clientY - drag.rect.top - geo.cy, e.clientX - drag.rect.left - geo.cx)
     const n = seats.length
-    const to = Math.round(((((s.a + Math.PI / 2) % TAU) + TAU) % TAU) / (TAU / n)) % n
+    const to = Math.round(((((s.a - START) % TAU) + TAU) % TAU) / (TAU / n)) % n
     if (to !== drag.to) {
       drag.to = to
       const others = seats.filter(o => o !== s)

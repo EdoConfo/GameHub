@@ -1,5 +1,5 @@
 // The table: who sits where, in the order the phone goes round (clockwise
-// from the top seat). One table for every game — same group, same chairs —
+// from the bottom seat, the phone holder's). One table for every game — same group, same chairs —
 // remembered between sessions. Seat: { id, pid }; pid null = an empty chair,
 // taken by whoever gets the phone there (they make their profile on the spot).
 import * as storage from './storage.js'
