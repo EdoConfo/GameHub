@@ -11,7 +11,6 @@ const BASE = 56 // a seat at full size (px); crowded or small tables scale it do
 const START = Math.PI / 2
 const slot = (i, n) => START + (i * TAU) / n
 const wrap = a => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI // -> [-π, π)
-const nearest = (a, n) => Math.round(((((a - START) % TAU) + TAU) % TAU) / (TAU / n)) % n
 
 // Follow a finger on the whole window until it lifts: it may leave the seat or
 // the table, and iOS doesn't always keep pointer capture.
@@ -38,11 +37,13 @@ function follow(e, move, end) {
 //   fit(geo)    geo: { cx, cy, r } in host px — instant; call per frame to animate
 //   reveal(t)   seats fade and grow in with the table (0..1)
 //   onTap(i)          tap a seat
-//   onSwap(a, b)      drag a seat onto another: the two swap, nobody else moves
+//   onMove(from, steps) drag a seat between two others: it moves `steps` places
+//                     (+ clockwise), the seats it passed step back one to close
+//                     the gap; nobody else moves
 //   onRotate(k)       drag the table itself: it turns like a lazy Susan (a flick
 //                     carries on) and settles with a seat at the bottom, k places on
-export function createTableView(host, { onTap, onSwap, onRotate } = {}) {
-  const layer = el('div', { class: 'table-view' + (onSwap ? ' movable' : '') + (onRotate ? ' spinnable' : '') })
+export function createTableView(host, { onTap, onMove, onRotate } = {}) {
+  const layer = el('div', { class: 'table-view' + (onMove ? ' movable' : '') + (onRotate ? ' spinnable' : '') })
   const svg = document.createElementNS(SVGNS, 'svg')
   svg.setAttribute('class', 'table-svg')
   const ring = document.createElementNS(SVGNS, 'circle')
@@ -201,25 +202,44 @@ export function createTableView(host, { onTap, onSwap, onRotate } = {}) {
 
   const angleAt = (e, rect) => Math.atan2(e.clientY - rect.top - geo.cy, e.clientX - rect.left - geo.cx)
 
-  // ---- a seat: tap it, or carry it onto another seat to swap the two ----
-  function mark(i, on) { if (seats[i]) seats[i].node.classList.toggle('target', on) }
+  // ---- a seat: tap it, or carry it round the table and drop it between two
+  // others. Nobody moves while it's carried; on drop it takes the place of the
+  // last seat it passed, and the seats it passed each step back one to close
+  // the gap it left. Everyone else stays where they are.
   function grab(e, s) {
-    if ((!onTap && !onSwap) || drag || settle) return
+    if ((!onTap && !onMove) || drag || settle) return
     e.preventDefault()
-    const i = seats.indexOf(s)
-    drag = { seat: s, sx: e.clientX, sy: e.clientY, moved: false, from: i, to: i, rect: layer.getBoundingClientRect() }
+    const rect = layer.getBoundingClientRect()
+    drag = { seat: s, sx: e.clientX, sy: e.clientY, moved: false, from: seats.indexOf(s), rect, last: angleAt(e, rect), travel: 0, k: 0, dir: 0 }
     follow(e, ev => drift(ev, s), cancelled => drop(s, cancelled))
+  }
+  // the two seats it would land between (none until it has passed one)
+  function markGap(g, on) {
+    const n = seats.length
+    if (!g.k) return
+    for (const j of [g.k, g.k + 1]) {
+      const t = seats[(((g.from + g.dir * j) % n) + n) % n]
+      if (t && t !== g.seat) t.node.classList.toggle('target', on)
+    }
   }
   function drift(e, s) {
     if (!drag || drag.seat !== s) return
     if (!drag.moved) {
-      if (!onSwap || seats.length < 2 || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return
+      if (!onMove || seats.length < 2 || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return
       drag.moved = true
       s.node.classList.add('lifted')
     }
-    s.a = angleAt(e, drag.rect) // it rides the circle under the finger; the others stay put
-    const to = nearest(s.a, seats.length)
-    if (to !== drag.to) { mark(drag.to, false); drag.to = to; mark(to, to !== drag.from) }
+    // near the centre the angle is meaningless: hold still there
+    if (Math.hypot(e.clientX - drag.rect.left - geo.cx, e.clientY - drag.rect.top - geo.cy) < 24) return
+    const a = angleAt(e, drag.rect)
+    drag.travel += wrap(a - drag.last)
+    drag.last = a
+    const n = seats.length
+    s.a = slot(drag.from, n) + drag.travel // it rides the circle with the finger
+    // how many seats it has passed, and which way (+1 = clockwise)
+    const t = drag.travel / (TAU / n)
+    const k = Math.min(n - 1, Math.floor(Math.abs(t))), dir = Math.sign(t)
+    if (k !== drag.k || dir !== drag.dir) { markGap(drag, false); drag.k = k; drag.dir = dir; markGap(drag, true) }
     render()
   }
   function drop(s, cancelled) {
@@ -227,17 +247,22 @@ export function createTableView(host, { onTap, onSwap, onRotate } = {}) {
     const d = drag
     drag = null
     s.node.classList.remove('lifted')
-    mark(d.to, false)
+    markGap(d, false)
     if (d.moved) {
-      if (!cancelled && d.to !== d.from) {
-        const other = seats[d.to], n = seats.length
-        seats[d.to] = s
-        seats[d.from] = other
-        s.ta = slot(d.to, n)
-        other.ta = slot(d.from, n)
-        onSwap(d.from, d.to)
+      if (!cancelled && d.k) {
+        const n = seats.length
+        let p = d.from
+        for (let i = 0; i < d.k; i++) {
+          const q = (p + d.dir + n) % n
+          seats[p] = seats[q]
+          seats[p].ta = slot(p, n)
+          p = q
+        }
+        seats[p] = s
+        s.ta = slot(p, n)
+        onMove(d.from, d.dir * d.k)
       }
-      kick() // into its new chair, or back to its own
+      kick() // into its chair: the new one, or back to its own
     } else if (!cancelled && onTap) onTap(seats.indexOf(s))
   }
 

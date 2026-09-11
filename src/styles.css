@@ -633,7 +633,8 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   border: 1.5px dashed color-mix(in srgb, var(--text) 40%, transparent);
 }
 .seat.on > * { transform: scale(1.1); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--text); }
-.seat.target > * { transform: scale(.92); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px color-mix(in srgb, var(--text) 45%, transparent); }
+/* the two seats a carried one would land between */
+.seat.target > * { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px color-mix(in srgb, var(--text) 45%, transparent); }
 .seat.lifted { z-index: 3; cursor: grabbing; }
 .seat.lifted > * { transform: scale(1.16); box-shadow: 0 0 0 3px var(--bg), 0 12px 26px rgba(0, 0, 0, .35); }
 .seat.dim > * { opacity: .4; }
