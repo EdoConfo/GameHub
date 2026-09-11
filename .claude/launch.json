@@ -2,20 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "GameHub dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 5173,
-      "url": "http://localhost:5173/GameHub/"
+      "name": "dev",
+      "url": "http://localhost:5173",
+      "port": 5173
     },
     {
-      "name": "dev",
+      "name": "dev (start)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev"
-      ],
-      "port": 5173
+      "runtimeArgs": ["run", "dev", "--", "--host"],
+      "port": 5173,
+      "autoPort": false
     }
   ]
 }
