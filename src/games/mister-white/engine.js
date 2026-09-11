@@ -21,16 +21,17 @@ export function validateSetup(numPlayers, counts) {
   if (numPlayers < 3) return { ok: false, message: 'Servono almeno 3 giocatori.' }
   if (numPlayers > 20) return { ok: false, message: 'Massimo 20 giocatori.' }
   const impostori = counts.mrwhite + counts.undercover
-  if (impostori < 1) return { ok: false, message: 'Serve almeno un impostore (Mister White o Undercover).' }
+  if (impostori < 1) return { ok: false, message: 'Serve almeno un impostore.' }
   // Keep at least 2 civili so the game is playable.
   if (numPlayers - impostori < 2) {
-    return { ok: false, message: 'Troppi impostori: lascia almeno 2 civili.' }
+    return { ok: false, message: 'Troppi impostori per questo tavolo.' }
   }
   return { ok: true }
 }
 
 // Build a round: assign roles + words. Returns { players, pair, order }.
-// people: array of { name, pid } (pid = shared player profile id, optional).
+// people: array of { name, pid, seat } in table order (pid = shared player
+// profile id, null for an empty chair; seat = table seat id).
 // pair: { civilian, undercover }; counts: { mrwhite, undercover }
 export function buildRound(people, pair, counts) {
   const list = people.map(p => (typeof p === 'string' ? { name: p, pid: null } : p))
@@ -45,10 +46,10 @@ export function buildRound(people, pair, counts) {
     let word = ''
     if (role === ROLE.CIVILE) word = pair.civilian
     else if (role === ROLE.UNDERCOVER) word = pair.undercover
-    return { id: i, name: person.name, pid: person.pid || null, role, word, alive: true }
+    return { id: i, name: person.name, pid: person.pid || null, seat: person.seat || null, role, word, alive: true }
   })
 
-  // Turn order: seating order (as entered), random starting player.
+  // Turn order: round the table, from a random starting player.
   const start = Math.floor(Math.random() * players.length)
   const order = players.map((_, i) => (start + i) % players.length)
 

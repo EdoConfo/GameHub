@@ -1,6 +1,7 @@
 import { el, icon } from '../shared/ui.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor, avatar } from './players.js'
+import { openTableScene } from './tableScene.js'
 import { games } from '../games/registry.js'
 
 // The hub is a fixed scene with TWO still circles; the app is a window panning
@@ -10,16 +11,19 @@ import { games } from '../games/registry.js'
 //   circle A: left arc = Giocatori / Impostazioni · right arc = GIOCHI
 //   circle B: left arc = menu del gioco           · right arc = (libero)
 //
+// "Gioca" doesn't leave the scene: circle B shrinks to the top of the screen
+// and becomes the table, with a drawer rising from below (tableScene.js).
 // Header and hint are not part of the scene: they stay put and swap content.
 const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
 
 // A line icon in a round badge that sits on the circle like a bead.
 const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 
-export function renderHub(root, ctx, startMenuId) {
+export function renderHub(root, ctx, startMenuId, { table: startTable = false } = {}) {
   let index = V_GAMES
   let selected = 0
   let sideKind = 'players'
+  let table = null // the game's table ("Gioca"), while it's open
   let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
@@ -70,6 +74,7 @@ export function renderHub(root, ctx, startMenuId) {
     }
     hosts.forEach((h, i) => { h.style.left = cam[i] + 'px'; h.style.width = W + 'px' })
     moveCamera(index, animate)
+    if (table) table.refit()
   }
 
   function moveCamera(i, animate = true) {
@@ -112,7 +117,7 @@ export function renderHub(root, ctx, startMenuId) {
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
       header.replaceChildren(
-        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(V_GAMES) }, icon('back')),
+        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => (table ? closeTable() : goto(V_GAMES)) }, icon('back')),
         el('span', { class: 'wordmark game-home-title' }, games[selected].name.toUpperCase())
       )
       hint.textContent = 'scorri per scegliere · tocca per aprire'
@@ -171,8 +176,37 @@ export function renderHub(root, ctx, startMenuId) {
     createArcWheel(hosts[V_MENU], {
       side: 'right',
       items: menu.map(m => ({ title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') })),
-      onActivate: j => ctx.router.go('/game/' + game.id + '/' + menu[j].phase)
+      onActivate: j => {
+        if (menu[j].phase === 'setup' && game.table) openTable()
+        else ctx.router.go('/game/' + game.id + '/' + menu[j].phase)
+      }
     })
+  }
+
+  // ---- "Gioca": circle B becomes the table ----
+  function circleBOnScreen() {
+    const { H, R, xB, cam } = world
+    return { cx: xB - cam[V_MENU], cy: H / 2, r: R }
+  }
+
+  function openTable(morph = true) {
+    const game = games[selected]
+    if (table || !game.table) return
+    canvas.classList.add('tabling')
+    circleB.style.visibility = 'hidden' // the table's own circle takes over, same place
+    table = openTableScene(canvas, header, ctx, game, { from: morph ? circleBOnScreen() : null })
+    history.replaceState(null, '', '#/table/' + game.id)
+    renderHeader()
+  }
+
+  function closeTable() {
+    if (!table) return
+    const t = table
+    table = null
+    canvas.classList.remove('tabling')
+    history.replaceState(null, '', '#/menu/' + games[selected].id)
+    renderHeader()
+    t.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
   }
 
   buildSide('players')
@@ -180,7 +214,10 @@ export function renderHub(root, ctx, startMenuId) {
 
   // ---- horizontal swipe pans the window ----
   let sx = 0, sy = 0, tracking = false, hSwipe = false
-  canvas.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; tracking = true; hSwipe = false }, true)
+  canvas.addEventListener('pointerdown', e => {
+    if (table) { tracking = false; return } // the table has its own gestures
+    sx = e.clientX; sy = e.clientY; tracking = true; hSwipe = false
+  }, true)
   canvas.addEventListener('pointermove', e => {
     if (!tracking || hSwipe) return
     const dx = e.clientX - sx, dy = e.clientY - sy
@@ -205,4 +242,5 @@ export function renderHub(root, ctx, startMenuId) {
   }
   layout(false)
   requestAnimationFrame(() => layout(false))
+  if (startTable && index === V_MENU) openTable(false)
 }
