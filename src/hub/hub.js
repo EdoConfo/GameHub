@@ -1,6 +1,6 @@
 import { el, icon } from '../shared/ui.js'
 import { createArcWheel } from '../shared/arcWheel.js'
-import { openProfileEditor } from './players.js'
+import { openProfileEditor, avatar } from './players.js'
 import { games } from '../games/registry.js'
 
 // The hub is a fixed scene with TWO still circles; the app is a window panning
@@ -12,6 +12,9 @@ import { games } from '../games/registry.js'
 //
 // Header and hint are not part of the scene: they stay put and swap content.
 const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
+
+// A line icon in a round badge that sits on the circle like a bead.
+const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 
 export function renderHub(root, ctx, startMenuId) {
   let index = V_GAMES
@@ -132,15 +135,15 @@ export function renderHub(root, ctx, startMenuId) {
       createArcWheel(hosts[V_SIDE], {
         side: 'right',
         items: [
-          { title: 'Tema', sub: dark ? 'Scuro' : 'Chiaro' },
-          { title: 'Offline', sub: 'Installabile · funziona senza rete' }
+          { title: 'Tema', sub: dark ? 'Scuro' : 'Chiaro', lead: badge(dark ? 'moon' : 'sun') },
+          { title: 'Offline', sub: 'Installabile · funziona senza rete', lead: badge('offline') }
         ],
         onActivate: i => { if (i === 0) { ctx.applyTheme(dark ? 'light' : 'dark'); buildSide('settings'); renderHeader() } }
       })
     } else {
       const list = ctx.players.all()
-      const items = list.map(p => ({ title: p.name, sub: 'Profilo' }))
-      items.push({ title: 'Nuovo', sub: 'Aggiungi giocatore' })
+      const items = list.map(p => ({ title: p.name, sub: 'Profilo', lead: avatar(p, 56) }))
+      items.push({ title: 'Nuovo', sub: 'Aggiungi giocatore', lead: badge('plus') })
       createArcWheel(hosts[V_SIDE], {
         side: 'right',
         items,
@@ -156,7 +159,7 @@ export function renderHub(root, ctx, startMenuId) {
   // ---- circle A, right arc: GIOCHI ----
   const gamesWheel = createArcWheel(hosts[V_GAMES], {
     side: 'left',
-    items: games.map(g => ({ title: g.name, sub: g.description })),
+    items: games.map(g => ({ title: g.name, sub: g.description, lead: badge(g.glyph || 'play') })),
     onActivate: () => goto(V_MENU)
   })
 
@@ -167,7 +170,7 @@ export function renderHub(root, ctx, startMenuId) {
     const menu = game.menu || []
     createArcWheel(hosts[V_MENU], {
       side: 'right',
-      items: menu.map(m => ({ title: m.title, sub: m.sub })),
+      items: menu.map(m => ({ title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') })),
       onActivate: j => ctx.router.go('/game/' + game.id + '/' + menu[j].phase)
     })
   }

@@ -7,9 +7,9 @@ import packs from './packs.js'
 const DURATIONS = [30, 60, 90]
 
 const MENU = [
-  { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
-  { title: 'Parole', sub: 'Categorie', phase: 'packs' },
-  { title: 'Come si gioca', sub: 'Regole', phase: 'rules' }
+  { title: 'Gioca', sub: 'Nuova partita', phase: 'setup', glyph: 'play' },
+  { title: 'Parole', sub: 'Categorie', phase: 'packs', glyph: 'words' },
+  { title: 'Come si gioca', sub: 'Regole', phase: 'rules', glyph: 'help' }
 ]
 
 function createState(initialPhase) {
@@ -78,6 +78,7 @@ export default {
   name: 'Heads Up',
   description: 'Telefono in fronte: indovina la parola dagli indizi.',
   icon: '📱',
+  glyph: 'phone',
   menu: MENU,
   mount
 }

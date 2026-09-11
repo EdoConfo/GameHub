@@ -210,6 +210,20 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .arc-item.on .arc-num { color: var(--text); }
 
+/* Icon / avatar sitting on the circle. The badge is filled with the page
+   colour so the circle line reads as threaded through it, like a bead. */
+.arc-lead { display: grid; place-items: center; }
+.arc-badge {
+  width: 58px; height: 58px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg);
+  border: 1.5px solid color-mix(in srgb, var(--text) 22%, transparent);
+  color: var(--text-dim);
+  transition: color .3s ease, border-color .3s ease;
+}
+.arc-badge .icon { width: 26px; height: 26px; }
+.arc-item.on .arc-badge { color: var(--text); border-color: color-mix(in srgb, var(--text) 60%, transparent); }
+
 /* Name (+ description) hangs to the right of each number, inside the item,
    so it fades together with the item when not highlighted. */
 .arc-info {

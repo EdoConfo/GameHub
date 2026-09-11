@@ -6,10 +6,10 @@ import packs from './packs.js'
 
 // Menu shown by the hub canvas (the game's own home wheel).
 const MENU = [
-  { title: 'Gioca', sub: 'Nuova partita', phase: 'setup' },
-  { title: 'Parole', sub: 'Pacchetti e coppie', phase: 'packs' },
-  { title: 'Come si gioca', sub: 'Regole e ruoli', phase: 'rules' },
-  { title: 'Statistiche', sub: 'Partite e vittorie', phase: 'stats' }
+  { title: 'Gioca', sub: 'Nuova partita', phase: 'setup', glyph: 'play' },
+  { title: 'Parole', sub: 'Pacchetti e coppie', phase: 'packs', glyph: 'words' },
+  { title: 'Come si gioca', sub: 'Regole e ruoli', phase: 'rules', glyph: 'help' },
+  { title: 'Statistiche', sub: 'Partite e vittorie', phase: 'stats', glyph: 'stats' }
 ]
 
 function createState(ctx, initialPhase) {
@@ -65,6 +65,7 @@ export default {
   name: 'Mister White',
   description: 'Trova l’impostore che non conosce la parola.',
   icon: '🕵️',
+  glyph: 'incognito',
   menu: MENU,
   mount
 }

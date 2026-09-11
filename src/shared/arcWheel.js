@@ -33,7 +33,8 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
 
   const nodes = items.map((it, i) =>
     el('button', { class: 'arc-item', 'aria-label': it.title, dataset: { i: String(i) } }, [
-      el('span', { class: 'arc-num' }, String(i + 1).padStart(2, '0')),
+      // an icon / avatar sitting on the circle; plain index only as fallback
+      it.lead ? el('span', { class: 'arc-lead' }, it.lead) : el('span', { class: 'arc-num' }, String(i + 1).padStart(2, '0')),
       el('div', { class: 'arc-info' }, [
         el('div', { class: 'arc-name' }, it.title),
         el('div', { class: 'arc-desc' }, it.sub || '')
