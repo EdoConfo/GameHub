@@ -50,11 +50,19 @@ export function sit(id, pid) {
   return save(list)
 }
 
-// Move the chair at `from` so it ends up at `to`; the others shift round.
-export function move(from, to) {
+// Swap two chairs (with whoever sits on them); nobody else moves.
+export function swap(a, b) {
   const list = load()
-  if (from < 0 || from >= list.length) return list
-  const [s] = list.splice(from, 1)
-  list.splice(Math.max(0, Math.min(list.length, to)), 0, s)
+  if (!list[a] || !list[b]) return list
+  ;[list[a], list[b]] = [list[b], list[a]]
   return save(list)
+}
+
+// Turn the whole table k places clockwise: same order, a new seat at the bottom.
+export function rotate(k) {
+  const list = load()
+  const n = list.length
+  const out = new Array(n)
+  list.forEach((s, i) => { out[(((i + k) % n) + n) % n] = s })
+  return save(out)
 }

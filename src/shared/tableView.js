@@ -11,6 +11,7 @@ const BASE = 56 // a seat at full size (px); crowded or small tables scale it do
 const START = Math.PI / 2
 const slot = (i, n) => START + (i * TAU) / n
 const wrap = a => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI // -> [-π, π)
+const nearest = (a, n) => Math.round(((((a - START) % TAU) + TAU) % TAU) / (TAU / n)) % n
 
 // The table seen from above. Seats are threaded on the circle like beads, in
 // the order the phone goes round; each name lies on the table in front of its
@@ -19,16 +20,21 @@ const wrap = a => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI // -> [-π, π
 //   set(items)  items: [{ key, p: profile | null, name, note?, cls? }]
 //   fit(geo)    geo: { cx, cy, r } in host px — instant; call per frame to animate
 //   reveal(t)   seats fade and grow in with the table (0..1)
-//   onTap(i), onMove(from, to): optional — make seats tappable / draggable
-export function createTableView(host, { onTap, onMove } = {}) {
-  const layer = el('div', { class: 'table-view' + (onMove ? ' movable' : '') })
+//   onTap(i)          tap a seat
+//   onSwap(a, b)      drag a seat onto another: the two swap, nobody else moves
+//   onRotate(k)       drag the table itself: it turns like a lazy Susan and
+//                     settles with a seat at the bottom, k places further on
+export function createTableView(host, { onTap, onSwap, onRotate } = {}) {
+  const layer = el('div', { class: 'table-view' + (onSwap ? ' movable' : '') + (onRotate ? ' spinnable' : '') })
   const svg = document.createElementNS(SVGNS, 'svg')
   svg.setAttribute('class', 'table-svg')
+  const pad = document.createElementNS(SVGNS, 'circle') // the table top: grab it to turn the table
+  pad.setAttribute('class', 'table-pad')
   const ring = document.createElementNS(SVGNS, 'circle')
   ring.setAttribute('class', 'arc-line')
   const ticks = document.createElementNS(SVGNS, 'path')
   ticks.setAttribute('class', 'table-ticks')
-  svg.append(ring, ticks)
+  svg.append(pad, ring, ticks)
   const center = el('div', { class: 'table-center' })
   layer.append(svg, center)
   host.append(layer)
@@ -39,7 +45,7 @@ export function createTableView(host, { onTap, onMove } = {}) {
   let leaving = [] // removed seats, fading out
   let size = BASE
   let raf = 0, last = 0
-  let drag = null
+  let drag = null  // { seat } dragging a seat · { spin } turning the table
   let first = true // the first seats arrive already seated (the table carries them in)
 
   function seatSize() {
@@ -92,9 +98,9 @@ export function createTableView(host, { onTap, onMove } = {}) {
 
   function render() {
     const { cx, cy, r } = geo
-    ring.setAttribute('cx', cx)
-    ring.setAttribute('cy', cy)
+    for (const c of [pad, ring]) { c.setAttribute('cx', cx); c.setAttribute('cy', cy) }
     ring.setAttribute('r', Math.max(0, r))
+    pad.setAttribute('r', Math.max(0, r + size / 2))
     const k = size / BASE
     const d = size / 2 + 11
     for (const s of leaving.length ? seats.concat(leaving) : seats) {
@@ -113,9 +119,10 @@ export function createTableView(host, { onTap, onMove } = {}) {
   }
 
   // Small chevrons on the line between neighbours: the way the phone goes.
+  // They turn with the table; while a seat is carried around they step aside.
   function drawTicks() {
     const n = seats.length
-    if (n < 2 || (drag && drag.moved)) { ticks.setAttribute('d', ''); return }
+    if (n < 2 || (drag && drag.moved && drag.seat)) { ticks.setAttribute('d', ''); return }
     const { cx, cy, r } = geo
     const h = 3.4
     let d = ''
@@ -147,7 +154,7 @@ export function createTableView(host, { onTap, onMove } = {}) {
     last = now
     let busy = false
     for (const s of seats) {
-      if (drag && drag.moved && drag.seat === s) continue
+      if (drag && drag.moved && (drag.spin || drag.seat === s)) continue // the hand holds it
       const da = wrap(s.ta - s.a)
       if (Math.abs(da) > 0.0008) { s.a += da * f; busy = true } else s.a = s.ta
       const dO = s.to - s.o
@@ -165,44 +172,90 @@ export function createTableView(host, { onTap, onMove } = {}) {
     if (busy || leaving.length) raf = requestAnimationFrame(tick)
   }
 
-  // ---- tap / drag a seat round the table ----
+  const angleAt = (e, rect) => Math.atan2(e.clientY - rect.top - geo.cy, e.clientX - rect.left - geo.cx)
+  const capture = (node, e) => { try { node.setPointerCapture(e.pointerId) } catch { /* not capturable */ } }
+
+  // ---- a seat: tap it, or carry it onto another seat to swap the two ----
+  function mark(i, on) { if (seats[i]) seats[i].node.classList.toggle('target', on) }
   function grab(e, s) {
-    if (!onTap && !onMove) return
+    if (!onTap && !onSwap) return
     e.preventDefault()
-    try { s.node.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+    capture(s.node, e)
     const i = seats.indexOf(s)
     drag = { seat: s, sx: e.clientX, sy: e.clientY, moved: false, from: i, to: i, rect: layer.getBoundingClientRect() }
   }
   function drift(e, s) {
     if (!drag || drag.seat !== s) return
     if (!drag.moved) {
-      if (!onMove || seats.length < 2 || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return
+      if (!onSwap || seats.length < 2 || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return
       drag.moved = true
       s.node.classList.add('lifted')
     }
-    s.a = Math.atan2(e.clientY - drag.rect.top - geo.cy, e.clientX - drag.rect.left - geo.cx)
-    const n = seats.length
-    const to = Math.round(((((s.a - START) % TAU) + TAU) % TAU) / (TAU / n)) % n
-    if (to !== drag.to) {
-      drag.to = to
-      const others = seats.filter(o => o !== s)
-      others.splice(to, 0, s)
-      seats = others
-      seats.forEach((o, i) => { o.ta = slot(i, n) })
-    }
+    s.a = angleAt(e, drag.rect) // it rides the circle under the finger; the others stay put
+    const to = nearest(s.a, seats.length)
+    if (to !== drag.to) { mark(drag.to, false); drag.to = to; mark(to, to !== drag.from) }
     render()
-    kick()
   }
   function drop(s, cancelled = false) {
     if (!drag || drag.seat !== s) return
     const d = drag
     drag = null
     s.node.classList.remove('lifted')
+    mark(d.to, false)
     if (d.moved) {
-      kick() // settles into its chair
-      if (d.to !== d.from && onMove) onMove(d.from, d.to)
+      if (!cancelled && d.to !== d.from) {
+        const other = seats[d.to], n = seats.length
+        seats[d.to] = s
+        seats[d.from] = other
+        s.ta = slot(d.to, n)
+        other.ta = slot(d.from, n)
+        onSwap(d.from, d.to)
+      }
+      kick() // into its new chair, or back to its own
     } else if (!cancelled && onTap) onTap(seats.indexOf(s))
   }
+
+  // ---- the table top: drag it round to turn the whole table ----
+  pad.addEventListener('pointerdown', e => {
+    if (!onRotate || seats.length < 2) return
+    e.preventDefault()
+    capture(pad, e)
+    const rect = layer.getBoundingClientRect()
+    drag = { spin: true, rect, sx: e.clientX, sy: e.clientY, moved: false, last: angleAt(e, rect), turn: 0, base: seats.map(s => s.a) }
+  })
+  pad.addEventListener('pointermove', e => {
+    if (!drag || !drag.spin) return
+    if (!drag.moved) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return
+      drag.moved = true
+      layer.classList.add('spinning')
+    }
+    // near the centre the angle is meaningless: hold still there
+    if (Math.hypot(e.clientX - drag.rect.left - geo.cx, e.clientY - drag.rect.top - geo.cy) < 24) return
+    const a = angleAt(e, drag.rect)
+    drag.turn += wrap(a - drag.last)
+    drag.last = a
+    seats.forEach((s, i) => { s.a = drag.base[i] + drag.turn })
+    render()
+  })
+  function spinEnd() {
+    if (!drag || !drag.spin) return
+    const d = drag
+    drag = null
+    layer.classList.remove('spinning')
+    if (!d.moved) return
+    // settle on the nearest chair: every seat moves k places, order unchanged
+    const n = seats.length
+    const k = ((Math.round(d.turn / (TAU / n)) % n) + n) % n
+    const next = new Array(n)
+    seats.forEach((s, i) => { next[(i + k) % n] = s })
+    seats = next
+    seats.forEach((s, i) => { s.ta = slot(i, n) })
+    kick()
+    if (k) onRotate(k)
+  }
+  pad.addEventListener('pointerup', spinEnd)
+  pad.addEventListener('pointercancel', spinEnd)
 
   function fit(g) {
     geo = { cx: g.cx, cy: g.cy, r: g.r }

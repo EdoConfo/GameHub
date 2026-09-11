@@ -33,13 +33,13 @@ let lastDrawer = 0
 //   top(): px from the host's top where the room starts (under the header)
 //   from:  { cx, cy, r } to start the table from (default: where it last was)
 //   shown: initial seat visibility (0 = seats still to appear)
-export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, onMove } = {}) {
+export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, onSwap, onRotate } = {}) {
   const layer = el('div', { class: 'table-layer' })
   const handle = el('button', { class: 'drawer-handle', 'aria-label': 'Apri o chiudi il cassetto' })
   const body = el('div', { class: 'drawer-body' })
   const drawer = el('div', { class: 'drawer' }, [handle, body])
   host.append(layer, drawer)
-  const view = createTableView(layer, { onTap, onMove })
+  const view = createTableView(layer, { onTap, onSwap, onRotate })
 
   let geo = null
   let shown = shown0

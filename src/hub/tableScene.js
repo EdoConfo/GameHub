@@ -19,7 +19,8 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     from,
     shown: from ? 0 : 1,
     onTap: i => pick(i),
-    onMove: (a, b) => { ctx.table.move(a, b); refresh() }
+    onSwap: (a, b) => { ctx.table.swap(a, b); refresh() },
+    onRotate: k => { ctx.table.rotate(k); refresh() }
   })
 
   // ---- drawer: table controls + game options + start ----
@@ -29,7 +30,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
       pill('plus', 'Sedia', () => { ctx.table.addSeat(); refresh() }),
       pill('players', 'Giocatore', () => pick('new'))
     ]),
-    el('p', { class: 'drawer-more drawer-hint' }, 'Trascina per spostare · tocca per scegliere'),
+    el('p', { class: 'drawer-more drawer-hint' }, 'Trascina un posto per scambiarlo, il tavolo per girarlo'),
     el('div', { class: 'drawer-more drawer-options' }, options.node),
     startBtn
   ])
