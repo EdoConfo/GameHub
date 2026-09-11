@@ -20,6 +20,11 @@ export function avatar(p, size = 32) {
   return el('span', { class: 'avatar', style: `${base};background:${bg}`, html: USER_SVG(Math.round(size * 0.64)) })
 }
 
+// An empty chair at the table: dashed outline, same generic user icon.
+export function emptyAvatar(size = 32) {
+  return el('span', { class: 'avatar avatar-empty', style: `width:${size}px;height:${size}px`, html: USER_SVG(Math.round(size * 0.5)) })
+}
+
 // Players portal — the shared "accounts" manager, opened from the hub header.
 export function renderPlayers(root, ctx) {
   const view = screen({
@@ -85,8 +90,9 @@ function pickPhoto(onData) {
   input.click()
 }
 
-// Add/edit modal, reusable from the portal and the player page.
-export function openProfileEditor(ctx, existing, onDone) {
+// Add/edit modal, reusable from the portal, the player page and the table.
+// onDone(profile) gets the saved profile.
+export function openProfileEditor(ctx, existing, onDone, { title } = {}) {
   const suggested = existing || ctx.players.suggest()
   const state = {
     name: existing?.name || '',
@@ -128,7 +134,7 @@ export function openProfileEditor(ctx, existing, onDone) {
 
   const err = el('p', { class: 'error-text' })
   const m = modal({
-    title: existing ? 'Modifica giocatore' : 'Nuovo giocatore',
+    title: title || (existing ? 'Modifica giocatore' : 'Nuovo giocatore'),
     content: [head, nameInput, emojiBlock, err],
     actions: [
       button('Annulla', { variant: 'ghost', onClick: () => m.close() }),
@@ -137,10 +143,9 @@ export function openProfileEditor(ctx, existing, onDone) {
           const name = nameInput.value.trim()
           if (!name) { err.textContent = 'Serve un nome.'; return }
           const patch = { name, color: state.color, emoji: state.emoji, photo: state.photo }
-          if (existing) ctx.players.update(existing.id, patch)
-          else ctx.players.add(patch)
+          const saved = existing ? ctx.players.update(existing.id, patch) : ctx.players.add(patch)
           m.close()
-          onDone && onDone()
+          onDone && onDone(saved)
         }
       })
     ]

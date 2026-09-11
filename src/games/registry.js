@@ -8,9 +8,14 @@
 //     name:        string  shown on the hub card and top bar
 //     description: string  short line on the hub card
 //     icon:        string  emoji or short text glyph
-//     mount(container, ctx) -> optional cleanup function
+//     glyph:       string  line icon name (shared/ui.js) shown on the hub circle
+//     menu:        [{ title, sub, phase, glyph }]  the game's own menu wheel
+//     table:       optional — "Gioca" opens the shared table in the hub:
+//                  { min, options(ctx, { changed, open }) -> { node, check(n) }, start(ctx) }
+//                  open(title, content) shows a page of the game's own in the drawer
+//     mount(container, ctx, phase) -> optional cleanup function
 //       container: HTMLElement to render into (already emptied)
-//       ctx: { storage, players, packs, router, root }
+//       ctx: { storage, players, table, stats, router, root, applyTheme }
 //   }
 import misterWhite from './mister-white/index.js'
 import headsUp from './heads-up/index.js'

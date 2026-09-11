@@ -2,6 +2,7 @@ import './styles.css'
 import * as router from './router.js'
 import * as storage from './shared/storage.js'
 import * as players from './shared/players.js'
+import * as table from './shared/table.js'
 import * as stats from './shared/stats.js'
 import { renderHub } from './hub/hub.js'
 import { renderSettings } from './hub/settings.js'
@@ -15,10 +16,15 @@ const root = document.getElementById('app')
 // Block pinch-to-zoom (iOS Safari ignores user-scalable=no): stop gesture
 // events and any multi-touch move. Double-tap zoom is handled by CSS
 // touch-action: manipulation.
+// App screens (hub, table) must never scroll or pan like a web page, and iOS
+// doesn't always honour touch-action: stop the move itself. Only the drawer's
+// own lists may scroll.
 ;['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
   document.addEventListener(ev, e => e.preventDefault(), { passive: false }))
 document.addEventListener('touchmove', e => {
-  if (e.touches && e.touches.length > 1) e.preventDefault()
+  if (e.touches && e.touches.length > 1) { e.preventDefault(); return }
+  const t = e.target
+  if (t && t.closest && t.closest('.canvas') && !t.closest('.drawer-body, .pick-row')) e.preventDefault()
 }, { passive: false })
 
 // Apply persisted theme before first paint of content.
@@ -26,7 +32,7 @@ applyTheme(storage.get('theme', 'dark'))
 
 // Shared services handed to every game. Word packs are NOT here: each game
 // owns and manages its own packs (see games/<id>/packs.js).
-const ctx = { storage, players, stats, router, root, applyTheme }
+const ctx = { storage, players, table, stats, router, root, applyTheme }
 
 // A mounted game may return a cleanup fn (stop timers/sensors). Call it
 // whenever we leave the current screen.
@@ -47,6 +53,13 @@ router.on('/menu/:id', ({ id }) => {
   leaveCurrent()
   clear(root)
   renderHub(root, ctx, id)
+})
+
+// Hub opened on a game's table ("Gioca"), e.g. back from a match.
+router.on('/table/:id', ({ id }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, id, { table: true })
 })
 
 router.on('/settings', () => {

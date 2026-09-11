@@ -47,6 +47,11 @@ const ICON_PATHS = {
   moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   offline: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  minus: '<path d="M5 12h14"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  // Goddess of Justice: a balance
+  scales: '<path d="M12 3.5V20M8 20h8M4 7h16"/><path d="M4 7l-2.5 6a2.5 2.5 0 0 0 5 0z"/><path d="M20 7l-2.5 6a2.5 2.5 0 0 0 5 0z"/>',
   // two identical figures 5 apart; the back one keeps a constant 2.6 gap from the front one
   players: '<circle cx="9.5" cy="7.75" r="3.5"/><path d="M15.5 19.75v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5a3.5 3.5 0 0 0-3.5 3.5v1.5"/><path d="M14.5 4.25a3.5 3.5 0 0 1 0 7"/><path d="M20.5 19.75v-1.5a3.5 3.5 0 0 0-3.5-3.5"/>',
   // 8 identical teeth, 45° apart, same rounding on every tip and valley
