@@ -633,22 +633,28 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   border: 1.5px dashed color-mix(in srgb, var(--text) 40%, transparent);
 }
 .seat.on > * { transform: scale(1.1); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--text); }
-/* the two seats a carried one would land between */
+/* carrying a seat: the two it would land between · the one it would swap with */
 .seat.target > * { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px color-mix(in srgb, var(--text) 45%, transparent); }
+.seat.swap > * { transform: scale(.86); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--text); }
+.seat-label.swap .seat-name, .seat-label.target .seat-name { font-weight: 800; }
+.drawer-hint span { display: block; }
 .seat.lifted { z-index: 3; cursor: grabbing; }
 .seat.lifted > * { transform: scale(1.16); box-shadow: 0 0 0 3px var(--bg), 0 12px 26px rgba(0, 0, 0, .35); }
 .seat.dim > * { opacity: .4; }
 .seat.out > * { opacity: .25; filter: grayscale(1); }
 
-/* Place card: the name lies on the table in front of its seat. */
+/* The name sits just outside its seat, on the same line from the centre; it
+   shrinks with the seats (--seat-k) when the table gets crowded. */
 .seat-label {
   position: absolute; left: 0; top: 0; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  max-width: var(--label-w, 90px); text-align: center; opacity: 0;
+  max-width: 84px; text-align: center; opacity: 0;
 }
 .seat-label > * { transition: opacity .3s ease; }
-.seat-name { max-width: 100%; font-size: 13px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.seat-note { font-size: 11px; color: var(--text-dim); letter-spacing: .3px; white-space: nowrap; }
+.seat-name { max-width: 100%; font-size: max(10px, calc(13px * var(--seat-k, 1))); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a long note ("Mister White") wraps rather than widening the label: side
+   labels decide how big the table can be */
+.seat-note { max-width: 62px; font-size: max(9px, calc(11px * var(--seat-k, 1))); line-height: 1.15; color: var(--text-dim); letter-spacing: .3px; }
 .seat-label.free .seat-name { color: var(--text-dim); font-weight: 500; font-style: italic; }
 .seat-label.on .seat-name { font-weight: 800; }
 .seat-label.dim > *, .seat-label.out .seat-name { opacity: .4; }

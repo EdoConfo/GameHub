@@ -1,5 +1,5 @@
 import { el } from './ui.js'
-import { createTableView } from './tableView.js'
+import { createTableView, seatFor } from './tableView.js'
 
 // cubic-bezier(x1, y1, x2, y2) as a function of progress — same curves as CSS.
 function bezier(x1, y1, x2, y2) {
@@ -33,13 +33,14 @@ let lastDrawer = 0
 //   top(): px from the host's top where the room starts (under the header)
 //   from:  { cx, cy, r } to start the table from (default: where it last was)
 //   shown: initial seat visibility (0 = seats still to appear)
-export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, onMove, onRotate } = {}) {
+export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, onSwap, onMove, onRotate } = {}) {
   const layer = el('div', { class: 'table-layer' })
   const handle = el('button', { class: 'drawer-handle', 'aria-label': 'Apri o chiudi il cassetto' })
   const body = el('div', { class: 'drawer-body' })
   const drawer = el('div', { class: 'drawer' }, [handle, body])
   host.append(layer, drawer)
-  const view = createTableView(layer, { onTap, onMove, onRotate })
+  // the names changed size (new seats, notes): make the room they need
+  const view = createTableView(layer, { onTap, onSwap, onMove, onRotate, onExtent: () => reflow() })
 
   let geo = null
   let shown = shown0
@@ -58,15 +59,23 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   const start = from || lastGeo
   if (start) place(start, shown0)
 
-  // The room above the drawer; the table takes it, centred.
+  // The room above the drawer; the table takes it, centred. Names sit outside
+  // the seats, so they get room at the sides and above/below. Seat size
+  // depends on the radius, hence a couple of rounds to settle it.
   function room(drawerH = isOpen ? drawer.offsetHeight : 0) {
     const W = host.clientWidth, H = host.clientHeight
     const t = top ? top() : 0
     const b = H - drawerH
-    const pad = 38 // half a seat plus air: seats never touch the edges
-    const r = Math.max(48, Math.min(W / 2 - pad, (b - t) / 2 - pad))
-    return { cx: W / 2, cy: t + (b - t) / 2, r }
+    const e = view.extent(), n = view.count()
+    let r = Math.min(W, b - t) / 2
+    for (let i = 0; i < 3; i++) {
+      const out = seatFor(r, n) * 0.55 + 7 // seat edge to name, as the view draws it
+      r = Math.min(W / 2 - out - e.w - 8, (b - t) / 2 - out - e.h - 6)
+    }
+    return { cx: W / 2, cy: t + (b - t) / 2, r: Math.max(48, r) }
   }
+
+  function reflow() { if (isOpen && geo && !raf) glide(room(), { ms: 360 }) }
 
   // Tween the table to `to`; seats reach visibility `shown` within `span`.
   function glide(to, { ms = 440, shown: s1 = 1, span = [0, 1], done } = {}) {

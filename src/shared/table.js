@@ -50,6 +50,14 @@ export function sit(id, pid) {
   return save(list)
 }
 
+// Swap two chairs (with whoever sits on them); nobody else moves.
+export function swap(a, b) {
+  const list = load()
+  if (!list[a] || !list[b]) return list
+  ;[list[a], list[b]] = [list[b], list[a]]
+  return save(list)
+}
+
 // Carry the chair at `from` round the table by `steps` places (+ clockwise):
 // it takes that place and the chairs it passed each step back one to close
 // the gap. Everyone else stays put.

@@ -3,7 +3,8 @@ import { avatar, emptyAvatar } from '../hub/players.js'
 
 const SVGNS = 'http://www.w3.org/2000/svg'
 const TAU = Math.PI * 2
-const BASE = 56 // a seat at full size (px); crowded or small tables scale it down
+const BASE = 56 // a seat at full size (px)…
+const MIN = 26  // …down to this for a big group, so the ring still shows between seats
 
 // Seat 0 is always at the bottom — whoever holds the phone, facing the screen —
 // and the rest follow clockwise: 3 seats make a triangle pointing down, 4 a
@@ -11,6 +12,14 @@ const BASE = 56 // a seat at full size (px); crowded or small tables scale it do
 const START = Math.PI / 2
 const slot = (i, n) => START + (i * TAU) / n
 const wrap = a => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI // -> [-π, π)
+const mod = (i, n) => ((i % n) + n) % n
+
+// Seat size for n seats round a table of radius r: 62% of the distance to the
+// next seat, so there's always ring left between them to grab and turn.
+export function seatFor(r, n) {
+  const room = n > 1 ? 2 * r * Math.sin(Math.PI / n) * 0.62 : BASE
+  return Math.max(MIN, Math.min(BASE, room))
+}
 
 // Follow a finger on the whole window until it lifts: it may leave the seat or
 // the table, and iOS doesn't always keep pointer capture.
@@ -30,20 +39,23 @@ function follow(e, move, end) {
 }
 
 // The table seen from above. Seats are threaded on the circle like beads, in
-// the order the phone goes round; each name lies on the table in front of its
-// seat, like a place card. Seats glide along the circle (never across it)
+// the order the phone goes round; each name sits just outside its seat, on the
+// same line from the centre. Seats glide along the circle (never across it)
 // when they move, arrive or leave.
 //   set(items)  items: [{ key, p: profile | null, name, note?, cls? }]
 //   fit(geo)    geo: { cx, cy, r } in host px — instant; call per frame to animate
 //   reveal(t)   seats fade and grow in with the table (0..1)
-//   onTap(i)          tap a seat
-//   onMove(from, steps) drag a seat between two others: it moves `steps` places
-//                     (+ clockwise), the seats it passed step back one to close
-//                     the gap; nobody else moves
-//   onRotate(k)       drag the table itself: it turns like a lazy Susan (a flick
-//                     carries on) and settles with a seat at the bottom, k places on
-export function createTableView(host, { onTap, onMove, onRotate } = {}) {
-  const layer = el('div', { class: 'table-view' + (onMove ? ' movable' : '') + (onRotate ? ' spinnable' : '') })
+//   extent()    the biggest name label { w, h }: the room names need around the table
+//   onTap(i)            tap a seat
+//   onSwap(a, b)        drop a seat onto another: the two swap places
+//   onMove(from, steps) drop a seat between two others: it moves `steps` places
+//                       (+ clockwise), the seats it passed step back one
+//   onRotate(k)         drag the table itself: it turns like a lazy Susan (a flick
+//                       carries on) and settles with a seat at the bottom, k places on
+//   onExtent()          the names changed size: the table may need other room
+export function createTableView(host, { onTap, onSwap, onMove, onRotate, onExtent } = {}) {
+  const movable = !!(onSwap || onMove)
+  const layer = el('div', { class: 'table-view' + (movable ? ' movable' : '') + (onRotate ? ' spinnable' : '') })
   const svg = document.createElementNS(SVGNS, 'svg')
   svg.setAttribute('class', 'table-svg')
   const ring = document.createElementNS(SVGNS, 'circle')
@@ -63,16 +75,11 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
   let seats = []   // { key, node, label, a, ta, o, to } in table order
   let leaving = [] // removed seats, fading out
   let size = BASE
+  let extent = { w: 0, h: 0 }
   let raf = 0, last = 0
   let drag = null   // { seat } carrying a seat · { spin } turning the table
   let settle = null // the table coasting to a stop after it's let go
   let first = true  // the first seats arrive already seated (the table carries them in)
-
-  function seatSize() {
-    const n = seats.length
-    const room = n > 1 ? 2 * geo.r * Math.sin(Math.PI / n) * 0.62 : BASE
-    return Math.max(32, Math.min(BASE, room))
-  }
 
   function makeSeat(key) {
     const s = { key, a: 0, ta: 0, o: 0, to: 1 }
@@ -112,6 +119,18 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
     first = false
     render()
     kick()
+    const e = measure()
+    if (Math.abs(e.w - extent.w) > 1 || Math.abs(e.h - extent.h) > 1) {
+      extent = e
+      if (onExtent) onExtent()
+    }
+  }
+
+  // The biggest name label: the room names need around the table.
+  function measure() {
+    let w = 0, h = 0
+    for (const s of seats) { w = Math.max(w, s.label.offsetWidth); h = Math.max(h, s.label.offsetHeight) }
+    return { w, h }
   }
 
   function render() {
@@ -123,16 +142,17 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
     pad.style.width = pad.style.height = 2 * pr + 'px'
     pad.style.transform = `translate(${cx - pr}px, ${cy - pr}px)`
     const k = size / BASE
-    const d = size / 2 + 11
+    layer.style.setProperty('--seat-k', k.toFixed(3)) // names shrink with the seats
+    const d = size * 0.55 + 7
     for (const s of leaving.length ? seats.concat(leaving) : seats) {
       const c = Math.cos(s.a), sn = Math.sin(s.a)
       const x = cx + r * c, y = cy + r * sn
       const vis = Math.max(0, Math.min(1, s.o * shown))
       s.node.style.opacity = vis
       s.node.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${k * (0.6 + 0.4 * vis)})`
-      // place card: on the table, in front of its seat
+      // the name: just outside the seat, pushed outwards along its radius
       s.label.style.opacity = vis
-      s.label.style.transform = `translate(${x - c * d}px, ${y - sn * d}px) translate(${-50 - 50 * c}%, ${-50 - 50 * sn}%)`
+      s.label.style.transform = `translate(${x + c * d}px, ${y + sn * d}px) translate(${-50 + 50 * c}%, ${-50 + 50 * sn}%)`
     }
     drawTicks()
     center.style.opacity = shown
@@ -194,7 +214,7 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
       s.node.remove(); s.label.remove()
       return false
     })
-    const ts = seatSize()
+    const ts = seatFor(geo.r, seats.length)
     if (Math.abs(ts - size) > 0.3) { size += (ts - size) * f; busy = true } else size = ts
     render()
     if ((busy || leaving.length) && !raf) raf = requestAnimationFrame(tick)
@@ -202,30 +222,47 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
 
   const angleAt = (e, rect) => Math.atan2(e.clientY - rect.top - geo.cy, e.clientX - rect.left - geo.cx)
 
-  // ---- a seat: tap it, or carry it round the table and drop it between two
-  // others. Nobody moves while it's carried; on drop it takes the place of the
-  // last seat it passed, and the seats it passed each step back one to close
-  // the gap it left. Everyone else stays where they are.
+  // ---- a seat: tap it, or carry it round the table. Nobody moves while it's
+  // carried. Dropped onto another seat, the two swap; dropped between two
+  // seats, it goes in there and the seats it passed each step back one to close
+  // the gap it left. Everyone else stays put.
   function grab(e, s) {
-    if ((!onTap && !onMove) || drag || settle) return
+    if ((!onTap && !movable) || drag || settle) return
     e.preventDefault()
     const rect = layer.getBoundingClientRect()
-    drag = { seat: s, sx: e.clientX, sy: e.clientY, moved: false, from: seats.indexOf(s), rect, last: angleAt(e, rect), travel: 0, k: 0, dir: 0 }
+    drag = { seat: s, sx: e.clientX, sy: e.clientY, moved: false, from: seats.indexOf(s), rect, last: angleAt(e, rect), travel: 0, aim: null, key: '' }
     follow(e, ev => drift(ev, s), cancelled => drop(s, cancelled))
   }
-  // the two seats it would land between (none until it has passed one)
-  function markGap(g, on) {
+  // Where the carried seat would land, from how far it has travelled (in seats):
+  // close to a seat = onto it (swap); in between = into that gap (insert).
+  function aimOf(g) {
     const n = seats.length
-    if (!g.k) return
-    for (const j of [g.k, g.k + 1]) {
-      const t = seats[(((g.from + g.dir * j) % n) + n) % n]
-      if (t && t !== g.seat) t.node.classList.toggle('target', on)
+    const t = g.travel / (TAU / n)
+    const j = Math.round(t)
+    if (onSwap && j !== 0 && Math.abs(t - j) < 0.3) {
+      const to = mod(g.from + j, n)
+      return to === g.from ? null : { swap: to }
+    }
+    const k = Math.min(n - 1, Math.floor(Math.abs(t)))
+    return onMove && k ? { dir: Math.sign(t), k } : null
+  }
+  // swap: the seat it's over lights up · insert: the two it would land between
+  function showAim(g, on) {
+    const a = g.aim
+    if (!a) return
+    const n = seats.length
+    const marks = a.swap != null
+      ? [[a.swap, 'swap']]
+      : [[mod(g.from + a.dir * a.k, n), 'target'], [mod(g.from + a.dir * (a.k + 1), n), 'target']]
+    for (const [i, cls] of marks) {
+      const t = seats[i]
+      if (t && t !== g.seat) { t.node.classList.toggle(cls, on); t.label.classList.toggle(cls, on) }
     }
   }
   function drift(e, s) {
     if (!drag || drag.seat !== s) return
     if (!drag.moved) {
-      if (!onMove || seats.length < 2 || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return
+      if (!movable || seats.length < 2 || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return
       drag.moved = true
       s.node.classList.add('lifted')
     }
@@ -234,12 +271,10 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
     const a = angleAt(e, drag.rect)
     drag.travel += wrap(a - drag.last)
     drag.last = a
-    const n = seats.length
-    s.a = slot(drag.from, n) + drag.travel // it rides the circle with the finger
-    // how many seats it has passed, and which way (+1 = clockwise)
-    const t = drag.travel / (TAU / n)
-    const k = Math.min(n - 1, Math.floor(Math.abs(t))), dir = Math.sign(t)
-    if (k !== drag.k || dir !== drag.dir) { markGap(drag, false); drag.k = k; drag.dir = dir; markGap(drag, true) }
+    s.a = slot(drag.from, seats.length) + drag.travel // it rides the circle with the finger
+    const aim = aimOf(drag)
+    const key = aim ? (aim.swap != null ? 's' + aim.swap : 'm' + aim.dir * aim.k) : ''
+    if (key !== drag.key) { showAim(drag, false); drag.aim = aim; drag.key = key; showAim(drag, true) }
     render()
   }
   function drop(s, cancelled) {
@@ -247,20 +282,28 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
     const d = drag
     drag = null
     s.node.classList.remove('lifted')
-    markGap(d, false)
+    showAim(d, false)
     if (d.moved) {
-      if (!cancelled && d.k) {
-        const n = seats.length
+      const a = cancelled ? null : d.aim
+      const n = seats.length
+      if (a && a.swap != null) {
+        const other = seats[a.swap]
+        seats[a.swap] = s
+        seats[d.from] = other
+        s.ta = slot(a.swap, n)
+        other.ta = slot(d.from, n)
+        onSwap(d.from, a.swap)
+      } else if (a) {
         let p = d.from
-        for (let i = 0; i < d.k; i++) {
-          const q = (p + d.dir + n) % n
+        for (let i = 0; i < a.k; i++) {
+          const q = mod(p + a.dir, n)
           seats[p] = seats[q]
           seats[p].ta = slot(p, n)
           p = q
         }
         seats[p] = s
         s.ta = slot(p, n)
-        onMove(d.from, d.dir * d.k)
+        onMove(d.from, a.dir * a.k)
       }
       kick() // into its chair: the new one, or back to its own
     } else if (!cancelled && onTap) onTap(seats.indexOf(s))
@@ -323,7 +366,7 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
     const { order, to, step } = settle
     settle = null
     const n = order.length
-    const k = ((Math.round(to / step) % n) + n) % n
+    const k = mod(Math.round(to / step), n)
     const next = new Array(n)
     order.forEach((s, i) => { next[(i + k) % n] = s })
     seats = next
@@ -333,16 +376,13 @@ export function createTableView(host, { onTap, onMove, onRotate } = {}) {
 
   function fit(g) {
     geo = { cx: g.cx, cy: g.cy, r: g.r }
-    size = seatSize()
-    const labelW = geo.r - size / 2 - 40
-    layer.style.setProperty('--label-w', Math.max(54, labelW) + 'px')
-    // a small table has no room left in the middle once the place cards are down
-    center.hidden = labelW < 62
+    size = seatFor(geo.r, seats.length)
+    center.hidden = geo.r < 64 // a tiny table keeps its middle clear
     render()
   }
   function reveal(t) { shown = t; render() }
   function setCenter(node) { center.replaceChildren(...(node ? [node] : [])) }
   function destroy() { cancelAnimationFrame(raf); raf = 0; drag = null; settle = null; layer.remove() }
 
-  return { layer, set, fit, reveal, setCenter, destroy }
+  return { layer, set, fit, reveal, setCenter, destroy, extent: () => extent, count: () => seats.length }
 }
