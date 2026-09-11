@@ -16,6 +16,7 @@ const codec = {
     return { civilian, undercover }
   },
   key(it) { return (it.civilian + '|' + it.undercover).toLowerCase() },
+  toLine(it) { return it.civilian + ', ' + it.undercover },
   parseLine(line) {
     const p = String(line).split(/[,;\t]/).map(s => s.trim())
     if (p.length < 2 || !p[0] || !p[1]) return null

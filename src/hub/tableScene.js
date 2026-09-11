@@ -11,7 +11,16 @@ const pill = (glyph, label, onClick) =>
 //   from: circle B on screen, to morph out of (omit: pick up where it last was)
 export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   const cfg = game.table
-  const options = cfg.options(ctx, () => refresh()) // { node, check(n) -> '' | message }
+  // the game's knobs: { node, check(n) -> '' | message }. They can open a page
+  // of their own in the drawer (e.g. choosing word packs); "Fatto" comes back.
+  const options = cfg.options(ctx, {
+    changed: () => refresh(),
+    open: (title, content) => stage.setDrawer(el('div', { class: 'drawer-page' }, [
+      el('div', { class: 'drawer-title' }, title),
+      ...content,
+      button('Fatto', { variant: 'ghost', full: true, onClick: done })
+    ]))
+  })
   let picking = null // seat index whose chair we're filling, or 'new'
 
   const stage = createTableStage(canvas, {

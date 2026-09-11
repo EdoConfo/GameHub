@@ -1,11 +1,11 @@
 // A Mister White match, played around the table: the table stays at the top,
 // the drawer below says what to do now.
-//   start -> deal -> play <-> vote -> results
-import { el, button, modal } from '../../shared/ui.js'
+//   start -> deal -> goddess -> play <-> vote -> results
+import { el, button, modal, icon } from '../../shared/ui.js'
 import { avatar, openProfileEditor } from '../../hub/players.js'
 import {
-  ROLE, roleLabel, suggestCounts, validateSetup,
-  buildRound, checkWinner, guessMatches
+  ROLE, roleLabel, suggestCounts, fitCounts, maxImpostors, validateSetup,
+  buildRound, pickGoddess, checkWinner, guessMatches
 } from './engine.js'
 import packs from './packs.js'
 
@@ -33,56 +33,111 @@ function seatItems(api, look) {
   }))
 }
 
+// A seat still in the game: eliminated ones show their role; the player who
+// starts the clues and the Goddess of Justice carry a note.
+function seatLook(pl, { starter, goddess, lit }) {
+  if (!pl.alive) return { cls: 'out', note: roleLabel(pl.role) }
+  return {
+    cls: [lit ? 'on' : '', pl === goddess ? 'dea' : ''].filter(Boolean).join(' '),
+    note: [pl === starter ? 'inizia' : '', pl === goddess ? 'Dea' : ''].filter(Boolean).join(' · ')
+  }
+}
+
 // ---------- before the match: this game's knobs in the hub's table drawer ----------
-// Role counts follow the number of seats until you touch them.
-export function tableOptions(ctx, onChange) {
+// Role counts follow the number of seats until you touch them, and never go
+// past what the table allows: at least one impostor, civilians in the majority.
+// Word packs are chosen here (only chosen: they're made beforehand, from
+// "Parole" in the menu, so nobody at the table has seen them being written).
+//   ui.changed(): re-check the table · ui.open(title, content): a drawer sub-page
+export function tableOptions(ctx, ui) {
   let n = 0
   let counts = null
   let touched = false
 
   function row(label, key) {
+    const other = key === 'mrwhite' ? 'undercover' : 'mrwhite'
     const val = el('span', { class: 'stepper-val' })
     const bump = d => {
-      counts[key] = Math.max(0, Math.min(5, counts[key] + d))
+      const next = counts[key] + d
+      if (next < 0 || next + counts[other] < 1 || next + counts[other] > maxImpostors(n)) return
+      counts[key] = next
       touched = true
       ctx.storage.set(COUNTS_KEY, counts)
-      onChange()
+      ui.changed()
     }
+    const minus = el('button', { class: 'round-btn sm', 'aria-label': 'Meno ' + label, onclick: () => bump(-1) }, '−')
+    const plus = el('button', { class: 'round-btn sm', 'aria-label': 'Più ' + label, onclick: () => bump(1) }, '+')
     const node = el('div', { class: 'opt-row' }, [
       el('span', { class: 'opt-label' }, label),
-      el('div', { class: 'stepper-ctrl' }, [
-        el('button', { class: 'round-btn sm', 'aria-label': 'Meno', onclick: () => bump(-1) }, '−'),
-        val,
-        el('button', { class: 'round-btn sm', 'aria-label': 'Più', onclick: () => bump(1) }, '+')
-      ])
+      el('div', { class: 'stepper-ctrl' }, [minus, val, plus])
     ])
-    return { node, paint: () => { val.textContent = String(counts[key]) } }
+    return {
+      node,
+      paint() {
+        val.textContent = String(counts[key])
+        minus.disabled = counts[key] <= 0 || counts[key] + counts[other] <= 1
+        plus.disabled = counts[key] + counts[other] >= maxImpostors(n)
+      }
+    }
   }
 
   const mw = row('Mister White', 'mrwhite')
   const uc = row('Undercover', 'undercover')
-  const words = el('span', { class: 'opt-value' })
+  const civili = el('span', { class: 'opt-value' })
+  const wordsBtn = el('button', { class: 'opt-link', onclick: () => openPacks() })
   const node = el('div', { class: 'opt-list' }, [
     mw.node, uc.node,
-    el('div', { class: 'opt-row' }, [el('span', { class: 'opt-label' }, 'Parole'), words])
+    el('div', { class: 'opt-row' }, [el('span', { class: 'opt-label' }, 'Civili'), civili]),
+    el('div', { class: 'opt-row' }, [el('span', { class: 'opt-label' }, 'Parole'), wordsBtn])
   ])
+
+  function paintWords() {
+    const on = packs.enabledPacks()
+    const label = !on.length ? 'Scegli' : on.length === 1 ? on[0].name : `${on.length} pacchetti`
+    wordsBtn.replaceChildren(el('span', {}, label), icon('forward'))
+  }
+
+  // Choose which packs this match draws from.
+  function openPacks() {
+    const list = el('div', { class: 'pack-pick-list' })
+    function paint() {
+      const on = new Set(packs.enabledIds())
+      list.replaceChildren(...packs.allPacks().map(p => el('button', {
+        class: 'pack-pick' + (on.has(p.id) ? ' on' : ''),
+        'aria-pressed': on.has(p.id) ? 'true' : 'false',
+        onclick: () => { packs.toggleEnabled(p.id); paint(); ui.changed() }
+      }, [
+        el('span', { class: 'pack-pick-check' }, icon('check')),
+        el('span', { class: 'pack-text' }, [
+          el('span', { class: 'pack-name' }, p.name),
+          el('span', { class: 'pack-count' }, `${p.items.length} coppie`)
+        ])
+      ])))
+    }
+    paint()
+    ui.open('Parole', [
+      el('p', { class: 'drawer-hint' }, 'Scegli da quali pacchetti pescare la coppia. Si creano e si modificano da “Parole” nel menu del gioco.'),
+      list
+    ])
+  }
 
   return {
     node,
     // -> '' when a match can start with `seatCount` seats, else why not
     check(seatCount) {
       if (seatCount !== n) {
-        if (!counts) counts = loadCounts(ctx, seatCount) // last used, if it still fits
-        else if (!touched) counts = suggestCounts(seatCount)
         n = seatCount
+        if (!counts) counts = loadCounts(ctx, n) // last used, if it still fits
+        else if (!touched) counts = suggestCounts(n)
+        else counts = fitCounts(n, counts)       // keep your choice, trimmed to the table
         ctx.storage.set(COUNTS_KEY, counts)
       }
       mw.paint(); uc.paint()
-      const pairs = packs.enabledItems().length
-      words.textContent = pairs ? `${pairs} coppie` : 'nessun pacchetto attivo'
+      civili.textContent = String(Math.max(0, n - counts.mrwhite - counts.undercover))
+      paintWords()
       const v = validateSetup(n, counts)
       if (!v.ok) return v.message.replace(/\.$/, '')
-      if (!pairs) return 'Attiva un pacchetto di parole'
+      if (!packs.enabledItems().length) return 'Scegli almeno un pacchetto di parole'
       return ''
     }
   }
@@ -120,7 +175,7 @@ export function deal(api, stage) {
 
   const next = () => {
     state.revealed = false
-    if (i < players.length - 1) { state.dealIndex++; api.render() } else api.goPhase('play')
+    if (i < players.length - 1) { state.dealIndex++; api.render() } else api.goPhase('goddess')
   }
   if (!state.revealed) {
     stage.present(page([
@@ -168,50 +223,88 @@ function joinPage(api, me) {
   ])
 }
 
+// ---------- goddess: everyone has their word — draw the Goddess of Justice ----------
+export function goddess(api, stage) {
+  const round = api.state.round
+  if (!round.goddess) round.goddess = pickGoddess(round.players)
+  const g = round.goddess
+  stage.view.set(seatItems(api, pl => (pl === g ? { cls: 'on dea', note: 'Dea' } : { cls: 'dim' })))
+  stage.view.setCenter(el('div', { class: 'table-icon' }, icon('scales')))
+  stage.present(page([
+    el('p', { class: 'drawer-kicker' }, 'Dea della giustizia'),
+    el('div', { class: 'drawer-name' }, g.name),
+    el('p', { class: 'drawer-hint' }, 'Se al voto c’è un pareggio, decide lei chi eliminare.'),
+    button('Iniziamo', { variant: 'primary', full: true, onClick: () => api.goPhase('play') })
+  ], 'steady'))
+}
+
 // ---------- play: clues out loud, round the table ----------
 export function play(api, stage) {
   const { state } = api
-  const players = state.round.players
+  const round = state.round
+  const players = round.players
   const alive = players.filter(p => p.alive)
-  const starter = state.round.order.map(i => players[i]).find(p => p.alive)
-  stage.view.set(seatItems(api, pl => !pl.alive
-    ? { cls: 'out', note: roleLabel(pl.role) }
-    : pl === starter ? { cls: 'on', note: 'inizia' } : {}))
+  // from the first player still in, round the table — never a Mister White
+  const inOrder = round.order.map(i => players[i]).filter(p => p.alive)
+  const starter = inOrder.find(p => p.role !== ROLE.MRWHITE) || inOrder[0]
+  stage.view.set(seatItems(api, pl => seatLook(pl, { starter, goddess: round.goddess, lit: pl === starter })))
   stage.view.setCenter(count(String(alive.length), 'in gioco'))
   const out = state.lastOut
+  const news = round.goddessNew ? `${round.goddess.name} è la nuova Dea della giustizia.` : null
+  round.goddessNew = false
   stage.present(page([
     out ? el('p', { class: 'drawer-kicker' }, `${out.name} era ${roleLabel(out.role)}`) : null,
     el('div', { class: 'drawer-title' }, 'Indizi'),
     el('p', { class: 'drawer-hint' },
       `Inizia ${starter.name}, poi in senso orario: ognuno dice a voce una parola collegata alla propria.`),
+    news ? el('p', { class: 'drawer-hint dea-news' }, news) : null,
     button('Vai alla votazione', { variant: 'primary', full: true, onClick: () => api.goPhase('vote') })
   ], 'steady'))
 }
 
-// ---------- vote: tap on the table who goes ----------
+// ---------- vote: tap on the table who goes; a tie goes to the Goddess ----------
 export function vote(api, stage) {
   const { state } = api
-  const players = state.round.players
+  const round = state.round
+  const players = round.players
   let chosen = null
+  let tie = false
 
   function paint() {
-    stage.view.set(seatItems(api, (pl, i) => !pl.alive
-      ? { cls: 'out', note: roleLabel(pl.role) }
-      : { cls: chosen === i ? 'on' : chosen != null ? 'dim' : '' }))
-    stage.present(chosen == null
-      ? page([
-        el('div', { class: 'drawer-title' }, 'Votazione'),
-        el('p', { class: 'drawer-hint' }, 'Discutete e votate, poi toccate sul tavolo chi eliminare.'),
-        button('Torna agli indizi', { variant: 'ghost', full: true, onClick: () => api.goPhase('play') })
-      ], 'steady')
-      : page([
-        el('p', { class: 'drawer-kicker' }, 'Eliminare'),
+    const g = round.goddess
+    stage.view.set(seatItems(api, (pl, i) => {
+      const look = seatLook(pl, { goddess: g, lit: chosen === i || (tie && chosen == null && pl === g) })
+      if (pl.alive && chosen != null && chosen !== i) look.cls += ' dim'
+      return look
+    }))
+    let body
+    if (chosen != null) {
+      body = [
+        el('p', { class: 'drawer-kicker' }, tie ? `${g.name} elimina` : 'Eliminare'),
         el('div', { class: 'drawer-name' }, players[chosen].name + '?'),
         el('div', { class: 'drawer-row' }, [
           button('Annulla', { variant: 'ghost', onClick: () => { chosen = null; paint() } }),
           button('Elimina', { variant: 'danger', onClick: () => eliminate(players[chosen]) })
         ])
-      ], 'steady'))
+      ]
+    } else if (tie) {
+      body = [
+        el('p', { class: 'drawer-kicker' }, 'Pareggio'),
+        el('div', { class: 'drawer-name' }, `Decide ${g.name}`),
+        el('p', { class: 'drawer-hint' }, 'La Dea della giustizia sceglie chi eliminare: toccalo sul tavolo.'),
+        button('Niente pareggio', { variant: 'ghost', full: true, onClick: () => { tie = false; paint() } })
+      ]
+    } else {
+      body = [
+        el('div', { class: 'drawer-title' }, 'Votazione'),
+        el('p', { class: 'drawer-hint' }, `Discutete e votate, poi toccate sul tavolo chi eliminare. In caso di pareggio decide ${g.name}.`),
+        el('div', { class: 'drawer-row' }, [
+          button('Indizi', { variant: 'ghost', onClick: () => api.goPhase('play') }),
+          button('Pareggio', { variant: 'secondary', onClick: () => { tie = true; paint() } })
+        ])
+      ]
+    }
+    stage.present(page(body, 'steady'))
   }
 
   api.onSeat = i => {
@@ -237,7 +330,7 @@ export function vote(api, stage) {
         button('Conferma', {
           variant: 'primary',
           onClick: () => {
-            const correct = guessMatches(input.value, state.round.pair.civilian)
+            const correct = guessMatches(input.value, round.pair.civilian)
             m.close()
             p.alive = false
             state.mrWhiteGuess = { name: p.name, correct }
@@ -250,8 +343,10 @@ export function vote(api, stage) {
   }
 
   // The news goes in the next drawer ("Anna era Civile"), not in a toast.
+  // If the Goddess herself is out, another one is drawn among who's left.
   function afterElimination(p) {
     state.lastOut = p
+    if (p === round.goddess) { round.goddess = pickGoddess(players); round.goddessNew = true }
     const w = checkWinner(players)
     if (w) { state.winner = w; api.goPhase('results') } else api.goPhase('play')
   }

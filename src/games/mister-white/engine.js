@@ -9,23 +9,34 @@ import { shuffle } from '../../shared/ui.js'
 
 export const ROLE = { CIVILE: 'civile', UNDERCOVER: 'undercover', MRWHITE: 'mrwhite' }
 
-// Suggested role counts for a player count.
-export function suggestCounts(numPlayers) {
-  const mrwhite = 1
-  const undercover = numPlayers >= 5 ? 1 : 0
+// The most impostors a table of n can have: the civilians start in the
+// majority, as in the original game — 3–4 players -> 1, 5–6 -> 2, 7–8 -> 3, …
+export function maxImpostors(n) { return Math.max(0, Math.floor((n - 1) / 2)) }
+
+// Suggested counts: about 4 impostors in 10, one Mister White (two from 11
+// players), the rest Undercover.
+export function suggestCounts(n) {
+  const imp = Math.max(1, Math.min(maxImpostors(n), Math.round(n * 0.4)))
+  const mrwhite = Math.min(imp, n >= 11 ? 2 : 1)
+  return { mrwhite, undercover: imp - mrwhite }
+}
+
+// Keep chosen counts, trimmed to what n players allow (Undercover go first).
+export function fitCounts(n, { mrwhite, undercover }) {
+  const max = Math.max(1, maxImpostors(n))
+  while (mrwhite + undercover > max && undercover > 0) undercover--
+  while (mrwhite + undercover > max && mrwhite > 0) mrwhite--
+  if (mrwhite + undercover < 1) mrwhite = 1
   return { mrwhite, undercover }
 }
 
 // Validate a setup. Returns { ok:true } or { ok:false, message }.
-export function validateSetup(numPlayers, counts) {
-  if (numPlayers < 3) return { ok: false, message: 'Servono almeno 3 giocatori.' }
-  if (numPlayers > 20) return { ok: false, message: 'Massimo 20 giocatori.' }
+export function validateSetup(n, counts) {
+  if (n < 3) return { ok: false, message: 'Servono almeno 3 giocatori.' }
+  if (n > 20) return { ok: false, message: 'Massimo 20 giocatori.' }
   const impostori = counts.mrwhite + counts.undercover
   if (impostori < 1) return { ok: false, message: 'Serve almeno un impostore.' }
-  // Keep at least 2 civili so the game is playable.
-  if (numPlayers - impostori < 2) {
-    return { ok: false, message: 'Troppi impostori per questo tavolo.' }
-  }
+  if (impostori > maxImpostors(n)) return { ok: false, message: 'Troppi impostori: i civili devono essere di più.' }
   return { ok: true }
 }
 
@@ -49,19 +60,31 @@ export function buildRound(people, pair, counts) {
     return { id: i, name: person.name, pid: person.pid || null, seat: person.seat || null, role, word, alive: true }
   })
 
-  // Turn order: round the table, from a random starting player.
-  const start = Math.floor(Math.random() * players.length)
-  const order = players.map((_, i) => (start + i) % players.length)
+  // Clues go round the table from a random player — never a Mister White,
+  // who has no word to start from.
+  const can = players.filter(p => p.role !== ROLE.MRWHITE)
+  const first = can[Math.floor(Math.random() * can.length)] || players[0]
+  const order = players.map((_, i) => (first.id + i) % players.length)
 
   return { players, pair, order }
 }
 
+// The Goddess of Justice: a random player still in the game. When the vote
+// ends in a tie, she decides who goes.
+export function pickGoddess(players) {
+  const alive = players.filter(p => p.alive)
+  return alive.length ? alive[Math.floor(Math.random() * alive.length)] : null
+}
+
 // Winner check based on who is still alive. Returns null | 'civili' | 'impostori'.
+// An Undercover doesn't even know they're one, so there's no majority to take
+// over: as in the original game, the impostors win by lasting until a single
+// civilian is left.
 export function checkWinner(players) {
   const civili = players.filter(p => p.alive && p.role === ROLE.CIVILE).length
   const impostori = players.filter(p => p.alive && p.role !== ROLE.CIVILE).length
   if (impostori === 0) return 'civili'
-  if (impostori >= civili) return 'impostori'
+  if (civili <= 1) return 'impostori'
   return null
 }
 

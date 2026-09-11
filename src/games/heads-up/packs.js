@@ -13,6 +13,7 @@ const codec = {
     return s ? s : null
   },
   key(it) { return it.toLowerCase() },
+  toLine(it) { return it },
   parseLine(line) {
     const s = String(line).trim()
     return s ? s : null

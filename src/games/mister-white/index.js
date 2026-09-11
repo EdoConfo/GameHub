@@ -15,7 +15,7 @@ const MENU = [
 ]
 
 // The match is played around the table (match.js); the rest are plain pages.
-const TABLE_PHASES = ['start', 'deal', 'play', 'vote', 'results']
+const TABLE_PHASES = ['start', 'deal', 'goddess', 'play', 'vote', 'results']
 
 function mount(container, ctx, initialPhase) {
   const state = {

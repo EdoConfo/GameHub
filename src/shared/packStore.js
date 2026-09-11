@@ -3,11 +3,15 @@
 // the shape of that game's items (Mister White = pairs, Heads Up = words).
 //
 // Word packs are NOT shared between games: a store is scoped by `namespace`.
+// Every pack can be renamed and rewritten: custom packs change in place,
+// built-in ones keep the change aside (an override by pack id) so they can be
+// put back as they were.
 import * as storage from './storage.js'
 
 export function createPackStore({ namespace, bundledModules, codec, enableAllByDefault = false }) {
   const CUSTOM_KEY = `packs:${namespace}:custom`
   const ENABLED_KEY = `packs:${namespace}:enabled`
+  const OVERRIDE_KEY = `packs:${namespace}:overrides`
 
   const bundled = Object.values(bundledModules)
     .map(m => m.default)
@@ -47,7 +51,23 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
   }
   function saveCustom(list) { storage.set(CUSTOM_KEY, list) }
 
-  function allPacks() { return [...bundled, ...loadCustom()] }
+  function loadOverrides() {
+    const o = storage.get(OVERRIDE_KEY, {})
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {}
+  }
+  function saveOverrides(o) { storage.set(OVERRIDE_KEY, o) }
+
+  // Built-in packs with their edits laid over (marked `modified`), then yours.
+  function allPacks() {
+    const over = loadOverrides()
+    const base = bundled.map(p => {
+      const o = over[p.id]
+      if (!o) return p
+      const items = normalizeItems(o.items)
+      return { ...p, name: String(o.name || p.name), items: items.length ? items : p.items, modified: true }
+    })
+    return [...base, ...loadCustom()]
+  }
   function getPack(id) { return allPacks().find(p => p.id === id) || null }
 
   function defaultEnabled() {
@@ -60,8 +80,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     const stored = storage.get(ENABLED_KEY, null)
     if (Array.isArray(stored)) {
       const valid = new Set(allPacks().map(p => p.id))
-      const kept = stored.filter(id => valid.has(id))
-      return kept
+      return stored.filter(id => valid.has(id))
     }
     return defaultEnabled()
   }
@@ -119,17 +138,52 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     return { items }
   }
 
-  function addCustomPack(name, text) {
-    const cleanName = String(name || '').trim()
-    if (!cleanName) throw new Error('Dai un nome al pacchetto.')
+  // A pack's items as editable text, one per line (the format parsePackInput reads).
+  function toText(pack) { return pack.items.map(it => (codec.toLine ? codec.toLine(it) : String(it))).join('\n') }
+
+  function cleanName(name) {
+    const clean = String(name || '').trim()
+    if (!clean) throw new Error('Dai un nome al pacchetto.')
+    return clean
+  }
+
+  // enable: also switch it on (games that pick packs in the manager). Mister
+  // White picks them at the table, so a new pack starts off there.
+  function addCustomPack(name, text, { enable = true } = {}) {
+    const clean = cleanName(name)
     const { items } = parsePackInput(text)
     const id = 'custom-' + Date.now().toString(36)
-    const pack = { id, name: cleanName, language: 'it', items, custom: true }
+    const pack = { id, name: clean, language: 'it', items, custom: true }
     const list = loadCustom()
     list.push(pack)
     saveCustom(list)
-    setEnabled([...new Set([...enabledIds(), id])])
+    if (enable) setEnabled([...new Set([...enabledIds(), id])])
     return pack
+  }
+
+  // Rename / rewrite any pack.
+  function updatePack(id, { name, text }) {
+    const clean = cleanName(name)
+    const { items } = parsePackInput(text)
+    const list = loadCustom()
+    const i = list.findIndex(p => p.id === id)
+    if (i >= 0) {
+      list[i] = { ...list[i], name: clean, items }
+      saveCustom(list)
+      return list[i]
+    }
+    if (!bundled.some(p => p.id === id)) throw new Error('Pacchetto non trovato.')
+    const over = loadOverrides()
+    over[id] = { name: clean, items }
+    saveOverrides(over)
+    return getPack(id)
+  }
+
+  // A built-in pack back as it came with the app.
+  function resetPack(id) {
+    const over = loadOverrides()
+    delete over[id]
+    saveOverrides(over)
   }
 
   function deleteCustomPack(id) {
@@ -143,6 +197,6 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     placeholder: codec.placeholder || '',
     allPacks, getPack,
     enabledIds, setEnabled, toggleEnabled, enabledPacks, enabledItems,
-    parsePackInput, addCustomPack, deleteCustomPack
+    parsePackInput, toText, addCustomPack, updatePack, resetPack, deleteCustomPack
   }
 }

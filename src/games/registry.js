@@ -11,7 +11,8 @@
 //     glyph:       string  line icon name (shared/ui.js) shown on the hub circle
 //     menu:        [{ title, sub, phase, glyph }]  the game's own menu wheel
 //     table:       optional — "Gioca" opens the shared table in the hub:
-//                  { min, options(ctx, onChange) -> { node, check(n) }, start(ctx) }
+//                  { min, options(ctx, { changed, open }) -> { node, check(n) }, start(ctx) }
+//                  open(title, content) shows a page of the game's own in the drawer
 //     mount(container, ctx, phase) -> optional cleanup function
 //       container: HTMLElement to render into (already emptied)
 //       ctx: { storage, players, table, stats, router, root, applyTheme }

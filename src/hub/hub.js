@@ -13,7 +13,7 @@ import { games } from '../games/registry.js'
 //
 // "Gioca" doesn't leave the scene: circle B shrinks to the top of the screen
 // and becomes the table, with a drawer rising from below (tableScene.js).
-// Header and hint are not part of the scene: they stay put and swap content.
+// The header is not part of the scene: it stays put and swaps content.
 const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
 
 // A line icon in a round badge that sits on the circle like a bead.
@@ -48,8 +48,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
   })
 
   const header = el('div', { class: 'hub-header' })
-  const hint = el('div', { class: 'hub-hint' })
-  canvas.append(header, hint)
+  canvas.append(header)
   root.append(canvas)
 
   // ---- scene geometry ----
@@ -113,21 +112,18 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
           el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
         ])
       )
-      hint.textContent = 'scorri per scegliere · tocca per aprire'
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
       header.replaceChildren(
         el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => (table ? closeTable() : goto(V_GAMES)) }, icon('back')),
         el('span', { class: 'wordmark game-home-title' }, games[selected].name.toUpperCase())
       )
-      hint.textContent = 'scorri per scegliere · tocca per aprire'
     } else {
       // page on the left of its circle: mirrored — name left, arrow right
       header.replaceChildren(
         el('span', { class: 'wordmark game-home-title' }, sideKind === 'settings' ? 'IMPOSTAZIONI' : 'GIOCATORI'),
         el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(V_GAMES) }, icon('forward'))
       )
-      hint.textContent = 'tocca per aprire'
     }
   }
 

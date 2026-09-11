@@ -8,8 +8,9 @@ import { avatar } from '../../hub/players.js'
 export function renderPacks(api) {
   return renderPackManager(api.packs, {
     title: 'Parole',
-    help: 'Coppie di parole (una segreta, una simile). Attiva i pacchetti da usare; puoi aggiungerne di tuoi.',
-    onBack: () => api.toMenu()
+    help: 'Coppie di parole: quella dei civili e una simile per gli Undercover. Tocca un pacchetto per rinominarlo o cambiarne le coppie. Quali usare lo scegli al tavolo, prima di ogni partita.',
+    onBack: () => api.toMenu(),
+    selectable: false
   })
 }
 
@@ -20,17 +21,22 @@ export function renderRules(api) {
   view.body.append(section('Ruoli', [
     rule('Civili', 'Ricevono la parola segreta.'),
     rule('Undercover', 'Ricevono una parola simile ma diversa.'),
-    rule('Mister White', 'Non riceve nessuna parola: deve fingere di saperla.')
+    rule('Mister White', 'Non riceve nessuna parola: deve fingere di saperla.'),
+    rule('Dea della giustizia', 'Estratta a caso tra tutti quando la distribuzione è finita. Se al voto c’è un pareggio, decide lei chi eliminare. Se viene eliminata, se ne estrae un’altra.')
+  ]))
+  view.body.append(section('Quanti impostori', [
+    rule('Sempre in minoranza', 'I civili devono essere più degli impostori (Undercover + Mister White): con 3–4 giocatori 1 impostore, con 5–6 fino a 2, con 7–8 fino a 3, e così via.'),
+    rule('Consigliati', 'Circa 4 impostori ogni 10 giocatori: un Mister White (due da 11 in su), il resto Undercover.')
   ]))
   view.body.append(section('Come si svolge', [
     rule('0 · Il tavolo', 'Disponete i posti come siete seduti. Chi trova un posto libero si presenta quando riceve il telefono.'),
     rule('1 · Distribuzione', 'Il telefono fa il giro del tavolo: ognuno vede in privato la sua parola (o scopre di essere Mister White).'),
-    rule('2 · Indizi', 'A turno, in senso orario, ognuno dice a voce una parola collegata alla propria. Non scriverla.'),
-    rule('3 · Votazione', 'Discutete ed eliminate un sospetto toccandolo sul tavolo. Si scopre il suo ruolo.')
+    rule('2 · Indizi', 'A turno, in senso orario, ognuno dice a voce una parola collegata alla propria. Non scriverla. Non comincia mai un Mister White.'),
+    rule('3 · Votazione', 'Discutete ed eliminate un sospetto toccandolo sul tavolo. Si scopre il suo ruolo. In caso di pareggio decide la Dea della giustizia.')
   ]))
   view.body.append(section('Chi vince', [
     rule('Civili', 'Se eliminano tutti gli impostori (Undercover + Mister White).'),
-    rule('Impostori', 'Se sopravvivono fino a pareggiare i civili.'),
+    rule('Impostori', 'Se resistono finché resta un solo civile.'),
     rule('Mister White', 'Se, una volta eliminato, indovina la parola dei civili.')
   ]))
   return view

@@ -239,14 +239,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .arc-desc { font-size: 14px; color: var(--text-dim); margin-top: 5px; line-height: 1.35; display: none; }
 .arc-item.on .arc-desc { display: block; }
 
-.hub-hint {
-  position: absolute; left: 0; right: 0; z-index: 3;
-  bottom: calc(6px + env(safe-area-inset-bottom));
-  pointer-events: none;
-  text-align: center;
-  color: var(--text-dim);
-  font-size: 12px; letter-spacing: .6px;
-}
 
 .offline-note {
   margin: 0 18px calc(14px + env(safe-area-inset-bottom));
@@ -340,13 +332,20 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .switch.on .switch-knob { transform: translateX(25px); }
 
 /* ---- Packs ---- */
-.pack-list { display: flex; flex-direction: column; gap: 4px; }
-.pack-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.pack-list { display: flex; flex-direction: column; }
+.pack-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
 .pack-row:last-child { border-bottom: 0; }
-.pack-main { display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer; }
-.pack-main input { width: 22px; height: 22px; accent-color: var(--primary); }
+.pack-check { width: 22px; height: 22px; flex: 0 0 auto; accent-color: var(--primary); }
+.pack-open {
+  flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 0; background: none; border: 0; color: var(--text);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.pack-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pack-name { font-weight: 650; }
 .pack-count { color: var(--text-dim); font-size: 13px; }
+.pack-arrow { font-size: 24px; line-height: 1; color: var(--text-dim); }
+.modal-actions { flex-wrap: wrap; }
 
 /* ---- Results hero (Heads Up) ---- */
 .result-hero { text-align: center; padding: 10px 0; }
@@ -599,8 +598,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    ============================================================ */
 /* the menu gets out of the way quickly, before the table passes over it */
 .canvas.tabling .arc-host.here { opacity: 0; pointer-events: none; transition-duration: .22s !important; }
-.hub-hint { transition: opacity .3s ease; }
-.canvas.tabling .hub-hint { opacity: 0; }
 /* a match screen continues the hub's scene: no slide-in, no page height of its own */
 .game-root.on-table { min-height: 0; animation: none; }
 
@@ -638,6 +635,33 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .seat.swap > * { transform: scale(.86); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--text); }
 .seat-label.swap .seat-name, .seat-label.target .seat-name { font-weight: 800; }
 .drawer-hint span { display: block; }
+
+/* Match options in the table drawer */
+.round-btn:disabled { opacity: .3; pointer-events: none; }
+.opt-link {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 0 0 12px;
+  background: none; border: 0; color: var(--text); font: inherit; font-size: 15px; font-weight: 650; cursor: pointer;
+}
+.opt-link .icon { width: 18px; height: 18px; color: var(--text-dim); }
+.pack-pick-list { display: flex; flex-direction: column; }
+.pack-pick {
+  display: flex; align-items: center; gap: 12px; padding: 10px 2px;
+  background: none; border: 0; border-top: 1px solid var(--border);
+  color: var(--text); font: inherit; text-align: left; cursor: pointer;
+}
+.pack-pick:first-child { border-top: 0; }
+.pack-pick-check {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  border: 1.5px solid color-mix(in srgb, var(--text) 30%, transparent); color: #fff;
+}
+.pack-pick-check .icon { width: 16px; height: 16px; opacity: 0; }
+.pack-pick.on .pack-pick-check { background: var(--primary); border-color: transparent; }
+.pack-pick.on .pack-pick-check .icon { opacity: 1; }
+
+/* Goddess of Justice */
+.seat-label.dea .seat-note { color: var(--accent); }
+.table-icon .icon { width: 44px; height: 44px; color: var(--accent); }
+.drawer-hint.dea-news { color: var(--accent); }
 .seat.lifted { z-index: 3; cursor: grabbing; }
 .seat.lifted > * { transform: scale(1.16); box-shadow: 0 0 0 3px var(--bg), 0 12px 26px rgba(0, 0, 0, .35); }
 .seat.dim > * { opacity: .4; }
