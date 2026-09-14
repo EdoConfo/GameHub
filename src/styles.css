@@ -722,11 +722,16 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .drawer-handle[hidden] { display: none; }
 .drawer-handle[hidden] + .drawer-body { padding-top: 16px; }
-.drawer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Scrolls, but without painting a scrollbar over the page: nothing else in the
+   app shows one (see .pick-row). */
+.drawer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.drawer-body::-webkit-scrollbar { display: none; }
 .drawer-page { display: flex; flex-direction: column; gap: 12px; }
 /* phases that follow each other keep one height, so the table stays still */
 .drawer-page.steady { min-height: 190px; justify-content: center; }
 .drawer.min .drawer-more { display: none; }
+/* folded: an open role description folds away with the rest of the detail */
+.drawer.min .role-desc { display: none; }
 .drawer-row { display: flex; gap: 10px; }
 .drawer-row > * { flex: 1; }
 .drawer-title { font-size: 21px; font-weight: 800; letter-spacing: -.3px; text-align: center; }
