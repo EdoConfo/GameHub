@@ -53,12 +53,15 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
     geom.stepPx = Math.max(52, geom.R * Math.sin(geom.step))
   }
 
-  //   dx:   shift every item sideways (used to park them off-stage before an entrance)
+  //   dx:   shift every item sideways (used to park them off-stage)
   //   fade: multiplies the usual opacity (0 = invisible)
-  function placeItems(f, { dx = 0, fade = 1 } = {}) {
+  //   flat: drop the arc's bulge and line the items up vertically, all on the
+  //         same x — how they leave and come back, so they travel as a column
+  //         instead of sliding along the curve over the circle
+  function placeItems(f, { dx = 0, fade = 1, flat = false } = {}) {
     for (let i = 0; i < N; i++) {
       const a = (i - f) * geom.step
-      const x = geom.Cx + sign * geom.R * Math.cos(a)
+      const x = flat ? geom.activeX : geom.Cx + sign * geom.R * Math.cos(a)
       const y = geom.Cy + geom.R * Math.sin(a)
       const dist = Math.abs(i - f)
       const it = nodes[i]
@@ -72,15 +75,22 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
 
   function layout() { measure(); placeItems(active) }
 
-  // Bring the items onto the arc from off-stage. For when the view comes back
-  // on screen and the wheel is already built — folding the table back into the
-  // game's circle, say: the circle grows and the beads ride in with it, instead
-  // of popping into place. Give it the same ms as the thing it travels with.
-  //   dx: where they start, relative to their spot (negative = from the left)
-  function enter({ dx = -140, ms = 560 } = {}) {
+  // How far left the column has to go to clear the screen: from the items' own
+  // x out past the left edge, with room for the badge's half width. They leave
+  // the screen rather than sliding a little sideways, so they never sit on top
+  // of whatever is taking the stage (the circle becoming the table).
+  function offStage() { return -(geom.activeX + 64) }
+
+  // Bring the items in from off-screen left. For when the view comes back and
+  // the wheel is already built — folding the table back into the game's circle,
+  // say: the circle grows and the beads ride in with it, instead of popping
+  // into place. Give it the same ms as the thing it travels with. They arrive
+  // as a vertical column and settle onto the arc.
+  //   dx: where they start, relative to their spot (default: off-screen left)
+  function enter({ dx = null, ms = 560 } = {}) {
     measure()
     stage.classList.add('dragging')            // park them with transitions off
-    placeItems(active, { dx, fade: 0 })
+    placeItems(active, { dx: dx == null ? offStage() : dx, fade: 0, flat: true })
     void stage.offsetWidth                     // commit that as the start state
     requestAnimationFrame(() => {
       stage.style.setProperty('--pan', ms + 'ms')
@@ -91,16 +101,16 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
     })
   }
 
-  // The other half: send them off-stage the same way they came, for when the
-  // view is about to be covered (the game's circle shrinking into the table).
-  // Once they're out, they're put back in place invisibly, so whatever shows
-  // the wheel next finds it whole.
-  function exit({ dx = -140, ms = 560 } = {}) {
+  // The other half: straighten into a column, slide off the left edge and fade
+  // out — for when the view is about to be covered (the game's circle shrinking
+  // into the table). Once they're out they're put back on the arc invisibly, so
+  // whatever shows the wheel next finds it whole.
+  function exit({ dx = null, ms = 560 } = {}) {
     measure()
     stage.classList.remove('dragging')   // transitions ON...
     void stage.offsetWidth               // ...and seen as on before we move them
     stage.style.setProperty('--pan', ms + 'ms')
-    placeItems(active, { dx, fade: 0 })
+    placeItems(active, { dx: dx == null ? offStage() : dx, fade: 0, flat: true })
     clearTimeout(enterTimer)
     enterTimer = setTimeout(() => {
       stage.style.removeProperty('--pan')
