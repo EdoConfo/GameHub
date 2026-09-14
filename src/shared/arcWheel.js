@@ -7,7 +7,7 @@ import { el } from './ui.js'
 //   side: 'right' -> mirrored: bulges from the right, labels to the left
 //   items: [{ title, sub }]
 //   onActivate(index): called when the already-active item is tapped
-// Returns { stage, setActive, layout, destroy }.
+// Returns { stage, setActive, setItems, layout, getActive, destroy }.
 // Geometry of the circle a wheel rides. R is half the stage height, so the
 // circle touches the top and bottom edges; its centre sits off-screen on the
 // given side. The hub draws this circle once, above the strip, and slides it.
@@ -68,6 +68,26 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
   }
 
   function layout() { measure(); placeItems(active) }
+
+  // Swap the labels (and lead icons) of the items already on the arc, leaving
+  // geometry and the active index alone. Changing the interface language is a
+  // text change, not a new wheel: rebuilding one makes every item fly in from
+  // the corner it was born in. Needs the same number of items — hand a
+  // different count to createArcWheel instead.
+  function setItems(next) {
+    if (!Array.isArray(next) || next.length !== N) return false
+    next.forEach((it, i) => {
+      const node = nodes[i]
+      node.setAttribute('aria-label', it.title)
+      const name = node.querySelector('.arc-name')
+      const desc = node.querySelector('.arc-desc')
+      const lead = node.querySelector('.arc-lead')
+      if (name) name.textContent = it.title
+      if (desc) desc.textContent = it.sub || ''
+      if (lead && it.lead) lead.replaceChildren(it.lead)
+    })
+    return true
+  }
   function setDragTransition(on) { stage.classList.toggle('dragging', !on) }
   function setActive(i) { active = Math.max(0, Math.min(N - 1, i)); setDragTransition(true); placeItems(active) }
 
@@ -100,10 +120,18 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
 
   const ro = new ResizeObserver(() => { if (!stage.isConnected) { ro.disconnect(); return } layout() })
   ro.observe(stage)
-  // First placement must not animate: items would otherwise fly in from 0,0.
+  // First placement must not animate: an item is born at 0,0 (top-left corner)
+  // and only then put on the arc, so with transitions on it flies in from
+  // there. `dragging` turns them off — and it has to stay off for a whole
+  // frame AFTER the last placement, otherwise the browser sees the new
+  // position and the re-enabled transition in the same style recalc and
+  // animates anyway. Hence the second rAF.
   stage.classList.add('dragging')
   layout() // immediate (rAF may be throttled when the tab isn't visible)
-  requestAnimationFrame(() => { layout(); stage.classList.remove('dragging') })
+  requestAnimationFrame(() => {
+    layout()
+    requestAnimationFrame(() => stage.classList.remove('dragging'))
+  })
 
-  return { stage, setActive, layout, getActive: () => active, destroy: () => ro.disconnect() }
+  return { stage, setActive, setItems, layout, getActive: () => active, destroy: () => ro.disconnect() }
 }

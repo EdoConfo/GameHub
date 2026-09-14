@@ -25,6 +25,8 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   let selected = 0
   let sideKind = 'players'
   let table = null // the game's table ("Gioca"), while it's open
+  let sideWheel = null
+  let menuWheel = null
   let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
@@ -130,49 +132,64 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   }
 
   // ---- circle A, left arc: Giocatori / Impostazioni ----
+  // The beads of the arc, as data. Read fresh every time: the theme bead shows
+  // the theme it will switch AWAY from, the language bead the current language.
+  function sideItems(kind) {
+    if (kind === 'settings') {
+      const dark = ctx.storage.get('theme', 'dark') !== 'light'
+      return [
+        { id: 'theme', title: t('settings.theme'), sub: dark ? t('settings.dark') : t('settings.light'), lead: badge(dark ? 'moon' : 'sun') },
+        { id: 'language', title: t('settings.language'), sub: langName(), lead: badge('globe') },
+        { id: 'offline', title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
+      ]
+    }
+    const items = ctx.players.all().map(p => ({ id: p.id, title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))
+    items.push({ id: 'new', title: t('common.new'), sub: t('players.addPlayer'), lead: badge('plus') })
+    return items
+  }
+
   // focus: which bead to keep centred on the wheel — a player id on the
   // Giocatori arc, a setting name on the Impostazioni one — so that coming
-  // back from a page, or switching language, lands where you left.
+  // back from a page lands where you left.
+  //
+  // This builds a NEW wheel, so call it only when the beads themselves change
+  // (a player added). Theme and language only change words and icons: those go
+  // through repaint(), which leaves the wheel where it stands.
   function buildSide(kind, focus = null) {
     sideKind = kind
     hosts[V_SIDE].replaceChildren()
-    if (kind === 'settings') {
-      const dark = ctx.storage.get('theme', 'dark') !== 'light'
-      // Tap a bead to change it on the spot. Theme repaints in place; language
-      // swaps every label in the app, so the hub is rebuilt through the route —
-      // and comes back parked on this same bead.
-      const ids = ['theme', 'language', 'offline']
-      const wheel = createArcWheel(hosts[V_SIDE], {
-        side: 'right',
-        items: [
-          { title: t('settings.theme'), sub: dark ? t('settings.dark') : t('settings.light'), lead: badge(dark ? 'moon' : 'sun') },
-          { title: t('settings.language'), sub: langName(), lead: badge('globe') },
-          { title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
-        ],
-        onActivate: i => {
-          if (i === 0) { ctx.applyTheme(dark ? 'light' : 'dark'); buildSide('settings', 'theme'); renderHeader() }
-          else if (i === 1) { cycleLang(); ctx.router.go('/settings/language') }
+    const items = sideItems(kind)
+    sideWheel = createArcWheel(hosts[V_SIDE], {
+      side: 'right',
+      items,
+      onActivate: i => {
+        const it = items[i]
+        if (!it) return
+        if (kind === 'settings') {
+          if (it.id === 'theme') {
+            ctx.applyTheme(ctx.storage.get('theme', 'dark') === 'light' ? 'dark' : 'light')
+            repaint()
+          } else if (it.id === 'language') {
+            cycleLang()
+            repaint()
+          }
+          return
         }
-      })
-      const at = ids.indexOf(focus)
-      if (at >= 0) wheel.setActive(at)
-    } else {
-      const list = ctx.players.all()
-      const items = list.map(p => ({ title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))
-      items.push({ title: t('common.new'), sub: t('players.addPlayer'), lead: badge('plus') })
-      const wheel = createArcWheel(hosts[V_SIDE], {
-        side: 'right',
-        items,
-        onActivate: i => {
-          if (i < list.length) ctx.router.go('/player/' + list[i].id)
-          else openProfileEditor(ctx, null, saved => { buildSide('players', saved && saved.id); renderHeader() })
-        }
-      })
-      if (focus) {
-        const i = list.findIndex(p => p.id === focus)
-        if (i >= 0) wheel.setActive(i)
+        if (it.id === 'new') openProfileEditor(ctx, null, saved => { buildSide('players', saved && saved.id); renderHeader() })
+        else ctx.router.go('/player/' + it.id)
       }
-    }
+    })
+    const at = items.findIndex(it => it.id === focus)
+    if (at >= 0) sideWheel.setActive(at)
+    renderHeader()
+  }
+
+  // Same beads, new words: swap the labels in place on all three wheels. No
+  // rebuild, so nothing slides in from the corner and the arcs don't move.
+  function repaint() {
+    gamesWheel.setItems(games.map(g => ({ title: g.name, sub: g.description, lead: badge(g.glyph || 'play') })))
+    if (menuWheel) menuWheel.setItems(menuItems())
+    if (sideWheel) sideWheel.setItems(sideItems(sideKind))
     renderHeader()
   }
 
@@ -184,13 +201,15 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   })
 
   // ---- circle B, left arc: menu del gioco ----
+  const menuItems = () => (games[selected].menu || []).map(m => ({ title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') }))
+
   function buildMenu() {
     const game = games[selected]
     hosts[V_MENU].replaceChildren()
     const menu = game.menu || []
-    createArcWheel(hosts[V_MENU], {
+    menuWheel = createArcWheel(hosts[V_MENU], {
       side: 'right',
-      items: menu.map(m => ({ title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') })),
+      items: menuItems(),
       onActivate: j => {
         if (menu[j].phase === 'setup' && game.table) openTable()
         else ctx.router.go('/game/' + game.id + '/' + menu[j].phase)
