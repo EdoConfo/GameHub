@@ -7,7 +7,7 @@ import { el } from './ui.js'
 //   side: 'right' -> mirrored: bulges from the right, labels to the left
 //   items: [{ title, sub }]
 //   onActivate(index): called when the already-active item is tapped
-// Returns { stage, setActive, setItems, layout, getActive, destroy }.
+// Returns { stage, setActive, setItems, enter, layout, getActive, destroy }.
 // Geometry of the circle a wheel rides. R is half the stage height, so the
 // circle touches the top and bottom edges; its centre sits off-screen on the
 // given side. The hub draws this circle once, above the strip, and slides it.
@@ -28,6 +28,7 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
   let startY = 0
   let baseActive = 0
   const geom = { W: 0, H: 0, Cx: 0, Cy: 0, R: 0, activeX: 0, step, stepPx: 120 }
+  let enterTimer = 0
 
   const stage = el('div', { class: 'arc-stage' + (side === 'right' ? ' right' : '') })
 
@@ -52,22 +53,43 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
     geom.stepPx = Math.max(52, geom.R * Math.sin(geom.step))
   }
 
-  function placeItems(f) {
+  //   dx:   shift every item sideways (used to park them off-stage before an entrance)
+  //   fade: multiplies the usual opacity (0 = invisible)
+  function placeItems(f, { dx = 0, fade = 1 } = {}) {
     for (let i = 0; i < N; i++) {
       const a = (i - f) * geom.step
       const x = geom.Cx + sign * geom.R * Math.cos(a)
       const y = geom.Cy + geom.R * Math.sin(a)
       const dist = Math.abs(i - f)
       const it = nodes[i]
-      it.style.left = x + 'px'
+      it.style.left = (x + dx) + 'px'
       it.style.top = y + 'px'
-      it.style.opacity = String(Math.max(0.10, 1 - dist * 0.42))
+      it.style.opacity = String(Math.max(0.10, 1 - dist * 0.42) * fade)
       it.style.transform = `translate(-50%, -50%) scale(${Math.max(0.62, 1 - dist * 0.14)})`
       it.classList.toggle('on', Math.round(f) === i)
     }
   }
 
   function layout() { measure(); placeItems(active) }
+
+  // Bring the items onto the arc from off-stage. For when the view comes back
+  // on screen and the wheel is already built — folding the table back into the
+  // game's circle, say: the circle grows and the beads ride in with it, instead
+  // of popping into place. Give it the same ms as the thing it travels with.
+  //   dx: where they start, relative to their spot (negative = from the left)
+  function enter({ dx = -140, ms = 560 } = {}) {
+    measure()
+    stage.classList.add('dragging')            // park them with transitions off
+    placeItems(active, { dx, fade: 0 })
+    void stage.offsetWidth                     // commit that as the start state
+    requestAnimationFrame(() => {
+      stage.style.setProperty('--pan', ms + 'ms')
+      stage.classList.remove('dragging')
+      placeItems(active)
+      clearTimeout(enterTimer)
+      enterTimer = setTimeout(() => stage.style.removeProperty('--pan'), ms + 80)
+    })
+  }
 
   // Swap the labels (and lead icons) of the items already on the arc, leaving
   // geometry and the active index alone. Changing the interface language is a
@@ -133,5 +155,9 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
     requestAnimationFrame(() => stage.classList.remove('dragging'))
   })
 
-  return { stage, setActive, setItems, layout, getActive: () => active, destroy: () => ro.disconnect() }
+  return {
+    stage, setActive, setItems, enter, layout,
+    getActive: () => active,
+    destroy: () => { clearTimeout(enterTimer); ro.disconnect() }
+  }
 }

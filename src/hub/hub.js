@@ -233,6 +233,12 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     renderHeader()
   }
 
+  // Leaving the table: it shrinks back into the game's circle. The menu beads
+  // ride in with it from the left instead of popping up where they stand —
+  // same duration as the table's own glide, so circle and beads arrive
+  // together. Every game with a table gets this, it isn't Mister White's.
+  const TABLE_CLOSE_MS = 640
+
   function closeTable() {
     if (!table) return
     const t = table
@@ -240,6 +246,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     canvas.classList.remove('tabling')
     history.replaceState(null, '', '#/menu/' + games[selected].id)
     renderHeader()
+    if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
     t.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
   }
 
