@@ -7,7 +7,7 @@ import { el } from './ui.js'
 //   side: 'right' -> mirrored: bulges from the right, labels to the left
 //   items: [{ title, sub }]
 //   onActivate(index): called when the already-active item is tapped
-// Returns { stage, setActive, setItems, enter, layout, getActive, destroy }.
+// Returns { stage, setActive, setItems, enter, exit, layout, getActive, destroy }.
 // Geometry of the circle a wheel rides. R is half the stage height, so the
 // circle touches the top and bottom edges; its centre sits off-screen on the
 // given side. The hub draws this circle once, above the strip, and slides it.
@@ -91,6 +91,25 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
     })
   }
 
+  // The other half: send them off-stage the same way they came, for when the
+  // view is about to be covered (the game's circle shrinking into the table).
+  // Once they're out, they're put back in place invisibly, so whatever shows
+  // the wheel next finds it whole.
+  function exit({ dx = -140, ms = 560 } = {}) {
+    measure()
+    stage.classList.remove('dragging')   // transitions ON...
+    void stage.offsetWidth               // ...and seen as on before we move them
+    stage.style.setProperty('--pan', ms + 'ms')
+    placeItems(active, { dx, fade: 0 })
+    clearTimeout(enterTimer)
+    enterTimer = setTimeout(() => {
+      stage.style.removeProperty('--pan')
+      stage.classList.add('dragging')
+      placeItems(active)
+      requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.remove('dragging')))
+    }, ms + 80)
+  }
+
   // Swap the labels (and lead icons) of the items already on the arc, leaving
   // geometry and the active index alone. Changing the interface language is a
   // text change, not a new wheel: rebuilding one makes every item fly in from
@@ -156,7 +175,7 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
   })
 
   return {
-    stage, setActive, setItems, enter, layout,
+    stage, setActive, setItems, enter, exit, layout,
     getActive: () => active,
     destroy: () => { clearTimeout(enterTimer); ro.disconnect() }
   }

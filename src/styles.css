@@ -597,7 +597,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    The table ("Gioca"): seats on a circle, a drawer below
    ============================================================ */
 /* the menu gets out of the way quickly, before the table passes over it */
-.canvas.tabling .arc-host.here { opacity: 0; pointer-events: none; transition-duration: .22s !important; }
+/* While the table is up the menu wheel is out of the way. The fade is quick by
+   default; when the beads slide out with the circle the hub stretches it over
+   that travel (--tabling-out), so they don't blank out halfway. */
+.canvas.tabling .arc-host.here { opacity: 0; pointer-events: none; transition-duration: var(--tabling-out, .22s) !important; }
 /* a match screen continues the hub's scene: no slide-in, no page height of its own */
 .game-root.on-table { min-height: 0; animation: none; }
 

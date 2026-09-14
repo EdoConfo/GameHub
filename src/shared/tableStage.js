@@ -23,6 +23,10 @@ function bezier(x1, y1, x2, y2) {
 const ease = bezier(0.4, 0, 0.18, 1)
 const smooth = (a, b, t) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a || 1))); return k * k * (3 - 2 * k) }
 
+// How long the table takes to fold away. Whoever animates alongside it (the
+// hub's menu wheel) reads it from here instead of guessing the same number.
+export const TABLE_CLOSE_MS = 640
+
 // Where the table and the drawer last were. The next stage (another screen)
 // starts from there, so moving between screens the table glides, never jumps.
 let lastGeo = null
@@ -161,7 +165,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   function close(to, done) {
     isOpen = false
     drawer.classList.remove('open')
-    glide(to, { ms: 640, shown: 0, span: [0, 0.5], done: () => { destroy(); if (done) done() } })
+    glide(to, { ms: TABLE_CLOSE_MS, shown: 0, span: [0, 0.5], done: () => { destroy(); if (done) done() } })
   }
 
   function refit() {

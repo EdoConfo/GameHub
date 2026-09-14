@@ -3,6 +3,10 @@ import { t } from '../shared/i18n.js'
 import { createTableStage } from '../shared/tableStage.js'
 import { avatar, openProfileEditor } from './players.js'
 
+// How long the game's circle takes to become the table, coming out of the
+// menu. Exported for whoever rides along with it.
+export const TABLE_MORPH_MS = 780
+
 const pill = (glyph, label, onClick) =>
   el('button', { class: 'pill', onclick: onClick }, [icon(glyph), el('span', {}, label)])
 
@@ -114,7 +118,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   refresh()
   const h = stage.open({ slide: !!from })
   // out of the menu: the big circle shrinks into the table, seats appear late
-  stage.glide(stage.room(h), from ? { ms: 780, span: [0.3, 1] } : { ms: 460 })
+  stage.glide(stage.room(h), from ? { ms: TABLE_MORPH_MS, span: [0.3, 1] } : { ms: 460 })
 
   return { refit: stage.refit, close: stage.close }
 }

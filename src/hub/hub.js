@@ -2,7 +2,8 @@ import { el, icon } from '../shared/ui.js'
 import { t, langName, cycleLang } from '../shared/i18n.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor, avatar } from './players.js'
-import { openTableScene } from './tableScene.js'
+import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
+import { TABLE_CLOSE_MS } from '../shared/tableStage.js'
 import { games } from '../games/registry.js'
 
 // The hub is a fixed scene with TWO still circles; the app is a window panning
@@ -223,9 +224,21 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     return { cx: xB - cam[V_MENU], cy: H / 2, r: R }
   }
 
+  // "Gioca": the circle shrinks into the table and the menu beads leave with
+  // it, sliding out the way they came in. Arriving straight on the table
+  // (a reload on #/table/...) there is nothing to morph out of, so the beads
+  // just aren't there — no exit to play.
   function openTable(morph = true) {
     const game = games[selected]
     if (table || !game.table) return
+    if (morph && menuWheel) {
+      // the host's own fade would blank the beads in .22s, before they've gone
+      // anywhere: stretch it over the circle's travel instead
+      canvas.style.setProperty('--tabling-out', TABLE_MORPH_MS + 'ms')
+      menuWheel.exit({ ms: TABLE_MORPH_MS })
+    } else {
+      canvas.style.removeProperty('--tabling-out')
+    }
     canvas.classList.add('tabling')
     circleB.style.visibility = 'hidden' // the table's own circle takes over, same place
     table = openTableScene(canvas, header, ctx, game, { from: morph ? circleBOnScreen() : null })
@@ -237,8 +250,6 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // ride in with it from the left instead of popping up where they stand —
   // same duration as the table's own glide, so circle and beads arrive
   // together. Every game with a table gets this, it isn't Mister White's.
-  const TABLE_CLOSE_MS = 640
-
   function closeTable() {
     if (!table) return
     const t = table
