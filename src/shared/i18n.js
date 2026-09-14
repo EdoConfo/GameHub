@@ -29,6 +29,7 @@ const DICT = {
     'common.new': 'Nuovo',
     'common.menu': 'Menu',
     'common.restore': 'Ripristina',
+    'common.whatItDoes': 'Cosa fa',
 
     'hub.players': 'Giocatori',
     'hub.settings': 'Impostazioni',
@@ -169,6 +170,8 @@ const DICT = {
     'mw.opt.less': 'Meno {label}',
     'mw.opt.more': 'Più {label}',
     'mw.opt.civili': 'Civili',
+    'mw.opt.characters': 'Personaggi',
+    'mw.opt.charactersHint': 'I civili sono tutti gli altri: quelli che restano dopo gli impostori. Tocca ? per sapere cosa fa un ruolo.',
     'mw.opt.words': 'Parole',
     'mw.opt.choose': 'Scegli',
     'mw.opt.nPacks': '{n} pacchetti',
@@ -306,6 +309,7 @@ const DICT = {
     'common.new': 'New',
     'common.menu': 'Menu',
     'common.restore': 'Restore',
+    'common.whatItDoes': 'What it does',
 
     'hub.players': 'Players',
     'hub.settings': 'Settings',
@@ -446,6 +450,8 @@ const DICT = {
     'mw.opt.less': 'Fewer {label}',
     'mw.opt.more': 'More {label}',
     'mw.opt.civili': 'Civilians',
+    'mw.opt.characters': 'Characters',
+    'mw.opt.charactersHint': 'Civilians are everyone else: whoever the impostors leave over. Tap ? to see what a role does.',
     'mw.opt.words': 'Words',
     'mw.opt.choose': 'Choose',
     'mw.opt.nPacks': '{n} packs',

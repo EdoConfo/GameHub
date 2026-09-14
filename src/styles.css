@@ -755,6 +755,34 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .opt-row:first-child { border-top: 0; }
 .opt-label { font-size: 16px; }
 .opt-value { font-size: 14px; color: var(--text-dim); }
+/* A door on the drawer's main page: what it is on the left, what it holds on
+   the right, and a way in. */
+.opt-door {
+  width: 100%; background: none; border: 0; border-top: 1px solid var(--border);
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.opt-door:first-child { border-top: 0; }
+.opt-door-value { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.opt-door-value .opt-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opt-door-value .icon { width: 18px; height: 18px; color: var(--text-dim); }
+
+/* One row per role: ? · name · how many. The description opens under the row,
+   so the counts stay in sight while you read it. */
+.role-list { display: flex; flex-direction: column; }
+.role-row { border-top: 1px solid var(--border); }
+.role-row:first-child { border-top: 0; }
+.role-head { display: flex; align-items: center; gap: 10px; min-height: 52px; }
+.role-name { flex: 1; font-size: 16px; }
+.role-rest { font-size: 18px; font-weight: 750; min-width: 22px; text-align: center; color: var(--text-dim); }
+.role-info {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid var(--border); background: none; color: var(--text-dim);
+  display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.role-info .icon { width: 15px; height: 15px; }
+.role-info[aria-expanded="true"] { background: var(--primary); border-color: transparent; color: #fff; }
+.role-desc { margin: -2px 0 12px; padding-left: 36px; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
+
 .opt-row .stepper-ctrl { gap: 10px; }
 .opt-row .stepper-val { font-size: 18px; min-width: 22px; }
 .round-btn.sm { width: 36px; height: 36px; font-size: 19px; }

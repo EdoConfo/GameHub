@@ -45,8 +45,15 @@ function seatLook(pl, { starter, goddess, lit }) {
 }
 
 // ---------- before the match: this game's knobs in the hub's table drawer ----------
+// The drawer's main page keeps only two doors — Personaggi and Parole — each
+// showing what it currently holds. Tapping one opens it as a sub-page of the
+// drawer (the drawer changes height, the content fades in): one thing at a
+// time, on a phone, with the table still visible above.
+//
 // Role counts follow the number of seats until you touch them, and never go
 // past what the table allows: at least one impostor, civilians in the majority.
+// Civilians are not a knob: they're whoever is left.
+//
 // Word packs are chosen here (only chosen: they're made beforehand, from
 // "Parole" in the menu, so nobody at the table has seen them being written).
 //   ui.changed(): re-check the table · ui.open(title, content): a drawer sub-page
@@ -54,59 +61,112 @@ export function tableOptions(ctx, ui) {
   let n = 0
   let counts = null
   let touched = false
+  let paintPage = null // repaints the open sub-page, if one is open
 
-  function row(label, key) {
-    const other = key === 'mrwhite' ? 'undercover' : 'mrwhite'
-    const val = el('span', { class: 'stepper-val' })
-    const bump = d => {
-      const next = counts[key] + d
-      if (next < 0 || next + counts[other] < 1 || next + counts[other] > maxImpostors(n)) return
-      counts[key] = next
-      touched = true
-      ctx.storage.set(COUNTS_KEY, counts)
-      ui.changed()
-    }
-    const minus = el('button', { class: 'round-btn sm', 'aria-label': t('mw.opt.less', { label }), onclick: () => bump(-1) }, '−')
-    const plus = el('button', { class: 'round-btn sm', 'aria-label': t('mw.opt.more', { label }), onclick: () => bump(1) }, '+')
-    const node = el('div', { class: 'opt-row' }, [
+  // A row of the main page: what it is, what it holds, and a way in.
+  function door(label, onClick) {
+    const value = el('span', { class: 'opt-value' })
+    const node = el('button', { class: 'opt-row opt-door', onclick: onClick }, [
       el('span', { class: 'opt-label' }, label),
-      el('div', { class: 'stepper-ctrl' }, [minus, val, plus])
+      el('span', { class: 'opt-door-value' }, [value, icon('forward')])
     ])
-    return {
-      node,
-      paint() {
+    return { node, set: text => { value.textContent = text } }
+  }
+
+  const charactersDoor = door(t('mw.opt.characters'), () => openCharacters())
+  const wordsDoor = door(t('mw.opt.words'), () => openPacks())
+  const node = el('div', { class: 'opt-list' }, [charactersDoor.node, wordsDoor.node])
+
+  const civilians = () => Math.max(0, n - counts.mrwhite - counts.undercover)
+
+  // "1 Mister White · 3 Civili" — a role nobody is playing isn't named.
+  function charactersSummary() {
+    const parts = []
+    if (counts.mrwhite) parts.push(counts.mrwhite + ' ' + t('mw.role.mrwhite'))
+    if (counts.undercover) parts.push(counts.undercover + ' ' + t('mw.role.undercover'))
+    parts.push(civilians() + ' ' + t('mw.roles.civili'))
+    return parts.join(' · ')
+  }
+
+  function wordsSummary() {
+    const on = packs.enabledPacks()
+    return !on.length ? t('mw.opt.choose') : on.length === 1 ? on[0].name : t('mw.opt.nPacks', { n: on.length })
+  }
+
+  // ---------- Personaggi: how many of each role ----------
+  // One row per role. The ? opens its description right under the row instead
+  // of covering the page: you read what a role does with its own count in
+  // sight. New roles slot in as more rows, nothing else moves.
+  function roleRow({ name, desc, key }) {
+    const info = el('button', {
+      class: 'role-info', 'aria-label': t('common.whatItDoes'), 'aria-expanded': 'false',
+      onclick: () => {
+        const open = info.getAttribute('aria-expanded') === 'true'
+        info.setAttribute('aria-expanded', open ? 'false' : 'true')
+        descEl.hidden = open
+      }
+    }, icon('help'))
+    const descEl = el('p', { class: 'role-desc', hidden: true }, desc)
+
+    let control, paint
+    if (key) {
+      const other = key === 'mrwhite' ? 'undercover' : 'mrwhite'
+      const val = el('span', { class: 'stepper-val' })
+      const bump = d => {
+        const next = counts[key] + d
+        if (next < 0 || next + counts[other] < 1 || next + counts[other] > maxImpostors(n)) return
+        counts[key] = next
+        touched = true
+        ctx.storage.set(COUNTS_KEY, counts)
+        ui.changed()
+      }
+      const minus = el('button', { class: 'round-btn sm', 'aria-label': t('mw.opt.less', { label: name }), onclick: () => bump(-1) }, '−')
+      const plus = el('button', { class: 'round-btn sm', 'aria-label': t('mw.opt.more', { label: name }), onclick: () => bump(1) }, '+')
+      control = el('div', { class: 'stepper-ctrl' }, [minus, val, plus])
+      paint = () => {
         val.textContent = String(counts[key])
         minus.disabled = counts[key] <= 0 || counts[key] + counts[other] <= 1
         plus.disabled = counts[key] + counts[other] >= maxImpostors(n)
       }
+    } else {
+      // Civilians: a count, not a choice — everyone the impostors leave over.
+      const val = el('span', { class: 'role-rest' })
+      control = val
+      paint = () => { val.textContent = String(civilians()) }
+    }
+
+    return {
+      node: el('div', { class: 'role-row' }, [
+        el('div', { class: 'role-head' }, [info, el('span', { class: 'role-name' }, name), control]),
+        descEl
+      ]),
+      paint
     }
   }
 
-  const mw = row(t('mw.role.mrwhite'), 'mrwhite')
-  const uc = row(t('mw.role.undercover'), 'undercover')
-  const civili = el('span', { class: 'opt-value' })
-  const wordsBtn = el('button', { class: 'opt-link', onclick: () => openPacks() })
-  const node = el('div', { class: 'opt-list' }, [
-    mw.node, uc.node,
-    el('div', { class: 'opt-row' }, [el('span', { class: 'opt-label' }, t('mw.opt.civili')), civili]),
-    el('div', { class: 'opt-row' }, [el('span', { class: 'opt-label' }, t('mw.opt.words')), wordsBtn])
-  ])
-
-  function paintWords() {
-    const on = packs.enabledPacks()
-    const label = !on.length ? t('mw.opt.choose') : on.length === 1 ? on[0].name : t('mw.opt.nPacks', { n: on.length })
-    wordsBtn.replaceChildren(el('span', {}, label), icon('forward'))
+  function openCharacters() {
+    const rows = [
+      roleRow({ name: t('mw.role.mrwhite'), desc: t('mw.rules.mrwhite'), key: 'mrwhite' }),
+      roleRow({ name: t('mw.role.undercover'), desc: t('mw.rules.undercover'), key: 'undercover' }),
+      roleRow({ name: t('mw.roles.civili'), desc: t('mw.rules.civili'), key: null })
+    ]
+    paintPage = () => rows.forEach(r => r.paint())
+    paintPage()
+    ui.open(t('mw.opt.characters'), [
+      el('div', { class: 'role-list' }, rows.map(r => r.node)),
+      el('p', { class: 'drawer-hint' }, t('mw.opt.charactersHint'))
+    ])
   }
 
-  // Choose which packs this match draws from.
+  // ---------- Parole: which packs this match draws from ----------
   function openPacks() {
     const list = el('div', { class: 'pack-pick-list' })
-    function paint() {
+    paintPage = () => {
       const on = new Set(packs.enabledIds())
       list.replaceChildren(...packs.allPacks().map(p => el('button', {
         class: 'pack-pick' + (on.has(p.id) ? ' on' : ''),
         'aria-pressed': on.has(p.id) ? 'true' : 'false',
-        onclick: () => { packs.toggleEnabled(p.id); paint(); ui.changed() }
+        onclick: () => { packs.toggleEnabled(p.id); ui.changed() }
       }, [
         el('span', { class: 'pack-pick-check' }, icon('check')),
         el('span', { class: 'pack-text' }, [
@@ -115,7 +175,7 @@ export function tableOptions(ctx, ui) {
         ])
       ])))
     }
-    paint()
+    paintPage()
     ui.open(t('mw.opt.words'), [
       el('p', { class: 'drawer-hint' }, t('mw.opt.packsHint')),
       list
@@ -133,9 +193,9 @@ export function tableOptions(ctx, ui) {
         else counts = fitCounts(n, counts)       // keep your choice, trimmed to the table
         ctx.storage.set(COUNTS_KEY, counts)
       }
-      mw.paint(); uc.paint()
-      civili.textContent = String(Math.max(0, n - counts.mrwhite - counts.undercover))
-      paintWords()
+      charactersDoor.set(charactersSummary())
+      wordsDoor.set(wordsSummary())
+      if (paintPage) paintPage()
       const v = validateSetup(n, counts)
       if (!v.ok) return v.message.replace(/\.$/, '')
       if (!packs.enabledItems().length) return t('mw.setup.pickPack')
