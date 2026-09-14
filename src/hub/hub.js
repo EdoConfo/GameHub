@@ -1,4 +1,5 @@
 import { el, icon } from '../shared/ui.js'
+import { t, langName, cycleLang } from '../shared/i18n.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor, avatar } from './players.js'
 import { openTableScene } from './tableScene.js'
@@ -19,7 +20,7 @@ const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
 // A line icon in a round badge that sits on the circle like a bead.
 const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 
-export function renderHub(root, ctx, startMenuId, { table: startTable = false } = {}) {
+export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, focusId = null } = {}) {
   let index = V_GAMES
   let selected = 0
   let sideKind = 'players'
@@ -108,51 +109,69 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
       header.replaceChildren(
         el('span', { class: 'wordmark' }, 'GAMEHUB'),
         el('div', { class: 'hub-header-actions' }, [
-          el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => { buildSide('players'); moveCamera(V_SIDE) } }, icon('players')),
-          el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
+          el('button', { class: 'icon-btn', 'aria-label': t('hub.players'), onclick: () => { buildSide('players'); moveCamera(V_SIDE) } }, icon('players')),
+          el('button', { class: 'icon-btn', 'aria-label': t('hub.settings'), onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
         ])
       )
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
       header.replaceChildren(
-        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => (table ? closeTable() : goto(V_GAMES)) }, icon('back')),
+        el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => (table ? closeTable() : goto(V_GAMES)) }, icon('back')),
         el('span', { class: 'wordmark game-home-title' }, games[selected].name.toUpperCase())
       )
     } else {
       // page on the left of its circle: mirrored — name left, arrow right
       header.replaceChildren(
-        el('span', { class: 'wordmark game-home-title' }, sideKind === 'settings' ? 'IMPOSTAZIONI' : 'GIOCATORI'),
-        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(V_GAMES) }, icon('forward'))
+        el('span', { class: 'wordmark game-home-title' },
+          (sideKind === 'settings' ? t('hub.settings') : t('hub.players')).toUpperCase()),
+        el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => goto(V_GAMES) }, icon('forward'))
       )
     }
   }
 
   // ---- circle A, left arc: Giocatori / Impostazioni ----
-  function buildSide(kind) {
+  // focus: which bead to keep centred on the wheel — a player id on the
+  // Giocatori arc, a setting name on the Impostazioni one — so that coming
+  // back from a page, or switching language, lands where you left.
+  function buildSide(kind, focus = null) {
     sideKind = kind
     hosts[V_SIDE].replaceChildren()
     if (kind === 'settings') {
       const dark = ctx.storage.get('theme', 'dark') !== 'light'
-      createArcWheel(hosts[V_SIDE], {
+      // Tap a bead to change it on the spot. Theme repaints in place; language
+      // swaps every label in the app, so the hub is rebuilt through the route —
+      // and comes back parked on this same bead.
+      const ids = ['theme', 'language', 'offline']
+      const wheel = createArcWheel(hosts[V_SIDE], {
         side: 'right',
         items: [
-          { title: 'Tema', sub: dark ? 'Scuro' : 'Chiaro', lead: badge(dark ? 'moon' : 'sun') },
-          { title: 'Offline', sub: 'Installabile · funziona senza rete', lead: badge('offline') }
+          { title: t('settings.theme'), sub: dark ? t('settings.dark') : t('settings.light'), lead: badge(dark ? 'moon' : 'sun') },
+          { title: t('settings.language'), sub: langName(), lead: badge('globe') },
+          { title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
         ],
-        onActivate: i => { if (i === 0) { ctx.applyTheme(dark ? 'light' : 'dark'); buildSide('settings'); renderHeader() } }
+        onActivate: i => {
+          if (i === 0) { ctx.applyTheme(dark ? 'light' : 'dark'); buildSide('settings', 'theme'); renderHeader() }
+          else if (i === 1) { cycleLang(); ctx.router.go('/settings/language') }
+        }
       })
+      const at = ids.indexOf(focus)
+      if (at >= 0) wheel.setActive(at)
     } else {
       const list = ctx.players.all()
-      const items = list.map(p => ({ title: p.name, sub: 'Profilo', lead: avatar(p, 56) }))
-      items.push({ title: 'Nuovo', sub: 'Aggiungi giocatore', lead: badge('plus') })
-      createArcWheel(hosts[V_SIDE], {
+      const items = list.map(p => ({ title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))
+      items.push({ title: t('common.new'), sub: t('players.addPlayer'), lead: badge('plus') })
+      const wheel = createArcWheel(hosts[V_SIDE], {
         side: 'right',
         items,
         onActivate: i => {
           if (i < list.length) ctx.router.go('/player/' + list[i].id)
-          else openProfileEditor(ctx, null, () => { buildSide('players'); renderHeader() })
+          else openProfileEditor(ctx, null, saved => { buildSide('players', saved && saved.id); renderHeader() })
         }
       })
+      if (focus) {
+        const i = list.findIndex(p => p.id === focus)
+        if (i >= 0) wheel.setActive(i)
+      }
     }
     renderHeader()
   }
@@ -235,6 +254,9 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
   if (startMenuId) {
     const i = games.findIndex(g => g.id === startMenuId)
     if (i >= 0) { gamesWheel.setActive(i); selected = i; buildMenu(); index = V_MENU }
+  } else if (startSide) {
+    buildSide(startSide, focusId)
+    index = V_SIDE
   }
   layout(false)
   requestAnimationFrame(() => layout(false))

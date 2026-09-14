@@ -1,4 +1,5 @@
 import { el, screen, button, shuffle } from '../../shared/ui.js'
+import { t } from '../../shared/i18n.js'
 import { renderPackManager } from '../../shared/packManagerScreen.js'
 import { ensurePermission, motionSupported } from './motion.js'
 
@@ -12,15 +13,16 @@ function buildWords(store, packId) {
 
 // ---------- RULES ----------
 export function renderRules(api) {
-  const view = screen({ title: 'Come si gioca', onBack: () => api.toMenu() })
-  const rule = (t, d) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, t), el('div', { class: 'rule-desc muted' }, d)])
-  view.body.append(section('In breve', [
-    rule('Telefono in fronte', 'Un giocatore tiene il telefono sulla fronte, schermo verso gli altri.'),
-    rule('Gli altri danno indizi', 'Descrivono la parola senza dirla, finché non la indovini.'),
-    rule('Inclina', 'Giù = indovinata, su = passo. In alternativa tocca lo schermo (destra = giusto, sinistra = passo).')
+  const view = screen({ title: t('hu.rules.title'), onBack: () => api.toMenu() })
+  // `title` here, not `t`: `t` is the translator.
+  const rule = (title, desc) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, title), el('div', { class: 'rule-desc muted' }, desc)])
+  view.body.append(section(t('hu.rules.shortSection'), [
+    rule(t('hu.rules.phone'), t('hu.rules.phoneDesc')),
+    rule(t('hu.rules.clues'), t('hu.rules.cluesDesc')),
+    rule(t('hu.rules.tilt'), t('hu.rules.tiltDesc'))
   ]))
-  view.body.append(section('Obiettivo', [
-    rule('Più parole possibili', 'Indovinane il più possibile prima che scada il tempo.')
+  view.body.append(section(t('hu.rules.goalSection'), [
+    rule(t('hu.rules.goal'), t('hu.rules.goalDesc'))
   ]))
   return view
 }
@@ -28,8 +30,8 @@ export function renderRules(api) {
 // ---------- PACKS (manage words for this game) ----------
 export function renderPacks(api) {
   return renderPackManager(api.packs, {
-    title: 'Parole',
-    help: 'Parole e nomi da indovinare. Attiva le categorie da giocare; puoi aggiungerne di tue.',
+    title: t('packs.title'),
+    help: t('hu.packsHelp'),
     onBack: () => api.toMenu()
   })
 }
@@ -37,19 +39,19 @@ export function renderPacks(api) {
 // ---------- SETUP ----------
 export function renderSetup(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Heads Up', onBack: () => api.toMenu() })
+  const view = screen({ title: t('hu.name'), onBack: () => api.toMenu() })
   const packs = api.packs.enabledPacks()
 
   // Keep the selection valid against the currently enabled packs.
   if (!packs.some(p => p.id === state.packId)) state.packId = packs[0]?.id || null
 
   // Pack picker
-  const sec1 = section('Categoria')
+  const sec1 = section(t('hu.setup.category'))
   const chips = el('div', { class: 'chip-list' })
   function refreshPacks() {
     chips.replaceChildren()
     if (!packs.length) {
-      chips.append(el('p', { class: 'muted' }, 'Nessuna categoria attiva. Aggiungine o attivane una in “Gestisci parole”.'))
+      chips.append(el('p', { class: 'muted' }, t('hu.setup.noCategory')))
     }
     for (const p of packs) {
       chips.append(el('button', {
@@ -60,10 +62,10 @@ export function renderSetup(api) {
   }
   refreshPacks()
   sec1.append(chips)
-  sec1.append(el('button', { class: 'link-btn', onclick: () => api.goPhase('packs') }, 'Gestisci parole'))
+  sec1.append(el('button', { class: 'link-btn', onclick: () => api.goPhase('packs') }, t('hu.setup.manage')))
 
   // Duration
-  const sec2 = section('Durata')
+  const sec2 = section(t('hu.setup.duration'))
   const durRow = el('div', { class: 'chip-list' })
   function refreshDur() {
     durRow.replaceChildren()
@@ -78,17 +80,15 @@ export function renderSetup(api) {
   sec2.append(durRow)
 
   // Controls
-  const sec3 = section('Comandi')
+  const sec3 = section(t('hu.setup.controls'))
   sec3.append(el('p', { class: 'muted' },
-    motionSupported()
-      ? 'Inclina il telefono in giù = giusto, in su = passo. In alternativa tocca lo schermo: destra = giusto, sinistra = passo.'
-      : 'Sensore non disponibile: tocca lo schermo — destra = giusto, sinistra = passo.'))
+    motionSupported() ? t('hu.setup.tiltHint') : t('hu.setup.noSensor')))
   sec3.append(el('label', { class: 'row space-between' }, [
-    el('span', {}, 'Inverti inclinazione'),
+    el('span', {}, t('hu.setup.invert')),
     el('input', { type: 'checkbox', checked: state.invert, onchange: e => { state.invert = e.target.checked } })
   ]))
 
-  const startBtn = button('Continua', {
+  const startBtn = button(t('hu.setup.continue'), {
     variant: 'primary', full: true,
     disabled: !state.packId,
     onClick: () => { if (state.packId) api.goPhase('ready') }
@@ -101,19 +101,19 @@ export function renderSetup(api) {
 // ---------- READY ----------
 export function renderReady(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Pronti?', onBack: () => api.goPhase('setup') })
+  const view = screen({ title: t('hu.ready.title'), onBack: () => api.goPhase('setup') })
 
   view.body.append(el('div', { class: 'ready-block' }, [
     el('div', { class: 'ready-emoji' }, '📱'),
     el('ol', { class: 'ready-steps' }, [
-      el('li', {}, 'Gira il telefono in orizzontale.'),
-      el('li', {}, 'Tienilo sulla fronte, schermo verso gli altri.'),
-      el('li', {}, 'Gli altri ti danno indizi. Indovina la parola!'),
-      el('li', {}, 'Giù = giusto · Su = passo (oppure tocca destra/sinistra).')
+      el('li', {}, t('hu.ready.step1')),
+      el('li', {}, t('hu.ready.step2')),
+      el('li', {}, t('hu.ready.step3')),
+      el('li', {}, t('hu.ready.step4'))
     ])
   ]))
 
-  const startBtn = button('Avvia', {
+  const startBtn = button(t('hu.ready.start'), {
     variant: 'primary', full: true, onClick: async () => {
       // Permission must be requested from this user gesture (iOS).
       state.motionGranted = await ensurePermission()
@@ -139,7 +139,7 @@ export function renderCountdown(api) {
   runtime.countdown = setInterval(() => {
     n--
     if (n > 0) num.textContent = String(n)
-    else if (n === 0) num.textContent = 'Via!'
+    else if (n === 0) num.textContent = t('hu.countdown.go')
     else {
       clearInterval(runtime.countdown)
       runtime.countdown = null
@@ -160,7 +160,7 @@ export function renderPlay(api) {
   timerBar.append(timerFill)
   const scoreEl = el('div', { class: 'play-score' }, '0')
   const wordEl = el('div', { class: 'play-word' })
-  const hint = el('div', { class: 'play-hint' }, '← passo · giusto →')
+  const hint = el('div', { class: 'play-hint' }, t('hu.play.hint'))
 
   wrap.append(
     el('div', { class: 'play-top' }, [timerBar, scoreEl]),
@@ -209,11 +209,11 @@ export function renderPlay(api) {
     // If no sensor reading arrives, make the tap fallback obvious.
     setTimeout(() => {
       if (state.phase === 'play' && runtime.tilt && !runtime.tilt.hasReading()) {
-        hint.textContent = 'Sensore assente — tocca: ← passo · giusto →'
+        hint.textContent = t('hu.play.noSensorHint')
       }
     }, 1800)
   } else {
-    hint.textContent = 'Tocca: ← passo · giusto →'
+    hint.textContent = t('hu.play.tapHint')
   }
 
   // Timer.
@@ -236,30 +236,30 @@ export function renderPlay(api) {
 // ---------- RESULTS ----------
 export function renderResults(api) {
   const { ctx, state } = api
-  const view = screen({ title: 'Risultato', onBack: () => api.toMenu() })
+  const view = screen({ title: t('hu.results.title'), onBack: () => api.toMenu() })
 
   const correct = state.results.filter(r => r.correct)
   const passed = state.results.filter(r => !r.correct)
 
   view.body.append(el('div', { class: 'result-hero' }, [
-    el('h2', { class: 'result-headline' }, `${correct.length} indovinate`),
-    el('p', { class: 'muted center' }, `${passed.length} passate · ${state.duration}s`)
+    el('h2', { class: 'result-headline' }, t('hu.results.guessed', { n: correct.length })),
+    el('p', { class: 'muted center' }, t('hu.results.passedLine', { n: passed.length, s: state.duration }))
   ]))
 
   if (correct.length) {
-    view.body.append(section('Indovinate ✅', [wordChips(correct, 'ok')]))
+    view.body.append(section(t('hu.results.guessedSection'), [wordChips(correct, 'ok')]))
   }
   if (passed.length) {
-    view.body.append(section('Passate ⏭️', [wordChips(passed, 'pass')]))
+    view.body.append(section(t('hu.results.passedSection'), [wordChips(passed, 'pass')]))
   }
   if (!state.results.length) {
-    view.body.append(el('p', { class: 'muted center' }, 'Nessuna parola giocata.'))
+    view.body.append(el('p', { class: 'muted center' }, t('hu.results.empty')))
   }
 
   view.body.append(el('div', { class: 'row stack' }, [
-    button('Rigioca', { variant: 'primary', full: true, onClick: () => api.goPhase('ready') }),
-    button('Cambia categoria', { variant: 'secondary', full: true, onClick: () => api.goPhase('setup') }),
-    button('Torna alla home', { variant: 'ghost', full: true, onClick: () => api.toMenu() })
+    button(t('hu.results.replay'), { variant: 'primary', full: true, onClick: () => api.goPhase('ready') }),
+    button(t('hu.results.changeCategory'), { variant: 'secondary', full: true, onClick: () => api.goPhase('setup') }),
+    button(t('hu.results.home'), { variant: 'ghost', full: true, onClick: () => api.toMenu() })
   ]))
   return view
 }

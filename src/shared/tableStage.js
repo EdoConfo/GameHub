@@ -1,4 +1,5 @@
 import { el } from './ui.js'
+import { t } from './i18n.js'
 import { createTableView, seatFor } from './tableView.js'
 
 // cubic-bezier(x1, y1, x2, y2) as a function of progress — same curves as CSS.
@@ -35,7 +36,7 @@ let lastDrawer = 0
 //   shown: initial seat visibility (0 = seats still to appear)
 export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, onSwap, onMove, onRotate } = {}) {
   const layer = el('div', { class: 'table-layer' })
-  const handle = el('button', { class: 'drawer-handle', 'aria-label': 'Apri o chiudi il cassetto' })
+  const handle = el('button', { class: 'drawer-handle', 'aria-label': t('table.drawerToggle') })
   const body = el('div', { class: 'drawer-body' })
   const drawer = el('div', { class: 'drawer' }, [handle, body])
   host.append(layer, drawer)

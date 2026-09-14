@@ -1,4 +1,5 @@
-import { el, screen, button, modal, clear } from '../shared/ui.js'
+import { el, button, modal, clear } from '../shared/ui.js'
+import { t } from '../shared/i18n.js'
 import { COLORS, EMOJIS } from '../shared/players.js'
 
 // Generic user icon: always the same neutral grey, visible on any colour
@@ -25,38 +26,6 @@ export function emptyAvatar(size = 32) {
   return el('span', { class: 'avatar avatar-empty', style: `width:${size}px;height:${size}px`, html: USER_SVG(Math.round(size * 0.5)) })
 }
 
-// Players portal — the shared "accounts" manager, opened from the hub header.
-export function renderPlayers(root, ctx) {
-  const view = screen({
-    title: 'Giocatori',
-    onBack: () => ctx.router.go('/'),
-    actions: [el('button', { class: 'icon-btn', 'aria-label': 'Nuovo giocatore', onclick: () => openProfileEditor(ctx, null, () => refresh()) }, '+')]
-  })
-  const list = el('div', { class: 'profile-list' })
-
-  function refresh() {
-    clear(list)
-    const players = ctx.players.all()
-    if (!players.length) {
-      list.append(el('p', { class: 'muted center' }, 'Nessun giocatore. Tocca + in alto per aggiungerne uno: sarà disponibile in tutti i giochi.'))
-    }
-    for (const p of players) {
-      list.append(el('button', {
-        class: 'profile-row',
-        onclick: () => ctx.router.go('/player/' + p.id)
-      }, [
-        avatar(p, 40),
-        el('span', { class: 'profile-name' }, p.name),
-        el('span', { class: 'profile-arrow', 'aria-hidden': 'true' }, '›')
-      ]))
-    }
-  }
-
-  view.body.append(list)
-  refresh()
-  root.append(view)
-}
-
 // Downscale + center-square-crop an image File to a JPEG data URL.
 function fileToAvatar(file, max = 320, quality = 0.82) {
   return new Promise((resolve, reject) => {
@@ -73,7 +42,7 @@ function fileToAvatar(file, max = 320, quality = 0.82) {
       URL.revokeObjectURL(url)
       try { resolve(canvas.toDataURL('image/jpeg', quality)) } catch (e) { reject(e) }
     }
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Immagine non valida')) }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(t('players.badImage'))) }
     img.src = url
   })
 }
@@ -103,11 +72,11 @@ export function openProfileEditor(ctx, existing, onDone, { title } = {}) {
 
   // Big avatar + "Carica foto" directly under it.
   const bigAvatar = el('div', { class: 'edit-avatar' })
-  const photoBtn = button('Carica foto', { variant: 'secondary', onClick: () => pickPhoto(data => { state.photo = data; rebuild() }) })
-  const removeLink = el('button', { class: 'link-btn edit-remove', onclick: () => { state.photo = null; rebuild() } }, 'Rimuovi foto')
+  const photoBtn = button(t('players.loadPhoto'), { variant: 'secondary', onClick: () => pickPhoto(data => { state.photo = data; rebuild() }) })
+  const removeLink = el('button', { class: 'link-btn edit-remove', onclick: () => { state.photo = null; rebuild() } }, t('players.removePhoto'))
   const head = el('div', { class: 'edit-head' }, [bigAvatar, photoBtn, removeLink])
 
-  const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: 'Nome', maxlength: '20', value: state.name })
+  const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: t('players.namePlaceholder'), maxlength: '20', value: state.name })
 
   const colorRow = el('div', { class: 'swatch-row' })
   for (const c of COLORS) colorRow.append(el('button', { class: 'swatch', style: `background:${c}`, onclick: () => { state.color = c; rebuild() } }))
@@ -121,8 +90,8 @@ export function openProfileEditor(ctx, existing, onDone, { title } = {}) {
     }, e))
   }
   const emojiBlock = el('div', { class: 'stack-gap' }, [
-    el('div', { class: 'field-label' }, 'Colore'), colorRow,
-    el('div', { class: 'field-label' }, 'Emoji (opzionale)'), emojiRow
+    el('div', { class: 'field-label' }, t('players.color')), colorRow,
+    el('div', { class: 'field-label' }, t('players.emojiOptional')), emojiRow
   ])
 
   function rebuild() {
@@ -134,14 +103,14 @@ export function openProfileEditor(ctx, existing, onDone, { title } = {}) {
 
   const err = el('p', { class: 'error-text' })
   const m = modal({
-    title: title || (existing ? 'Modifica giocatore' : 'Nuovo giocatore'),
+    title: title || (existing ? t('players.editTitle') : t('players.newTitle')),
     content: [head, nameInput, emojiBlock, err],
     actions: [
-      button('Annulla', { variant: 'ghost', onClick: () => m.close() }),
-      button('Salva', {
+      button(t('common.cancel'), { variant: 'ghost', onClick: () => m.close() }),
+      button(t('common.save'), {
         variant: 'primary', onClick: () => {
           const name = nameInput.value.trim()
-          if (!name) { err.textContent = 'Serve un nome.'; return }
+          if (!name) { err.textContent = t('players.nameRequired'); return }
           const patch = { name, color: state.color, emoji: state.emoji, photo: state.photo }
           const saved = existing ? ctx.players.update(existing.id, patch) : ctx.players.add(patch)
           m.close()

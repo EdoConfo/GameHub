@@ -1,4 +1,5 @@
 import { el, icon, button } from '../shared/ui.js'
+import { t } from '../shared/i18n.js'
 import { createTableStage } from '../shared/tableStage.js'
 import { avatar, openProfileEditor } from './players.js'
 
@@ -18,7 +19,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     open: (title, content) => stage.setDrawer(el('div', { class: 'drawer-page' }, [
       el('div', { class: 'drawer-title' }, title),
       ...content,
-      button('Fatto', { variant: 'ghost', full: true, onClick: done })
+      button(t('common.done'), { variant: 'ghost', full: true, onClick: done })
     ]))
   })
   let picking = null // seat index whose chair we're filling, or 'new'
@@ -34,15 +35,15 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   })
 
   // ---- drawer: table controls + game options + start ----
-  const startBtn = button('Inizia', { variant: 'primary', full: true, onClick: () => cfg.start(ctx) })
+  const startBtn = button(t('table.start'), { variant: 'primary', full: true, onClick: () => cfg.start(ctx) })
   const main = el('div', { class: 'drawer-page' }, [
     el('div', { class: 'drawer-more drawer-row' }, [
-      pill('plus', 'Sedia', () => { ctx.table.addSeat(); refresh() }),
-      pill('players', 'Giocatore', () => pick('new'))
+      pill('plus', t('table.addSeat'), () => { ctx.table.addSeat(); refresh() }),
+      pill('players', t('table.addPlayer'), () => pick('new'))
     ]),
     el('p', { class: 'drawer-more drawer-hint' }, [
-      el('span', {}, 'Su un giocatore lo scambi, tra due lo inserisci'),
-      el('span', {}, 'Trascina il tavolo per girarlo')
+      el('span', {}, t('table.swapHint')),
+      el('span', {}, t('table.rotateHint'))
     ]),
     el('div', { class: 'drawer-more drawer-options' }, options.node),
     startBtn
@@ -53,15 +54,15 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     const roster = new Map(ctx.players.all().map(p => [p.id, p]))
     stage.view.set(seats.map((s, i) => {
       const p = s.pid ? roster.get(s.pid) || null : null
-      return { key: s.id, p, name: p ? p.name : 'libero', cls: picking === i ? 'on' : '' }
+      return { key: s.id, p, name: p ? p.name : t('table.free'), cls: picking === i ? 'on' : '' }
     }))
     stage.view.setCenter(el('div', { class: 'table-count' }, [
       el('b', {}, String(seats.length)),
-      el('span', {}, seats.length === 1 ? 'posto' : 'posti')
+      el('span', {}, seats.length === 1 ? t('table.seat') : t('table.seats'))
     ]))
     // the button says why it can't start yet
-    const msg = seats.length < cfg.min ? `Servono almeno ${cfg.min} posti` : options.check(seats.length)
-    startBtn.textContent = msg || 'Inizia'
+    const msg = seats.length < cfg.min ? t('table.needSeats', { n: cfg.min }) : options.check(seats.length)
+    startBtn.textContent = msg || t('table.start')
     startBtn.disabled = !!msg
   }
 
@@ -86,19 +87,19 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     }
 
     stage.setDrawer(el('div', { class: 'drawer-page' }, [
-      el('div', { class: 'drawer-title' }, seat ? (current ? current.name : 'Posto libero') : 'Chi si siede?'),
+      el('div', { class: 'drawer-title' }, seat ? (current ? current.name : t('table.seatFree')) : t('table.whoSits')),
       el('p', { class: 'drawer-hint' }, seat && !current
-        ? 'Scegli chi siede qui, o lascialo libero: chi lo trova si presenta quando riceve il telefono.'
-        : free.length ? 'Scegli un profilo o creane uno nuovo.' : 'Tutti i profili sono già al tavolo: creane uno nuovo.'),
+        ? t('table.pickForSeat')
+        : free.length ? t('table.pickProfile') : t('table.allSeated')),
       free.length ? el('div', { class: 'pick-row' }, free.map(p =>
         el('button', { class: 'pick', onclick: () => place(p.id) }, [avatar(p, 48), el('span', { class: 'pick-name' }, p.name)])
       )) : null,
       el('div', { class: 'drawer-row' }, [
-        pill('plus', 'Nuovo', () => openProfileEditor(ctx, null, p => { if (p) place(p.id) })),
-        current ? pill('minus', 'Libera', () => { ctx.table.sit(seat.id, null); done() }) : null,
-        seat ? pill('close', 'Togli', () => { ctx.table.removeSeat(seat.id); done() }) : null
+        pill('plus', t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) place(p.id) })),
+        current ? pill('minus', t('table.free.action'), () => { ctx.table.sit(seat.id, null); done() }) : null,
+        seat ? pill('close', t('table.remove'), () => { ctx.table.removeSeat(seat.id); done() }) : null
       ]),
-      button('Fatto', { variant: 'ghost', full: true, onClick: done })
+      button(t('common.done'), { variant: 'ghost', full: true, onClick: done })
     ]))
     refresh()
   }

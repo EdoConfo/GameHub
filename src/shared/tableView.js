@@ -1,4 +1,5 @@
 import { el } from './ui.js'
+import { t } from './i18n.js'
 import { avatar, emptyAvatar } from '../hub/players.js'
 
 const SVGNS = 'http://www.w3.org/2000/svg'
@@ -93,7 +94,7 @@ export function createTableView(host, { onTap, onSwap, onMove, onRotate, onExten
   function paint(s, it) {
     const cls = (it.p ? '' : ' free') + (it.cls ? ' ' + it.cls : '')
     s.node.className = 'seat' + cls
-    s.node.setAttribute('aria-label', it.p ? it.name : 'Posto libero')
+    s.node.setAttribute('aria-label', it.p ? it.name : t('table.seatFree'))
     s.node.replaceChildren(it.p ? avatar(it.p, BASE) : emptyAvatar(BASE))
     s.label.className = 'seat-label' + cls
     s.label.replaceChildren(...[

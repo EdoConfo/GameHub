@@ -1,4 +1,5 @@
 import { el, screen, button, modal, clear } from '../shared/ui.js'
+import { t, getLocale } from '../shared/i18n.js'
 import { avatar, openProfileEditor } from './players.js'
 import { games, getGame } from '../games/registry.js'
 
@@ -15,10 +16,10 @@ export function renderPlayer(root, ctx, id) {
 
     const view = screen({
       title: '',
-      onBack: () => ctx.router.go('/players'),
+      onBack: () => ctx.router.go('/players/' + p.id),
       actions: [
-        el('button', { class: 'icon-btn', 'aria-label': 'Modifica', html: PENCIL_SVG, onclick: () => openProfileEditor(ctx, p, draw) }),
-        el('button', { class: 'icon-btn', 'aria-label': 'Elimina', html: TRASH_SVG, onclick: () => confirmDelete(p) })
+        el('button', { class: 'icon-btn', 'aria-label': t('common.edit'), html: PENCIL_SVG, onclick: () => openProfileEditor(ctx, p, draw) }),
+        el('button', { class: 'icon-btn', 'aria-label': t('common.delete'), html: TRASH_SVG, onclick: () => confirmDelete(p) })
       ]
     })
 
@@ -32,15 +33,15 @@ export function renderPlayer(root, ctx, id) {
     const { total, perGame } = ctx.stats.summary(gameIds, id)
     const winPct = total.played ? Math.round((total.won / total.played) * 100) : 0
     view.body.append(el('div', { class: 'stat-cards' }, [
-      statCard(total.played, 'Partite'),
-      statCard(total.won, 'Vittorie'),
-      statCard(winPct + '%', 'Win rate')
+      statCard(total.played, t('stats.played')),
+      statCard(total.won, t('stats.won')),
+      statCard(winPct + '%', t('stats.winRate'))
     ]))
 
     // Per-game breakdown
     const perRows = Object.entries(perGame)
     if (perRows.length) {
-      const box = el('div', { class: 'card-section' }, [el('h2', { class: 'section-title' }, 'Per gioco')])
+      const box = el('div', { class: 'card-section' }, [el('h2', { class: 'section-title' }, t('player.perGame'))])
       for (const [gid, s] of perRows) {
         const g = getGame(gid)
         box.append(el('div', { class: 'pergame-row' }, [
@@ -54,9 +55,9 @@ export function renderPlayer(root, ctx, id) {
 
     // Feed
     const feed = ctx.stats.feed(gameIds, id, 30)
-    const feedBox = el('div', { class: 'card-section' }, [el('h2', { class: 'section-title' }, 'Attività recente')])
+    const feedBox = el('div', { class: 'card-section' }, [el('h2', { class: 'section-title' }, t('player.recent'))])
     if (!feed.length) {
-      feedBox.append(el('p', { class: 'muted' }, 'Nessuna partita ancora. Gioca per riempire il feed!'))
+      feedBox.append(el('p', { class: 'muted' }, t('player.emptyFeed')))
     } else {
       for (const item of feed) {
         const g = getGame(item.gameId)
@@ -66,7 +67,7 @@ export function renderPlayer(root, ctx, id) {
             el('span', { class: 'feed-title' }, g?.name || item.gameId),
             el('span', { class: 'feed-sub muted small' }, item.result || '')
           ]),
-          el('span', { class: 'feed-badge ' + (item.won ? 'win' : 'lose') }, item.won ? 'Vinta' : 'Persa'),
+          el('span', { class: 'feed-badge ' + (item.won ? 'win' : 'lose') }, item.won ? t('player.win') : t('player.loss')),
           el('span', { class: 'feed-time muted small' }, relTime(item.ts))
         ]))
       }
@@ -78,11 +79,11 @@ export function renderPlayer(root, ctx, id) {
 
   function confirmDelete(p) {
     const m = modal({
-      title: 'Eliminare ' + p.name + '?',
-      content: [el('p', { class: 'muted' }, 'Il giocatore viene rimosso dal roster. Le statistiche registrate restano nei giochi.')],
+      title: t('player.deleteTitle', { name: p.name }),
+      content: [el('p', { class: 'muted' }, t('player.deleteBody'))],
       actions: [
-        button('Annulla', { variant: 'ghost', onClick: () => m.close() }),
-        button('Elimina', { variant: 'danger', onClick: () => { ctx.players.remove(p.id); m.close(); ctx.router.go('/players') } })
+        button(t('common.cancel'), { variant: 'ghost', onClick: () => m.close() }),
+        button(t('common.delete'), { variant: 'danger', onClick: () => { ctx.players.remove(p.id); m.close(); ctx.router.go('/players') } })
       ]
     })
   }
@@ -99,12 +100,12 @@ function statCard(value, label) {
 
 function relTime(ts) {
   const s = Math.floor((Date.now() - ts) / 1000)
-  if (s < 60) return 'ora'
+  if (s < 60) return t('time.now')
   const m = Math.floor(s / 60)
-  if (m < 60) return m + 'm fa'
+  if (m < 60) return t('time.min', { n: m })
   const h = Math.floor(m / 60)
-  if (h < 24) return h + 'h fa'
+  if (h < 24) return t('time.hour', { n: h })
   const d = Math.floor(h / 24)
-  if (d < 7) return d + 'g fa'
-  return new Date(ts).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+  if (d < 7) return t('time.day', { n: d })
+  return new Date(ts).toLocaleDateString(getLocale(), { day: 'numeric', month: 'short' })
 }

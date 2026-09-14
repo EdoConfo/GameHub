@@ -5,11 +5,9 @@ import * as players from './shared/players.js'
 import * as table from './shared/table.js'
 import * as stats from './shared/stats.js'
 import { renderHub } from './hub/hub.js'
-import { renderSettings } from './hub/settings.js'
-import { renderPlayers } from './hub/players.js'
 import { renderPlayer } from './hub/playerPage.js'
 import { getGame } from './games/registry.js'
-import { clear, screen, el } from './shared/ui.js'
+import { clear, el } from './shared/ui.js'
 
 const root = document.getElementById('app')
 
@@ -62,16 +60,33 @@ router.on('/table/:id', ({ id }) => {
   renderHub(root, ctx, id, { table: true })
 })
 
+// Giocatori and Impostazioni are not separate screens: they're the left arc of
+// circle A. These routes open the hub already parked there, so coming back from
+// a player's page lands on the wheel it was opened from.
 router.on('/settings', () => {
   leaveCurrent()
   clear(root)
-  renderSettings(root, ctx)
+  renderHub(root, ctx, null, { side: 'settings' })
+})
+
+// Same arc, centred on one setting — where changing the language comes back to.
+router.on('/settings/:focus', ({ focus }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, null, { side: 'settings', focusId: focus })
 })
 
 router.on('/players', () => {
   leaveCurrent()
   clear(root)
-  renderPlayers(root, ctx)
+  renderHub(root, ctx, null, { side: 'players' })
+})
+
+// Same wheel, centred on the player you just came back from.
+router.on('/players/:id', ({ id }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, null, { side: 'players', focusId: id })
 })
 
 router.on('/player/:id', ({ id }) => {

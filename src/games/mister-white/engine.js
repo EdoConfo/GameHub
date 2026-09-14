@@ -6,6 +6,7 @@
 //   'mrwhite'    -> knows no word
 // Civili are the good guys; undercover + mrwhite are the "impostori".
 import { shuffle } from '../../shared/ui.js'
+import { t } from '../../shared/i18n.js'
 
 export const ROLE = { CIVILE: 'civile', UNDERCOVER: 'undercover', MRWHITE: 'mrwhite' }
 
@@ -32,11 +33,11 @@ export function fitCounts(n, { mrwhite, undercover }) {
 
 // Validate a setup. Returns { ok:true } or { ok:false, message }.
 export function validateSetup(n, counts) {
-  if (n < 3) return { ok: false, message: 'Servono almeno 3 giocatori.' }
-  if (n > 20) return { ok: false, message: 'Massimo 20 giocatori.' }
+  if (n < 3) return { ok: false, message: t('mw.setup.min3') }
+  if (n > 20) return { ok: false, message: t('mw.setup.max20') }
   const impostori = counts.mrwhite + counts.undercover
-  if (impostori < 1) return { ok: false, message: 'Serve almeno un impostore.' }
-  if (impostori > maxImpostors(n)) return { ok: false, message: 'Troppi impostori: i civili devono essere di più.' }
+  if (impostori < 1) return { ok: false, message: t('mw.setup.needImpostor') }
+  if (impostori > maxImpostors(n)) return { ok: false, message: t('mw.setup.tooMany') }
   return { ok: true }
 }
 
@@ -95,7 +96,7 @@ export function guessMatches(guess, civilianWord) {
 }
 
 export function roleLabel(role) {
-  if (role === ROLE.MRWHITE) return 'Mister White'
-  if (role === ROLE.UNDERCOVER) return 'Undercover'
-  return 'Civile'
+  if (role === ROLE.MRWHITE) return t('mw.role.mrwhite')
+  if (role === ROLE.UNDERCOVER) return t('mw.role.undercover')
+  return t('mw.role.civile')
 }

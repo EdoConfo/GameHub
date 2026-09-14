@@ -1,7 +1,10 @@
 // Hash-based router. Works on GitHub Pages (no server rewrites).
-// Routes: #/            -> home
-//         #/game/<id>   -> a registered game
-//         #/settings    -> global settings
+// Routes: #/              -> home (the hub scene)
+//         #/players       -> hub parked on the Giocatori arc
+//         #/players/<id>  -> same, centred on that player
+//         #/player/<id>   -> a player's own page
+//         #/game/<id>     -> a registered game
+//         #/settings      -> hub parked on the Impostazioni arc
 
 const routes = []
 let notFound = () => {}

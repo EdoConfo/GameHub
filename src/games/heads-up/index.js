@@ -1,15 +1,17 @@
 // Heads Up — hold the phone on your forehead, others give clues, tilt to score.
 import { clear } from '../../shared/ui.js'
+import { t } from '../../shared/i18n.js'
 import * as screens from './screens.js'
 import { createTilt } from './motion.js'
 import packs from './packs.js'
 
 const DURATIONS = [30, 60, 90]
 
-const MENU = [
-  { title: 'Gioca', sub: 'Nuova partita', phase: 'setup', glyph: 'play' },
-  { title: 'Parole', sub: 'Categorie', phase: 'packs', glyph: 'words' },
-  { title: 'Come si gioca', sub: 'Regole', phase: 'rules', glyph: 'help' }
+// Built on read so the labels follow the interface language.
+const menu = () => [
+  { title: t('hu.menu.play'), sub: t('hu.menu.playSub'), phase: 'setup', glyph: 'play' },
+  { title: t('hu.menu.words'), sub: t('hu.menu.wordsSub'), phase: 'packs', glyph: 'words' },
+  { title: t('hu.menu.rules'), sub: t('hu.menu.rulesSub'), phase: 'rules', glyph: 'help' }
 ]
 
 function createState(initialPhase) {
@@ -75,10 +77,10 @@ function mount(container, ctx, initialPhase) {
 
 export default {
   id: 'heads-up',
-  name: 'Heads Up',
-  description: 'Telefono in fronte: indovina la parola dagli indizi.',
+  get name() { return t('hu.name') },
+  get description() { return t('hu.description') },
   icon: '📱',
   glyph: 'phone',
-  menu: MENU,
+  get menu() { return menu() },
   mount
 }

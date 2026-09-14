@@ -1,39 +1,269 @@
 {
   "id": "sport",
-  "name": "Sport",
-  "language": "it",
-  "pairs": [
-    { "civilian": "Calcio", "undercover": "Futsal" },
-    { "civilian": "Basket", "undercover": "Pallavolo" },
-    { "civilian": "Tennis", "undercover": "Padel" },
-    { "civilian": "Ping pong", "undercover": "Badminton" },
-    { "civilian": "Rugby", "undercover": "Football americano" },
-    { "civilian": "Baseball", "undercover": "Cricket" },
-    { "civilian": "Nuoto", "undercover": "Tuffi" },
-    { "civilian": "Sci", "undercover": "Snowboard" },
-    { "civilian": "Pattinaggio", "undercover": "Hockey" },
-    { "civilian": "Ciclismo", "undercover": "Motociclismo" },
-    { "civilian": "Maratona", "undercover": "Triathlon" },
-    { "civilian": "Salto in alto", "undercover": "Salto in lungo" },
-    { "civilian": "Boxe", "undercover": "Kickboxing" },
-    { "civilian": "Judo", "undercover": "Karate" },
-    { "civilian": "Lotta", "undercover": "Scherma" },
-    { "civilian": "Golf", "undercover": "Minigolf" },
-    { "civilian": "Bowling", "undercover": "Bocce" },
-    { "civilian": "Freccette", "undercover": "Tiro con l'arco" },
-    { "civilian": "Surf", "undercover": "Windsurf" },
-    { "civilian": "Canoa", "undercover": "Canottaggio" },
-    { "civilian": "Vela", "undercover": "Kitesurf" },
-    { "civilian": "Arrampicata", "undercover": "Alpinismo" },
-    { "civilian": "Yoga", "undercover": "Pilates" },
-    { "civilian": "Ginnastica", "undercover": "Acrobatica" },
-    { "civilian": "Equitazione", "undercover": "Polo" },
-    { "civilian": "Formula 1", "undercover": "Rally" },
-    { "civilian": "Maglia", "undercover": "Pallanuoto" },
-    { "civilian": "Skateboard", "undercover": "Monopattino" },
-    { "civilian": "Parkour", "undercover": "Free climbing" },
-    { "civilian": "Sollevamento pesi", "undercover": "Crossfit" },
-    { "civilian": "Corsa", "undercover": "Camminata" },
-    { "civilian": "Sumo", "undercover": "Braccio di ferro" }
-  ]
+  "name": {
+    "it": "Sport",
+    "en": "Sport"
+  },
+  "pairs": {
+    "it": [
+      {
+        "civilian": "Calcio",
+        "undercover": "Futsal"
+      },
+      {
+        "civilian": "Basket",
+        "undercover": "Pallavolo"
+      },
+      {
+        "civilian": "Tennis",
+        "undercover": "Padel"
+      },
+      {
+        "civilian": "Ping pong",
+        "undercover": "Badminton"
+      },
+      {
+        "civilian": "Rugby",
+        "undercover": "Football americano"
+      },
+      {
+        "civilian": "Baseball",
+        "undercover": "Cricket"
+      },
+      {
+        "civilian": "Nuoto",
+        "undercover": "Tuffi"
+      },
+      {
+        "civilian": "Sci",
+        "undercover": "Snowboard"
+      },
+      {
+        "civilian": "Pattinaggio",
+        "undercover": "Hockey"
+      },
+      {
+        "civilian": "Ciclismo",
+        "undercover": "Motociclismo"
+      },
+      {
+        "civilian": "Maratona",
+        "undercover": "Triathlon"
+      },
+      {
+        "civilian": "Salto in alto",
+        "undercover": "Salto in lungo"
+      },
+      {
+        "civilian": "Boxe",
+        "undercover": "Kickboxing"
+      },
+      {
+        "civilian": "Judo",
+        "undercover": "Karate"
+      },
+      {
+        "civilian": "Lotta",
+        "undercover": "Scherma"
+      },
+      {
+        "civilian": "Golf",
+        "undercover": "Minigolf"
+      },
+      {
+        "civilian": "Bowling",
+        "undercover": "Bocce"
+      },
+      {
+        "civilian": "Freccette",
+        "undercover": "Tiro con l'arco"
+      },
+      {
+        "civilian": "Surf",
+        "undercover": "Windsurf"
+      },
+      {
+        "civilian": "Canoa",
+        "undercover": "Canottaggio"
+      },
+      {
+        "civilian": "Vela",
+        "undercover": "Kitesurf"
+      },
+      {
+        "civilian": "Arrampicata",
+        "undercover": "Alpinismo"
+      },
+      {
+        "civilian": "Yoga",
+        "undercover": "Pilates"
+      },
+      {
+        "civilian": "Ginnastica",
+        "undercover": "Acrobatica"
+      },
+      {
+        "civilian": "Equitazione",
+        "undercover": "Polo"
+      },
+      {
+        "civilian": "Formula 1",
+        "undercover": "Rally"
+      },
+      {
+        "civilian": "Maglia",
+        "undercover": "Pallanuoto"
+      },
+      {
+        "civilian": "Skateboard",
+        "undercover": "Monopattino"
+      },
+      {
+        "civilian": "Parkour",
+        "undercover": "Free climbing"
+      },
+      {
+        "civilian": "Sollevamento pesi",
+        "undercover": "Crossfit"
+      },
+      {
+        "civilian": "Corsa",
+        "undercover": "Camminata"
+      },
+      {
+        "civilian": "Sumo",
+        "undercover": "Braccio di ferro"
+      }
+    ],
+    "en": [
+      {
+        "civilian": "Football",
+        "undercover": "Futsal"
+      },
+      {
+        "civilian": "Basketball",
+        "undercover": "Volleyball"
+      },
+      {
+        "civilian": "Tennis",
+        "undercover": "Padel"
+      },
+      {
+        "civilian": "Table tennis",
+        "undercover": "Badminton"
+      },
+      {
+        "civilian": "Rugby",
+        "undercover": "American football"
+      },
+      {
+        "civilian": "Baseball",
+        "undercover": "Cricket"
+      },
+      {
+        "civilian": "Swimming",
+        "undercover": "Diving"
+      },
+      {
+        "civilian": "Skiing",
+        "undercover": "Snowboarding"
+      },
+      {
+        "civilian": "Ice skating",
+        "undercover": "Ice hockey"
+      },
+      {
+        "civilian": "Cycling",
+        "undercover": "Motorcycling"
+      },
+      {
+        "civilian": "Marathon",
+        "undercover": "Triathlon"
+      },
+      {
+        "civilian": "High jump",
+        "undercover": "Long jump"
+      },
+      {
+        "civilian": "Boxing",
+        "undercover": "Kickboxing"
+      },
+      {
+        "civilian": "Judo",
+        "undercover": "Karate"
+      },
+      {
+        "civilian": "Wrestling",
+        "undercover": "Fencing"
+      },
+      {
+        "civilian": "Golf",
+        "undercover": "Minigolf"
+      },
+      {
+        "civilian": "Bowling",
+        "undercover": "Boules"
+      },
+      {
+        "civilian": "Darts",
+        "undercover": "Archery"
+      },
+      {
+        "civilian": "Surfing",
+        "undercover": "Windsurfing"
+      },
+      {
+        "civilian": "Canoeing",
+        "undercover": "Rowing"
+      },
+      {
+        "civilian": "Sailing",
+        "undercover": "Kitesurfing"
+      },
+      {
+        "civilian": "Climbing",
+        "undercover": "Mountaineering"
+      },
+      {
+        "civilian": "Yoga",
+        "undercover": "Pilates"
+      },
+      {
+        "civilian": "Gymnastics",
+        "undercover": "Acrobatics"
+      },
+      {
+        "civilian": "Horse riding",
+        "undercover": "Polo"
+      },
+      {
+        "civilian": "Formula 1",
+        "undercover": "Rally"
+      },
+      {
+        "civilian": "Handball",
+        "undercover": "Water polo"
+      },
+      {
+        "civilian": "Skateboard",
+        "undercover": "Scooter"
+      },
+      {
+        "civilian": "Parkour",
+        "undercover": "Free climbing"
+      },
+      {
+        "civilian": "Weightlifting",
+        "undercover": "Crossfit"
+      },
+      {
+        "civilian": "Running",
+        "undercover": "Walking"
+      },
+      {
+        "civilian": "Sumo",
+        "undercover": "Arm wrestling"
+      }
+    ]
+  }
 }
