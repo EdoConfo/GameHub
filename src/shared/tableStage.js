@@ -81,11 +81,14 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   // The room above the drawer; the table takes it, centred. Names sit outside
   // the seats, so they get room at the sides and above/below. Seat size
   // depends on the radius, hence a couple of rounds to settle it.
+  // Only the drawer shapes the table's room. The sheet passes OVER the table
+  // instead of pushing it: it can grow with the roles and the packs it holds,
+  // and a table that shrank to a button every time one opened would be worse
+  // than a table temporarily covered.
   function room(drawerH = isOpen ? drawer.offsetHeight : 0) {
     const W = host.clientWidth, H = host.clientHeight
     const t = top ? top() : 0
-    // whichever panel is taller decides where the table's room ends
-    const b = H - Math.max(drawerH, sheetOpen ? sheet.offsetHeight : 0)
+    const b = H - drawerH
     const e = view.extent(), n = view.count()
     let r = Math.min(W, b - t) / 2
     for (let i = 0; i < 3; i++) {
@@ -194,7 +197,6 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     }
     node.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
       { duration: 260, easing: 'ease-out' })
-    glide(room(), { ms: 440 })
   }
 
   function closeSheet() {
@@ -205,7 +207,6 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     scrim.classList.remove('on')
     const fn = sheetDone
     sheetDone = null
-    glide(room(), { ms: 440 })
     // empty it only once it's off screen, so it doesn't blink on the way down
     clearTimeout(sheetTimer)
     sheetTimer = setTimeout(() => { if (!sheetOpen) sheetBody.replaceChildren() }, 600)
@@ -257,11 +258,10 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   })
   sheetHandle.addEventListener('pointercancel', () => { sy = null })
 
-  // A panel that grows or shrinks on its own (a role description opening) has
-  // to hand the table back the room it takes.
+  // The drawer changing height on its own hands the table back the room it
+  // takes. The sheet is not watched: it doesn't own any of the table's room.
   const panels = new ResizeObserver(() => reflow())
   panels.observe(drawer)
-  panels.observe(sheet)
 
   function destroy() {
     cancelAnimationFrame(raf)

@@ -718,7 +718,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    it's the thing you came here to set up. */
 .sheet-scrim { position: absolute; inset: 0; z-index: 5; display: none; }
 .sheet-scrim.on { display: block; }
-.drawer.sheet { z-index: 6; }
+/* It covers the table rather than squeezing it, so it may grow well past the
+   drawer's 66% — up to just under the header, which stays reachable. Past that
+   the sheet's own body scrolls. */
+.drawer.sheet { z-index: 6; max-height: 88%; }
 .drawer.sheet .drawer-page { flex: 1; }
 .drawer.sheet .drawer-page > *:last-child { margin-top: auto; }
 /* While the sheet is up, the table is out of play. Switching off the container
