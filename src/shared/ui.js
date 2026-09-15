@@ -103,6 +103,17 @@ export function button(label, opts = {}) {
   }, label)
 }
 
+// Give a scrolling box its fading ends only while it has somewhere to scroll.
+// Watched, because a list grows and shrinks as people sit down and get up.
+export function walls(box) {
+  const check = () => box.classList.toggle('walled', box.scrollHeight > box.clientHeight + 2)
+  check()
+  const ro = new ResizeObserver(check)
+  ro.observe(box)
+  for (const child of box.children) ro.observe(child)
+  return box
+}
+
 // You can push a panel anywhere it isn't something you'd touch for its own
 // sake: the grabber, yes, but also the empty space, the titles, the padding.
 // Buttons, fields and scrolling lists keep their touches to themselves.

@@ -81,7 +81,16 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   function measureDetail() {
     if (folding) return // mid-drag the numbers are meaningless
     for (const node of body.querySelectorAll('.drawer-more')) {
+      // Its height is calculated FROM --h, so reading it as it stands only ever
+      // gives --h back — and a block whose content shrank would keep the old,
+      // taller number and sit in a hole. Let it be its natural size for the
+      // length of one measurement (no reflow reaches the screen in between).
+      const had = node.style.height
+      node.style.transition = 'none'
+      node.style.height = 'auto'
       const h = node.scrollHeight
+      node.style.height = had
+      node.style.transition = ''
       if (h > 0) node.style.setProperty('--h', h + 'px')
     }
   }

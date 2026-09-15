@@ -1,4 +1,4 @@
-import { el, icon, button } from '../shared/ui.js'
+import { el, icon, button, walls } from '../shared/ui.js'
 import { t } from '../shared/i18n.js'
 import { createTableStage } from '../shared/tableStage.js'
 import { avatar, faceGrid, newFaceCell, openProfileEditor } from './players.js'
@@ -8,7 +8,7 @@ import { avatar, faceGrid, newFaceCell, openProfileEditor } from './players.js'
 export const TABLE_MORPH_MS = 780
 
 // Mark a node as the page's scrolling part (see .list-scroll).
-const scrollable = node => { node.classList.add('list-scroll'); return node }
+const scrollable = node => { node.classList.add('list-scroll'); return walls(node) }
 
 const pill = (glyph, label, onClick) =>
   el('button', { class: 'pill', onclick: onClick }, [icon(glyph), el('span', {}, label)])
@@ -54,10 +54,6 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
         pill('plus', t('table.addSeat'), () => { ctx.table.addSeat(); refresh() }),
         pill('players', t('table.addPlayer'), () => openPlayers())
       ]),
-      el('p', { class: 'drawer-hint' }, [
-        el('span', {}, t('table.swapHint')),
-        el('span', {}, t('table.rotateHint'))
-      ]),
       el('div', { class: 'drawer-options' }, options.node)
     ]),
     startBtn
@@ -85,7 +81,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   // out. Each one takes the first free chair, or a new chair if there is none —
   // the order you sort out afterwards, on the table itself.
   function openPlayers() {
-    const list = el('div', { class: 'pick-grid list-scroll' })
+    const list = walls(el('div', { class: 'pick-grid list-scroll' }))
     const hint = el('p', { class: 'drawer-hint' }, t('table.playersHint'))
     const empty = el('p', { class: 'drawer-hint' }, t('table.allSeated'))
 

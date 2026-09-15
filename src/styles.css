@@ -790,8 +790,11 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .list-scroll {
   flex: 0 1 auto; min-height: 0;
   overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
-  /* a wall at each end: a face or a name reaching the edge of the list fades
-     into it instead of being cut through the middle */
+}
+/* A wall at each end, but only for a list that really scrolls: a face or a name
+   reaching the edge fades into it instead of being cut through the middle,
+   while a short list keeps its first and last row plain. */
+.list-scroll.walled {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
 }
@@ -818,10 +821,13 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 /* only the drawer folds: a sheet has nothing to fold into, and the fallback
    height would have given its hint a 200px hole to sit in */
 .drawer:not(.sheet) .drawer-more {
+  /* the wall is there only while the panel is folding: at rest it would be
+     fading the last row for nothing */
+  --wall: calc(52px * min(1, var(--fold) * 8));
   height: calc(var(--h, 200px) * (1 - var(--fold)));
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 52px), transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 52px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wall)), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wall)), transparent 100%);
   transition: height .34s var(--pan-ease);
 }
 .drawer:not(.sheet).min .drawer-more { pointer-events: none; }
@@ -862,9 +868,13 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .pill .icon { width: 18px; height: 18px; }
 
 .opt-list { display: flex; flex-direction: column; }
-.opt-row { display: flex; align-items: center; justify-content: space-between; min-height: 46px; border-top: 1px solid var(--border); }
+/* gap and a label that won't be squeezed: with three roles in the summary the
+   two texts ended up touching */
+.opt-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 46px; border-top: 1px solid var(--border); }
+.opt-label { flex: 0 0 auto; }
 .opt-row:first-child { border-top: 0; }
 .opt-label { font-size: 16px; }
+.opt-door-value { min-width: 0; }
 .opt-value { font-size: 14px; color: var(--text-dim); }
 /* A door on the drawer's main page: what it is on the left, what it holds on
    the right, and a way in. */
