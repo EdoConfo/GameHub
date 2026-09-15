@@ -45,7 +45,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   const main = el('div', { class: 'drawer-page' }, [
     el('div', { class: 'drawer-more drawer-row' }, [
       pill('plus', t('table.addSeat'), () => { ctx.table.addSeat(); refresh() }),
-      pill('players', t('table.addPlayer'), () => pick('new'))
+      pill('players', t('table.addPlayer'), () => openPlayers())
     ]),
     el('p', { class: 'drawer-more drawer-hint' }, [
       el('span', {}, t('table.swapHint')),
@@ -70,6 +70,54 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     const msg = seats.length < cfg.min ? t('table.needSeats', { n: cfg.min }) : options.check(seats.length)
     startBtn.textContent = msg || t('table.start')
     startBtn.disabled = !!msg
+  }
+
+  // ---- sheet: everyone who isn't at the table yet ----
+  // Tapping doesn't close it: you seat six people with six taps and then get
+  // out. Each one takes the first free chair, or a new chair if there is none —
+  // the order you sort out afterwards, on the table itself.
+  function openPlayers() {
+    const list = el('div', { class: 'profile-list' })
+    const hint = el('p', { class: 'drawer-hint drawer-more' }, t('table.playersHint'))
+
+    function seat(pid) {
+      const empty = ctx.table.seats().find(s => !s.pid)
+      if (empty) ctx.table.sit(empty.id, pid)
+      else ctx.table.addSeat(pid)
+      refresh()
+      paint()
+    }
+
+    function paint() {
+      const seated = new Set(ctx.table.seats().map(s => s.pid).filter(Boolean))
+      const standing = ctx.players.all().filter(p => !seated.has(p.id))
+      // replaceChildren() has no opinion about null — it would print the word.
+      const rows = [
+        ...standing.map(p => el('button', { class: 'profile-row', onclick: () => seat(p.id) }, [
+          avatar(p, 40),
+          el('span', { class: 'profile-name' }, p.name),
+          el('span', { class: 'profile-arrow', 'aria-hidden': 'true' }, '+')
+        ])),
+        standing.length ? null : el('p', { class: 'drawer-hint' }, t('table.allSeated')),
+        el('button', {
+          class: 'profile-row',
+          onclick: () => openProfileEditor(ctx, null, p => { if (p) seat(p.id) })
+        }, [
+          el('span', { class: 'avatar avatar-empty', style: 'width:40px;height:40px' }, '+'),
+          el('span', { class: 'profile-name' }, t('players.newTitle'))
+        ])
+      ].filter(Boolean)
+      list.replaceChildren(...rows)
+      hint.hidden = !standing.length
+    }
+
+    paint()
+    stage.openSheet(el('div', { class: 'drawer-page' }, [
+      el('div', { class: 'drawer-title' }, t('hub.players')),
+      hint,
+      list,
+      button(t('common.done'), { variant: 'ghost', full: true, onClick: () => stage.closeSheet() })
+    ]), { done: () => refresh() })
   }
 
   // ---- drawer: choose who sits on a chair (or on a new one) ----

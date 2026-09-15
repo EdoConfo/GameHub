@@ -1,7 +1,10 @@
 // The table: who sits where, in the order the phone goes round (clockwise
-// from the bottom seat, the phone holder's). One table for every game — same group, same chairs —
-// remembered between sessions. Seat: { id, pid }; pid null = an empty chair,
-// taken by whoever gets the phone there (they make their profile on the spot).
+// from the bottom seat, the phone holder's). One table for every game — same
+// group, same chairs — remembered between sessions. Seat: { id, pid }; pid
+// null = an empty chair, taken by whoever gets the phone there (they make
+// their profile on the spot).
+//
+// A new table starts empty: four chairs and nobody on them.
 import * as storage from './storage.js'
 import * as players from './players.js'
 
@@ -14,9 +17,12 @@ function load() {
   if (Array.isArray(raw)) {
     list = raw.filter(s => s && s.id).map(s => ({ id: s.id, pid: s.pid || null }))
   } else {
-    // First time: seat part of the roster, pad with empty chairs.
-    list = players.all().slice(0, 6).map(p => ({ id: newId(), pid: p.id }))
-    while (list.length < 4) list.push({ id: newId(), pid: null })
+    // First time: chairs, nobody on them. Who sits where is a decision, not
+    // something to guess from the roster — and it's written down right away,
+    // so the table is yours from the first look instead of being recomputed
+    // (and quietly reshuffled) at every read.
+    list = [0, 1, 2, 3].map(() => ({ id: newId(), pid: null }))
+    save(list)
   }
   // A deleted profile leaves its chair empty; nobody sits twice.
   const known = new Set(players.all().map(p => p.id))
