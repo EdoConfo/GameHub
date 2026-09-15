@@ -127,7 +127,13 @@ export function dragOrigin(e, { grip = GRIP, ignore = NO_DRAG } = {}) {
 // a page is not a way of asking for it to leave.
 export function dragToDismiss(zone, panel, { onDismiss, part = 0.25, flick = 0.5 } = {}) {
   let from = null, t0 = 0, dy = 0, onGrip = false
-  const move = px => { panel.style.transform = px ? `translateY(${px}px)` : '' }
+  // --slide says how far down the panel has been pushed, as a part of itself:
+  // the content fades along it, so nothing is ever left cut in half by the
+  // edge of the screen, and coming back it returns as the panel returns.
+  const move = px => {
+    panel.style.transform = px ? `translateY(${px}px)` : ''
+    panel.style.setProperty('--slide', (px / Math.max(1, panel.offsetHeight)).toFixed(3))
+  }
 
   zone.addEventListener('pointerdown', e => {
     const where = dragOrigin(e)
@@ -137,6 +143,7 @@ export function dragToDismiss(zone, panel, { onDismiss, part = 0.25, flick = 0.5
     t0 = performance.now()
     dy = 0
     panel.style.transition = 'none' // while the finger is down, no easing in the way
+    panel.classList.add('sliding')
     try { zone.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
   })
   zone.addEventListener('pointermove', e => {
@@ -149,6 +156,7 @@ export function dragToDismiss(zone, panel, { onDismiss, part = 0.25, flick = 0.5
     const speed = dy / Math.max(1, performance.now() - t0) // px per ms
     from = null
     panel.style.transition = ''
+    panel.classList.remove('sliding')
     move(0)
     if ((onGrip && dy < 4) || dy > panel.offsetHeight * part || speed > flick) onDismiss()
   }

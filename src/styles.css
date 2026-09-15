@@ -751,6 +751,16 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    the sheet's own body scrolls. */
 .drawer.sheet { z-index: 6; max-height: 88%; }
 .drawer.sheet.open { transition: transform .38s var(--pan-ease), height .38s var(--pan-ease); }
+/* Pushed down, a panel's content fades with the push: no names or faces left
+   sliced by the edge on the way out, and on the way back they come up again
+   with it. While a finger is on it there's no easing in between. */
+.drawer.sheet .drawer-body,
+.modal > *:not(.modal-grip) {
+  opacity: calc(1 - var(--slide, 0) * 2.2);
+  transition: opacity .22s ease;
+}
+.drawer.sliding .drawer-body,
+.modal.sliding > * { transition: none; }
 .drawer.sheet .drawer-page { flex: 1; }
 .drawer.sheet .drawer-page > *:last-child { margin-top: auto; }
 /* While the sheet is up, the table is out of play. Switching off the container
@@ -781,7 +791,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .drawer-body::-webkit-scrollbar { display: none; }
 .drawer-body > .drawer-page { flex: 1 1 auto; min-height: 0; }
-.drawer-page { display: flex; flex-direction: column; }
+.drawer-page { display: flex; flex-direction: column; gap: 12px; }
 /* The one long thing on a page scrolls inside it, so the title above and the
    way out below stay put: with fifty profiles, "Fatto" was five rows of faces
    past the bottom of the screen. `flex: 0 1 auto` — it gives up room when
@@ -805,15 +815,23 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    never measured. */
 .drawer { --fold: 0; }
 .drawer.min { --fold: 1; }
+/* The detail keeps its shape the whole way: the negative margin takes its room
+   away, so the panel comes down around it, and the block slides under the
+   button that stays — fading as it goes. Squashing it instead (max-height)
+   made the sections slide into one another, rules and all. */
 .drawer-more {
-  overflow: hidden;
-  max-height: calc(var(--h, 260px) * (1 - var(--fold)));
-  opacity: calc(1 - var(--fold));
-  transform: translateY(calc(8px * var(--fold)));
-  transition: max-height .34s var(--pan-ease), opacity .18s ease, transform .3s var(--pan-ease);
+  margin-bottom: calc(-1 * var(--fold) * (var(--h, 200px) + 12px));
+  opacity: calc(1 - var(--fold) * 1.25);
+  transition: margin-bottom .34s var(--pan-ease), opacity .26s ease;
 }
 .drawer.min .drawer-more { pointer-events: none; }
-.drawer-page { gap: calc(12px * (1 - var(--fold, 0))); }
+/* what stays is painted over what leaves */
+.drawer-page > *:last-child { position: relative; z-index: 1; }
+.drawer::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0;
+  height: calc(16px + env(safe-area-inset-bottom));
+  background: var(--surface); pointer-events: none;
+}
 /* while the finger is down the panel is where the finger put it, not on its way
    somewhere: no easing in between */
 .drawer.folding .drawer-more,

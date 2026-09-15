@@ -45,16 +45,21 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
 
   // ---- drawer: table controls + game options + start ----
   const startBtn = button(t('table.start'), { variant: 'primary', full: true, onClick: () => cfg.start(ctx) })
+  // Everything above the start button travels together, as one block: folded
+  // separately they slid into each other and you could see one section's rule
+  // cutting through the next.
   const main = el('div', { class: 'drawer-page' }, [
-    el('div', { class: 'drawer-more drawer-row' }, [
-      pill('plus', t('table.addSeat'), () => { ctx.table.addSeat(); refresh() }),
-      pill('players', t('table.addPlayer'), () => openPlayers())
+    el('div', { class: 'drawer-more' }, [
+      el('div', { class: 'drawer-row' }, [
+        pill('plus', t('table.addSeat'), () => { ctx.table.addSeat(); refresh() }),
+        pill('players', t('table.addPlayer'), () => openPlayers())
+      ]),
+      el('p', { class: 'drawer-hint' }, [
+        el('span', {}, t('table.swapHint')),
+        el('span', {}, t('table.rotateHint'))
+      ]),
+      el('div', { class: 'drawer-options' }, options.node)
     ]),
-    el('p', { class: 'drawer-more drawer-hint' }, [
-      el('span', {}, t('table.swapHint')),
-      el('span', {}, t('table.rotateHint'))
-    ]),
-    el('div', { class: 'drawer-more drawer-options' }, options.node),
     startBtn
   ])
 
