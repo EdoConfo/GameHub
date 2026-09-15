@@ -167,7 +167,30 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
     if (i === active) onActivate(i)
     else setActive(i)
   }))
-  stage.addEventListener('wheel', e => { e.preventDefault(); setActive(active + (e.deltaY > 0 ? 1 : -1)) }, { passive: false })
+  // A trackpad doesn't send one wheel event per flick of the wrist, it sends a
+  // burst of small ones and then a tail of inertia. Stepping once per event
+  // made the wheel bolt past everything and land wherever the inertia died.
+  // So: add the distance up, take a step every WHEEL_STEP pixels of it, and
+  // never more than one step per WHEEL_GAP — a mouse's single fat notch still
+  // moves one item, a trackpad's stream moves at the speed of the hand.
+  const WHEEL_STEP = 48   // px of scrolling per item
+  const WHEEL_GAP = 90    // ms, the fastest the wheel willgo
+  const WHEEL_IDLE = 220  // ms of quiet that starts the count over
+  let wheelAdded = 0, wheelSeen = 0, wheelStepped = 0
+
+  stage.addEventListener('wheel', e => {
+    e.preventDefault()
+    const now = performance.now()
+    if (now - wheelSeen > WHEEL_IDLE) wheelAdded = 0 // a new gesture starts fresh
+    wheelSeen = now
+    // deltaMode: 0 pixels, 1 lines, 2 pages
+    wheelAdded += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * geom.stepPx : e.deltaY
+    if (Math.abs(wheelAdded) < WHEEL_STEP || now - wheelStepped < WHEEL_GAP) return
+    wheelStepped = now
+    const dir = Math.sign(wheelAdded)
+    wheelAdded = 0
+    setActive(active + dir)
+  }, { passive: false })
 
   const ro = new ResizeObserver(() => { if (!stage.isConnected) { ro.disconnect(); return } layout() })
   ro.observe(stage)
