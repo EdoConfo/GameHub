@@ -1,6 +1,5 @@
 import { el, screen, button, shuffle } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { renderPackManager } from '../../shared/packManagerScreen.js'
 import { ensurePermission, motionSupported } from './motion.js'
 
 // Build the word list from the chosen pack (single words). Falls back to
@@ -25,15 +24,6 @@ export function renderRules(api) {
     rule(t('hu.rules.goal'), t('hu.rules.goalDesc'))
   ]))
   return view
-}
-
-// ---------- PACKS (manage words for this game) ----------
-export function renderPacks(api) {
-  return renderPackManager(api.packs, {
-    title: t('packs.title'),
-    help: t('hu.packsHelp'),
-    onBack: () => api.toMenu()
-  })
 }
 
 // ---------- SETUP ----------
@@ -62,7 +52,8 @@ export function renderSetup(api) {
   }
   refreshPacks()
   sec1.append(chips)
-  sec1.append(el('button', { class: 'link-btn', onclick: () => api.goPhase('words') }, t('hu.setup.manage')))
+  // the packs live on the hub's arc now, not inside the game
+  sec1.append(el('button', { class: 'link-btn', onclick: () => api.ctx.router.go('/heads-up/words') }, t('hu.setup.manage')))
 
   // Duration
   const sec2 = section(t('hu.setup.duration'))

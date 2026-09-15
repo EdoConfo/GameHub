@@ -21,7 +21,7 @@
 import * as storage from './storage.js'
 import { t, getLang, getLocale } from './i18n.js'
 
-export function createPackStore({ namespace, bundledModules, codec, enableAllByDefault = false }) {
+export function createPackStore({ namespace, bundledModules, codec, enableAllByDefault = false, selectable = false }) {
   const CUSTOM_KEY = `packs:${namespace}:custom`
   const ENABLED_KEY = `packs:${namespace}:enabled`
   const OVERRIDE_KEY = `packs:${namespace}:overrides`
@@ -289,6 +289,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
   return {
     namespace,
+    selectable, // are packs switched on and off (Heads Up), or picked at the table (Mister White)?
     // live: these follow the interface language
     get unit() { return t(codec.unitKey || 'packs.unit.items') },
     get placeholder() { return t(codec.placeholderKey || '') },

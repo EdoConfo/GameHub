@@ -69,7 +69,7 @@ function mount(container, ctx, initialPhase) {
     if (TABLE_PHASES.includes(state.phase)) { match[state.phase](api, tableScreen()); return }
     teardown()
     clear(container)
-    const map = { words: screens.renderPacks, rules: screens.renderRules, stats: screens.renderStats }
+    const map = { rules: screens.renderRules, stats: screens.renderStats }
     if (map[state.phase]) container.append(map[state.phase](api))
     else api.toMenu()
   }
@@ -91,6 +91,7 @@ export default {
   get description() { return t('mw.description') },
   icon: '🕵️',
   glyph: 'incognito',
+  packs, // the hub shows them on the right arc of this game's circle
   get menu() { return menu() },
   // "Gioca": the hub turns the game's circle into the table; these are this
   // game's options in its drawer, and how a match starts.

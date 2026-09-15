@@ -2,18 +2,7 @@
 // itself is played around the table (see match.js).
 import { el, screen } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { renderPackManager } from '../../shared/packManagerScreen.js'
 import { avatar } from '../../hub/players.js'
-
-// ---------- PACKS (manage words for this game) ----------
-export function renderPacks(api) {
-  return renderPackManager(api.packs, {
-    title: t('packs.title'),
-    help: t('mw.packsHelp'),
-    onBack: () => api.toMenu(),
-    selectable: false
-  })
-}
 
 // ---------- RULES ----------
 export function renderRules(api) {

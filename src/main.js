@@ -84,6 +84,14 @@ function mountGame(id, phase) {
 //
 // The hub owns the menu and the table — they're views of its scene, not
 // screens of their own — so those two go to renderHub, not to the game.
+// The word packs are a view of the hub's scene too — the right arc of that
+// game's circle — so they go to renderHub, like the menu and the table.
+router.on('/:game/words', ({ game }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, game, { words: true })
+})
+
 router.on('/:game/table', ({ game }) => {
   leaveCurrent()
   clear(root)

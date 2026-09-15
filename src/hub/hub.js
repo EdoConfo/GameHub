@@ -4,6 +4,7 @@ import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor, avatar } from './players.js'
 import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
+import { openPackEditor } from '../shared/packEditor.js'
 import { TABLE_CLOSE_MS } from '../shared/tableStage.js'
 import { games } from '../games/registry.js'
 
@@ -12,12 +13,12 @@ import { games } from '../games/registry.js'
 // ride them live in the same world and move together, 1:1 with the camera.
 //
 //   circle A: left arc = Giocatori / Impostazioni · right arc = GIOCHI
-//   circle B: left arc = menu del gioco           · right arc = (libero)
+//   circle B: left arc = menu del gioco           · right arc = le sue parole
 //
 // "Gioca" doesn't leave the scene: circle B shrinks to the top of the screen
 // and becomes the table, with a drawer rising from below (tableScene.js).
 // The header is not part of the scene: it stays put and swaps content.
-const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
+const V_SIDE = 0, V_GAMES = 1, V_MENU = 2, V_WORDS = 3
 
 // A line icon in a round badge that sits on the circle like a bead.
 const badge = name => el('span', { class: 'arc-badge' }, icon(name))
@@ -28,13 +29,14 @@ const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 // you left that page a second ago.
 const lastFocus = { players: null, settings: null }
 
-export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, focusId = null } = {}) {
+export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, words: startWords = false, focusId = null } = {}) {
   let index = V_GAMES
   let selected = 0
   let sideKind = 'players'
   let table = null // the game's table ("Gioca"), while it's open
   let sideWheel = null
   let menuWheel = null
+  let wordsWheel = null
   let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
@@ -52,7 +54,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   scene.append(svg)
 
   // One host per view: a window-sized box parked at that view's camera spot.
-  const hosts = [0, 1, 2].map(() => {
+  const hosts = [0, 1, 2, 3].map(() => {
     const h = el('div', { class: 'arc-host' })
     scene.append(h)
     return h
@@ -70,7 +72,12 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     const R = H * 0.5                 // circles touch the top and bottom edges
     const xA = R + 0.76 * W           // puts the leftmost view at world 0
     const xB = xA + 2 * R + 0.9 * W   // close enough that an arc is always in sight
-    world = { W, H, R, xA, xB, cam: [0, 2 * R + 0.52 * W, 2 * R + 0.9 * W], width: xB + R + W }
+    // one camera spot per view: the two arcs of circle A, then the two of B
+    world = {
+      W, H, R, xA, xB,
+      cam: [0, 2 * R + 0.52 * W, 2 * R + 0.9 * W, 4 * R + 1.42 * W],
+      width: xB + R + W
+    }
     return true
   }
 
@@ -92,6 +99,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // back to the view you were looking at, not to the last one that happened to
   // write a hash.
   function hashHere() {
+    if (index === V_WORDS) return '#/' + games[selected].id + '/words'
     if (index === V_MENU) return '#/' + games[selected].id + (table ? '/table' : '')
     if (index === V_SIDE) return sideKind === 'settings' ? '#/settings' : '#/players'
     return '#/'
@@ -104,7 +112,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
 
   function moveCamera(i, animate = true) {
     const from = world.cam[index]
-    index = Math.max(0, Math.min(2, i))
+    index = Math.max(0, Math.min(3, i))
     const to = world.cam[index]
     // constant-ish speed: crossing a circle takes longer than hopping to the next
     const dist = Math.abs(to - from)
@@ -126,6 +134,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   function goto(i) {
     if (i === V_MENU) { selected = gamesWheel.getActive(); buildMenu() }
     if (i === V_SIDE) buildSide(sideKind)
+    if (i === V_WORDS) buildWords()
     moveCamera(i)
   }
 
@@ -138,6 +147,12 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           el('button', { class: 'icon-btn', 'aria-label': t('hub.players'), onclick: () => { buildSide('players'); moveCamera(V_SIDE) } }, icon('players')),
           el('button', { class: 'icon-btn', 'aria-label': t('hub.settings'), onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
         ])
+      )
+    } else if (index === V_WORDS) {
+      // page on the right of its circle: the way back is to the left
+      header.replaceChildren(
+        el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => goto(V_MENU) }, icon('back')),
+        el('span', { class: 'wordmark game-home-title' }, t('packs.title').toUpperCase())
       )
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
@@ -223,6 +238,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   function repaint() {
     gamesWheel.setItems(games.map(g => ({ title: g.name, sub: g.description, lead: badge(g.glyph || 'play') })))
     if (menuWheel) menuWheel.setItems(menuItems())
+    if (wordsWheel) wordsWheel.setItems(wordsItems())
     if (sideWheel) sideWheel.setItems(sideItems(sideKind))
     renderHeader()
   }
@@ -233,6 +249,41 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     items: games.map(g => ({ title: g.name, sub: g.description, lead: badge(g.glyph || 'play') })),
     onActivate: () => goto(V_MENU)
   })
+
+  // ---- circle B, right arc: this game's word packs ----
+  // Every pack the app has for this game: the ones it came with, the ones you
+  // changed, the ones you wrote. Tapping one opens it; the last bead writes a
+  // new one.
+  function wordsItems() {
+    const store = games[selected].packs
+    if (!store) return [{ id: 'none', title: t('packs.title'), sub: '', lead: badge('words') }]
+    const items = store.allPacks().map(p => ({
+      id: p.id,
+      title: p.name,
+      sub: `${p.items.length} ${store.unit}` +
+        (p.custom ? t('packs.tagCustom') : p.modified ? t('packs.tagModified') : ''),
+      lead: badge('words')
+    }))
+    items.push({ id: 'new', title: t('packs.newTitle'), sub: t('packs.newSub'), lead: badge('plus') })
+    return items
+  }
+
+  function buildWords() {
+    const store = games[selected].packs
+    hosts[V_WORDS].replaceChildren()
+    const items = wordsItems()
+    wordsWheel = createArcWheel(hosts[V_WORDS], {
+      side: 'left',
+      items,
+      onActivate: i => {
+        const it = items[i]
+        if (!store || !it) return
+        const again = () => { buildWords(); renderHeader() }
+        openPackEditor(store, it.id === 'new' ? null : store.getPack(it.id), { onDone: again })
+      }
+    })
+    renderHeader()
+  }
 
   // ---- circle B, left arc: menu del gioco ----
   const menuItems = () => (games[selected].menu || []).map(m => ({ title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') }))
@@ -334,6 +385,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     buildSide(startSide, focusId)
     index = V_SIDE
   }
+  if (startWords && index === V_MENU) { buildWords(); index = V_WORDS }
   layout(false)
   requestAnimationFrame(() => layout(false))
   if (startTable && index === V_MENU) openTable(false)

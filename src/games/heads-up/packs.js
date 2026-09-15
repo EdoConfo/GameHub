@@ -22,4 +22,4 @@ const codec = {
 }
 
 // Heads Up plays one category at a time, so enable them all by default.
-export default createPackStore({ namespace: 'heads-up', bundledModules: modules, codec, enableAllByDefault: true })
+export default createPackStore({ namespace: 'heads-up', bundledModules: modules, codec, enableAllByDefault: true, selectable: true })

@@ -58,7 +58,6 @@ function mount(container, ctx, initialPhase) {
     clear(container)
     const map = {
       setup: screens.renderSetup,
-      words: screens.renderPacks,
       rules: screens.renderRules,
       ready: screens.renderReady,
       countdown: screens.renderCountdown,
@@ -81,6 +80,7 @@ export default {
   get description() { return t('hu.description') },
   icon: '📱',
   glyph: 'phone',
+  packs, // the hub shows them on the right arc of this game's circle
   get menu() { return menu() },
   mount
 }
