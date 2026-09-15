@@ -209,7 +209,7 @@ export function tableOptions(ctx, ui) {
         el('h2', { class: 'role-section' }, t('mw.extra.section')),
         el('div', { class: 'role-list' }, extraRows.map(r => r.node))
       ]),
-      el('p', { class: 'drawer-hint drawer-more' }, t('mw.opt.charactersHint'))
+      el('p', { class: 'drawer-hint' }, t('mw.opt.charactersHint'))
     ])
   }
 
@@ -232,7 +232,7 @@ export function tableOptions(ctx, ui) {
     }
     paintPage()
     ui.open(t('mw.opt.words'), [
-      el('p', { class: 'drawer-hint drawer-more' }, t('mw.opt.packsHint')),
+      el('p', { class: 'drawer-hint' }, t('mw.opt.packsHint')),
       list
     ])
   }

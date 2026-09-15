@@ -751,16 +751,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    the sheet's own body scrolls. */
 .drawer.sheet { z-index: 6; max-height: 88%; }
 .drawer.sheet.open { transition: transform .38s var(--pan-ease), height .38s var(--pan-ease); }
-/* Pushed down, a panel's content fades with the push: no names or faces left
-   sliced by the edge on the way out, and on the way back they come up again
-   with it. While a finger is on it there's no easing in between. */
-.drawer.sheet .drawer-body,
-.modal > *:not(.modal-grip) {
-  opacity: calc(1 - var(--slide, 0) * 2.2);
-  transition: opacity .22s ease;
-}
-.drawer.sliding .drawer-body,
-.modal.sliding > * { transition: none; }
+
 .drawer.sheet .drawer-page { flex: 1; }
 .drawer.sheet .drawer-page > *:last-child { margin-top: auto; }
 /* While the sheet is up, the table is out of play. Switching off the container
@@ -799,6 +790,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .list-scroll {
   flex: 0 1 auto; min-height: 0;
   overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  /* a wall at each end: a face or a name reaching the edge of the list fades
+     into it instead of being cut through the middle */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
 }
 .list-scroll::-webkit-scrollbar { display: none; }
 /* everything else on the page keeps its own size: by default a flex child
@@ -815,16 +810,21 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    never measured. */
 .drawer { --fold: 0; }
 .drawer.min { --fold: 1; }
-/* The detail keeps its shape the whole way: the negative margin takes its room
-   away, so the panel comes down around it, and the block slides under the
-   button that stays — fading as it goes. Squashing it instead (max-height)
-   made the sections slide into one another, rules and all. */
-.drawer-more {
-  margin-bottom: calc(-1 * var(--fold) * (var(--h, 200px) + 12px));
-  opacity: calc(1 - var(--fold) * 1.25);
-  transition: margin-bottom .34s var(--pan-ease), opacity .26s ease;
+/* The detail keeps its shape and its place the whole way: what shrinks is the
+   window it sits in, so the panel comes down and the block goes under the
+   button that stays. Just above that button there's a wall — the mask — and
+   whatever reaches it fades out there, a row at a time, instead of everything
+   dimming together or the sections squashing into one another. */
+/* only the drawer folds: a sheet has nothing to fold into, and the fallback
+   height would have given its hint a 200px hole to sit in */
+.drawer:not(.sheet) .drawer-more {
+  height: calc(var(--h, 200px) * (1 - var(--fold)));
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 52px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 52px), transparent 100%);
+  transition: height .34s var(--pan-ease);
 }
-.drawer.min .drawer-more { pointer-events: none; }
+.drawer:not(.sheet).min .drawer-more { pointer-events: none; }
 /* what stays is painted over what leaves */
 .drawer-page > *:last-child { position: relative; z-index: 1; }
 .drawer::after {

@@ -86,7 +86,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   // the order you sort out afterwards, on the table itself.
   function openPlayers() {
     const list = el('div', { class: 'pick-grid list-scroll' })
-    const hint = el('p', { class: 'drawer-hint drawer-more' }, t('table.playersHint'))
+    const hint = el('p', { class: 'drawer-hint' }, t('table.playersHint'))
     const empty = el('p', { class: 'drawer-hint' }, t('table.allSeated'))
 
     function seat(pid) {
