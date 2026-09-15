@@ -716,8 +716,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .drawer.sheet { z-index: 5; }
 .drawer.sheet .drawer-page { flex: 1; }
 .drawer.sheet .drawer-page > *:last-child { margin-top: auto; }
-/* while the sheet is up, the table is out of play */
-.table-layer.blocked { pointer-events: none; }
+/* While the sheet is up, the table is out of play. Switching off the container
+   does nothing: .table-layer is already pointer-events:none, and the parts you
+   touch (the seats, the top you grab to turn it) each switch themselves back
+   on — so those are what has to go quiet. */
+.table-layer.blocked .seat,
+.table-layer.blocked .table-pad { pointer-events: none; }
 .drawer.instant { transition: none; }
 .drawer-handle {
   flex: 0 0 auto; align-self: center; position: relative;
