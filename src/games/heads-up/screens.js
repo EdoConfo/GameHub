@@ -10,22 +10,6 @@ function buildWords(store, packId) {
   return shuffle(words.slice())
 }
 
-// ---------- RULES ----------
-export function renderRules(api) {
-  const view = screen({ title: t('hu.rules.title'), onBack: () => api.toMenu() })
-  // `title` here, not `t`: `t` is the translator.
-  const rule = (title, desc) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, title), el('div', { class: 'rule-desc muted' }, desc)])
-  view.body.append(section(t('hu.rules.shortSection'), [
-    rule(t('hu.rules.phone'), t('hu.rules.phoneDesc')),
-    rule(t('hu.rules.clues'), t('hu.rules.cluesDesc')),
-    rule(t('hu.rules.tilt'), t('hu.rules.tiltDesc'))
-  ]))
-  view.body.append(section(t('hu.rules.goalSection'), [
-    rule(t('hu.rules.goal'), t('hu.rules.goalDesc'))
-  ]))
-  return view
-}
-
 // ---------- SETUP ----------
 export function renderSetup(api) {
   const { ctx, state } = api

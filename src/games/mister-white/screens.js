@@ -4,35 +4,6 @@ import { el, screen } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { avatar } from '../../hub/players.js'
 
-// ---------- RULES ----------
-export function renderRules(api) {
-  const view = screen({ title: t('mw.rules.title'), onBack: () => api.toMenu() })
-  // `title` here, not `t`: `t` is the translator.
-  const rule = (title, desc) => el('div', { class: 'rule' }, [el('div', { class: 'rule-title' }, title), el('div', { class: 'rule-desc muted' }, desc)])
-  view.body.append(section(t('mw.rules.rolesSection'), [
-    rule(t('mw.roles.civili'), t('mw.rules.civili')),
-    rule(t('mw.role.undercover'), t('mw.rules.undercover')),
-    rule(t('mw.role.mrwhite'), t('mw.rules.mrwhite')),
-    rule(t('mw.rules.goddess'), t('mw.rules.goddessDesc'))
-  ]))
-  view.body.append(section(t('mw.rules.countSection'), [
-    rule(t('mw.rules.minority'), t('mw.rules.minorityDesc')),
-    rule(t('mw.rules.suggested'), t('mw.rules.suggestedDesc'))
-  ]))
-  view.body.append(section(t('mw.rules.flowSection'), [
-    rule(t('mw.rules.step0'), t('mw.rules.step0Desc')),
-    rule(t('mw.rules.step1'), t('mw.rules.step1Desc')),
-    rule(t('mw.rules.step2'), t('mw.rules.step2Desc')),
-    rule(t('mw.rules.step3'), t('mw.rules.step3Desc'))
-  ]))
-  view.body.append(section(t('mw.rules.winSection'), [
-    rule(t('mw.roles.civili'), t('mw.rules.winCivili')),
-    rule(t('mw.roles.impostori'), t('mw.rules.winImpostori')),
-    rule(t('mw.role.mrwhite'), t('mw.rules.winMrWhite'))
-  ]))
-  return view
-}
-
 // ---------- STATS ----------
 export function renderStats(api) {
   const { ctx } = api

@@ -14,6 +14,22 @@ const menu = () => [
   { title: t('hu.menu.rules'), sub: t('hu.menu.rulesSub'), phase: 'rules', glyph: 'help' }
 ]
 
+// The rules as data: the hub rides them on the arc (see mister-white/index.js).
+const rules = () => [
+  {
+    title: t('hu.rules.shortSection'),
+    items: [
+      { title: t('hu.rules.phone'), text: t('hu.rules.phoneDesc') },
+      { title: t('hu.rules.clues'), text: t('hu.rules.cluesDesc') },
+      { title: t('hu.rules.tilt'), text: t('hu.rules.tiltDesc') }
+    ]
+  },
+  {
+    title: t('hu.rules.goalSection'),
+    items: [{ title: t('hu.rules.goal'), text: t('hu.rules.goalDesc') }]
+  }
+]
+
 function createState(initialPhase) {
   const list = packs.enabledPacks()
   return {
@@ -58,7 +74,6 @@ function mount(container, ctx, initialPhase) {
     clear(container)
     const map = {
       setup: screens.renderSetup,
-      rules: screens.renderRules,
       ready: screens.renderReady,
       countdown: screens.renderCountdown,
       play: screens.renderPlay,
@@ -81,6 +96,7 @@ export default {
   icon: '📱',
   glyph: 'phone',
   packs, // the hub shows them on the right arc of this game's circle
+  get rules() { return rules() }, // …and the rules on the same arc
   get menu() { return menu() },
   mount
 }

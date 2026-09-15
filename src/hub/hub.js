@@ -1,4 +1,4 @@
-import { el, icon } from '../shared/ui.js'
+import { el, icon, button, modal } from '../shared/ui.js'
 import { t, langName, cycleLang } from '../shared/i18n.js'
 import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
@@ -13,12 +13,16 @@ import { games } from '../games/registry.js'
 // ride them live in the same world and move together, 1:1 with the camera.
 //
 //   circle A: left arc = Giocatori / Impostazioni · right arc = GIOCHI
-//   circle B: left arc = menu del gioco           · right arc = le sue parole
+//   circle B: left arc = menu del gioco           · right arc = parole / regole
+//
+// Both side arcs hold more than one thing: which one you see depends on the
+// voice you came in from — Giocatori or Impostazioni on the left of A, Parole
+// or Come si gioca on the right of B.
 //
 // "Gioca" doesn't leave the scene: circle B shrinks to the top of the screen
 // and becomes the table, with a drawer rising from below (tableScene.js).
 // The header is not part of the scene: it stays put and swaps content.
-const V_SIDE = 0, V_GAMES = 1, V_MENU = 2, V_WORDS = 3
+const V_SIDE = 0, V_GAMES = 1, V_MENU = 2, V_GAME = 3
 
 // A line icon in a round badge that sits on the circle like a bead.
 const badge = name => el('span', { class: 'arc-badge' }, icon(name))
@@ -29,14 +33,15 @@ const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 // you left that page a second ago.
 const lastFocus = { players: null, settings: null }
 
-export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, words: startWords = false, focusId = null } = {}) {
+export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, gameSide: startGameSide = null, focusId = null } = {}) {
   let index = V_GAMES
   let selected = 0
   let sideKind = 'players'
   let table = null // the game's table ("Gioca"), while it's open
   let sideWheel = null
   let menuWheel = null
-  let wordsWheel = null
+  let gameWheel = null
+  let gameKind = 'words' // what the right arc of the game's circle is showing
   let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
@@ -99,7 +104,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // back to the view you were looking at, not to the last one that happened to
   // write a hash.
   function hashHere() {
-    if (index === V_WORDS) return '#/' + games[selected].id + '/words'
+    if (index === V_GAME) return '#/' + games[selected].id + '/' + gameKind
     if (index === V_MENU) return '#/' + games[selected].id + (table ? '/table' : '')
     if (index === V_SIDE) return sideKind === 'settings' ? '#/settings' : '#/players'
     return '#/'
@@ -134,7 +139,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   function goto(i) {
     if (i === V_MENU) { selected = gamesWheel.getActive(); buildMenu() }
     if (i === V_SIDE) buildSide(sideKind)
-    if (i === V_WORDS) buildWords()
+    if (i === V_GAME) buildGameSide(gameKind)
     moveCamera(i)
   }
 
@@ -148,11 +153,12 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           el('button', { class: 'icon-btn', 'aria-label': t('hub.settings'), onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
         ])
       )
-    } else if (index === V_WORDS) {
+    } else if (index === V_GAME) {
       // page on the right of its circle: the way back is to the left
       header.replaceChildren(
         el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => goto(V_MENU) }, icon('back')),
-        el('span', { class: 'wordmark game-home-title' }, t('packs.title').toUpperCase())
+        el('span', { class: 'wordmark game-home-title' },
+          (gameKind === 'rules' ? t('mw.rules.title') : t('packs.title')).toUpperCase())
       )
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
@@ -238,7 +244,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   function repaint() {
     gamesWheel.setItems(games.map(g => ({ title: g.name, sub: g.description, lead: badge(g.glyph || 'play') })))
     if (menuWheel) menuWheel.setItems(menuItems())
-    if (wordsWheel) wordsWheel.setItems(wordsItems())
+    if (gameWheel) gameWheel.setItems(gameSideItems(gameKind))
     if (sideWheel) sideWheel.setItems(sideItems(sideKind))
     renderHeader()
   }
@@ -250,13 +256,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     onActivate: () => goto(V_MENU)
   })
 
-  // ---- circle B, right arc: this game's word packs ----
+  // ---- circle B, right arc: this game's words, or how it's played ----
+  // One arc, two contents, like Giocatori and Impostazioni share the other one.
   // Every pack the app has for this game: the ones it came with, the ones you
   // changed, the ones you wrote. Tapping one opens it; the last bead writes a
   // new one.
   function wordsItems() {
     const store = games[selected].packs
-    if (!store) return [{ id: 'none', title: t('packs.title'), sub: '', lead: badge('words') }]
+    if (!store) return []
     const items = store.allPacks().map(p => ({
       id: p.id,
       title: p.name,
@@ -268,17 +275,48 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     return items
   }
 
-  function buildWords() {
-    const store = games[selected].packs
-    hosts[V_WORDS].replaceChildren()
-    const items = wordsItems()
-    wordsWheel = createArcWheel(hosts[V_WORDS], {
+  // The rules, a bead per section. The bead says what the section is about;
+  // the section itself opens in a panel, which is where reading is comfortable.
+  function rulesItems() {
+    const list = games[selected].rules || []
+    return list.map((sec, i) => ({
+      id: 'rule-' + i,
+      title: sec.title,
+      sub: sec.items.map(r => r.title).join(' · '),
+      lead: badge('help')
+    }))
+  }
+
+  function gameSideItems(kind) {
+    return kind === 'rules' ? rulesItems() : wordsItems()
+  }
+
+  function openRules(section) {
+    const m = modal({
+      title: section.title,
+      content: section.items.map(r => el('div', { class: 'rule' }, [
+        el('div', { class: 'rule-title' }, r.title),
+        el('div', { class: 'rule-desc muted' }, r.text)
+      ])),
+      actions: [button(t('common.done'), { variant: 'ghost', onClick: () => m.close() })]
+    })
+  }
+
+  function buildGameSide(kind) {
+    gameKind = kind
+    const game = games[selected]
+    hosts[V_GAME].replaceChildren()
+    const items = gameSideItems(kind)
+    gameWheel = createArcWheel(hosts[V_GAME], {
       side: 'left',
       items,
       onActivate: i => {
         const it = items[i]
-        if (!store || !it) return
-        const again = () => { buildWords(); renderHeader() }
+        if (!it) return
+        if (kind === 'rules') { openRules(game.rules[i]); return }
+        const store = game.packs
+        if (!store) return
+        const again = () => { buildGameSide('words'); renderHeader() }
         openPackEditor(store, it.id === 'new' ? null : store.getPack(it.id), { onDone: again })
       }
     })
@@ -296,8 +334,11 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       side: 'right',
       items: menuItems(),
       onActivate: j => {
-        if (menu[j].phase === 'setup' && game.table) openTable()
-        else ctx.router.go('/' + game.id + '/' + menu[j].phase)
+        const phase = menu[j].phase
+        if (phase === 'setup' && game.table) openTable()
+        // these two live on the arc next door: pan there, don't rebuild the hub
+        else if (phase === 'words' || phase === 'rules') { buildGameSide(phase); moveCamera(V_GAME) }
+        else ctx.router.go('/' + game.id + '/' + phase)
       }
     })
   }
@@ -385,7 +426,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     buildSide(startSide, focusId)
     index = V_SIDE
   }
-  if (startWords && index === V_MENU) { buildWords(); index = V_WORDS }
+  if (startGameSide && index === V_MENU) { buildGameSide(startGameSide); index = V_GAME }
   layout(false)
   requestAnimationFrame(() => layout(false))
   if (startTable && index === V_MENU) openTable(false)

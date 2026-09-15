@@ -16,6 +16,44 @@ const menu = () => [
   { title: t('mw.menu.stats'), sub: t('mw.menu.statsSub'), phase: 'stats', glyph: 'stats' }
 ]
 
+// The rules, as sections: the hub rides them on the arc, one bead each, and
+// opens the one you pick. Data, not a page — whoever shows them decides how.
+const rules = () => [
+  {
+    title: t('mw.rules.rolesSection'),
+    items: [
+      { title: t('mw.roles.civili'), text: t('mw.rules.civili') },
+      { title: t('mw.role.undercover'), text: t('mw.rules.undercover') },
+      { title: t('mw.role.mrwhite'), text: t('mw.rules.mrwhite') },
+      { title: t('mw.rules.goddess'), text: t('mw.rules.goddessDesc') }
+    ]
+  },
+  {
+    title: t('mw.rules.countSection'),
+    items: [
+      { title: t('mw.rules.minority'), text: t('mw.rules.minorityDesc') },
+      { title: t('mw.rules.suggested'), text: t('mw.rules.suggestedDesc') }
+    ]
+  },
+  {
+    title: t('mw.rules.flowSection'),
+    items: [
+      { title: t('mw.rules.step0'), text: t('mw.rules.step0Desc') },
+      { title: t('mw.rules.step1'), text: t('mw.rules.step1Desc') },
+      { title: t('mw.rules.step2'), text: t('mw.rules.step2Desc') },
+      { title: t('mw.rules.step3'), text: t('mw.rules.step3Desc') }
+    ]
+  },
+  {
+    title: t('mw.rules.winSection'),
+    items: [
+      { title: t('mw.roles.civili'), text: t('mw.rules.winCivili') },
+      { title: t('mw.roles.impostori'), text: t('mw.rules.winImpostori') },
+      { title: t('mw.role.mrwhite'), text: t('mw.rules.winMrWhite') }
+    ]
+  }
+]
+
 // The match is played around the table (match.js); the rest are plain pages.
 const TABLE_PHASES = ['start', 'deal', 'goddess', 'play', 'vote', 'results']
 
@@ -69,7 +107,7 @@ function mount(container, ctx, initialPhase) {
     if (TABLE_PHASES.includes(state.phase)) { match[state.phase](api, tableScreen()); return }
     teardown()
     clear(container)
-    const map = { rules: screens.renderRules, stats: screens.renderStats }
+    const map = { stats: screens.renderStats }
     if (map[state.phase]) container.append(map[state.phase](api))
     else api.toMenu()
   }
@@ -92,6 +130,7 @@ export default {
   icon: '🕵️',
   glyph: 'incognito',
   packs, // the hub shows them on the right arc of this game's circle
+  get rules() { return rules() }, // …and the rules on the same arc
   get menu() { return menu() },
   // "Gioca": the hub turns the game's circle into the table; these are this
   // game's options in its drawer, and how a match starts.
