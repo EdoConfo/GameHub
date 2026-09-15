@@ -592,10 +592,11 @@ function normalize(value) {
   return LANGS.includes(l) ? l : null
 }
 
-// Stored choice, else the phone's language, else Italian.
-let lang = normalize(storage.get(KEY, null)) ||
-  normalize(typeof navigator !== 'undefined' ? navigator.language : '') ||
-  'it'
+// Your choice if you made one, otherwise English — whoever opens GameHub
+// without touching anything gets the language most people at a party can read.
+// The phone's own language is deliberately NOT consulted: an Italian phone
+// would land on Italian, which is the opposite of a default.
+let lang = normalize(storage.get(KEY, null)) || 'en'
 
 const listeners = new Set()
 
