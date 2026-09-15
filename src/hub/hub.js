@@ -1,7 +1,10 @@
 import { el, icon } from '../shared/ui.js'
+import { t, langName, cycleLang } from '../shared/i18n.js'
+import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor, avatar } from './players.js'
-import { openTableScene } from './tableScene.js'
+import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
+import { TABLE_CLOSE_MS } from '../shared/tableStage.js'
 import { games } from '../games/registry.js'
 
 // The hub is a fixed scene with TWO still circles; the app is a window panning
@@ -19,11 +22,19 @@ const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
 // A line icon in a round badge that sits on the circle like a bead.
 const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 
-export function renderHub(root, ctx, startMenuId, { table: startTable = false } = {}) {
+// Which bead each side arc should come back to. Kept here, not in the address:
+// the address names the page, and "the wheel happens to be turned to Anna" is
+// not a page. Lives as long as the session, which is as long as it matters —
+// you left that page a second ago.
+const lastFocus = { players: null, settings: null }
+
+export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, focusId = null } = {}) {
   let index = V_GAMES
   let selected = 0
   let sideKind = 'players'
   let table = null // the game's table ("Gioca"), while it's open
+  let sideWheel = null
+  let menuWheel = null
   let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
@@ -76,6 +87,21 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
     if (table) table.refit()
   }
 
+  // Where you are in the scene, written in the address bar. Panning isn't a
+  // navigation — no history entry, no re-render — but a reload has to come
+  // back to the view you were looking at, not to the last one that happened to
+  // write a hash.
+  function hashHere() {
+    if (index === V_MENU) return '#/' + games[selected].id + (table ? '/table' : '')
+    if (index === V_SIDE) return sideKind === 'settings' ? '#/settings' : '#/players'
+    return '#/'
+  }
+
+  function syncHash() {
+    const here = hashHere()
+    if (location.hash !== here) history.replaceState(null, '', here)
+  }
+
   function moveCamera(i, animate = true) {
     const from = world.cam[index]
     index = Math.max(0, Math.min(2, i))
@@ -90,6 +116,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
     })
     scene.style.transform = `translateX(${-to}px)`
     renderHeader()
+    syncHash()
     if (!animate) requestAnimationFrame(() => {
       scene.style.transitionDuration = ''
       hosts.forEach(h => { h.style.transitionDuration = '' })
@@ -108,52 +135,95 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
       header.replaceChildren(
         el('span', { class: 'wordmark' }, 'GAMEHUB'),
         el('div', { class: 'hub-header-actions' }, [
-          el('button', { class: 'icon-btn', 'aria-label': 'Giocatori', onclick: () => { buildSide('players'); moveCamera(V_SIDE) } }, icon('players')),
-          el('button', { class: 'icon-btn', 'aria-label': 'Impostazioni', onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
+          el('button', { class: 'icon-btn', 'aria-label': t('hub.players'), onclick: () => { buildSide('players'); moveCamera(V_SIDE) } }, icon('players')),
+          el('button', { class: 'icon-btn', 'aria-label': t('hub.settings'), onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
         ])
       )
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
       header.replaceChildren(
-        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => (table ? closeTable() : goto(V_GAMES)) }, icon('back')),
+        el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => (table ? closeTable() : goto(V_GAMES)) }, icon('back')),
         el('span', { class: 'wordmark game-home-title' }, games[selected].name.toUpperCase())
       )
     } else {
       // page on the left of its circle: mirrored — name left, arrow right
       header.replaceChildren(
-        el('span', { class: 'wordmark game-home-title' }, sideKind === 'settings' ? 'IMPOSTAZIONI' : 'GIOCATORI'),
-        el('button', { class: 'icon-btn', 'aria-label': 'Indietro', onclick: () => goto(V_GAMES) }, icon('forward'))
+        el('span', { class: 'wordmark game-home-title' },
+          (sideKind === 'settings' ? t('hub.settings') : t('hub.players')).toUpperCase()),
+        el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => goto(V_GAMES) }, icon('forward'))
       )
     }
   }
 
   // ---- circle A, left arc: Giocatori / Impostazioni ----
-  function buildSide(kind) {
-    sideKind = kind
-    hosts[V_SIDE].replaceChildren()
+  // The beads of the arc, as data. Read fresh every time: the theme bead shows
+  // the theme it will switch AWAY from, the language bead the current language.
+  function sideItems(kind) {
     if (kind === 'settings') {
-      const dark = ctx.storage.get('theme', 'dark') !== 'light'
-      createArcWheel(hosts[V_SIDE], {
-        side: 'right',
-        items: [
-          { title: 'Tema', sub: dark ? 'Scuro' : 'Chiaro', lead: badge(dark ? 'moon' : 'sun') },
-          { title: 'Offline', sub: 'Installabile · funziona senza rete', lead: badge('offline') }
-        ],
-        onActivate: i => { if (i === 0) { ctx.applyTheme(dark ? 'light' : 'dark'); buildSide('settings'); renderHeader() } }
-      })
-    } else {
-      const list = ctx.players.all()
-      const items = list.map(p => ({ title: p.name, sub: 'Profilo', lead: avatar(p, 56) }))
-      items.push({ title: 'Nuovo', sub: 'Aggiungi giocatore', lead: badge('plus') })
-      createArcWheel(hosts[V_SIDE], {
-        side: 'right',
-        items,
-        onActivate: i => {
-          if (i < list.length) ctx.router.go('/player/' + list[i].id)
-          else openProfileEditor(ctx, null, () => { buildSide('players'); renderHeader() })
-        }
-      })
+      // the bead names the CHOICE, not the colour: on 'Sistema' it says so,
+      // whichever of the two the phone is showing at that moment
+      const theme = getTheme()
+      const themeGlyph = { system: 'system', light: 'sun', dark: 'moon' }
+      return [
+        { id: 'theme', title: t('settings.theme'), sub: t('settings.theme.' + theme), lead: badge(themeGlyph[theme]) },
+        { id: 'language', title: t('settings.language'), sub: langName(), lead: badge('globe') },
+        { id: 'offline', title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
+      ]
     }
+    const items = ctx.players.all().map(p => ({ id: p.id, title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))
+    items.push({ id: 'new', title: t('common.new'), sub: t('players.addPlayer'), lead: badge('plus') })
+    return items
+  }
+
+  // focus: which bead to keep centred on the wheel — a player id on the
+  // Giocatori arc, a setting name on the Impostazioni one — so that coming
+  // back from a page lands where you left.
+  //
+  // This builds a NEW wheel, so call it only when the beads themselves change
+  // (a player added). Theme and language only change words and icons: those go
+  // through repaint(), which leaves the wheel where it stands.
+  function buildSide(kind, focus = null) {
+    sideKind = kind
+    if (focus == null) focus = lastFocus[kind]
+    hosts[V_SIDE].replaceChildren()
+    const items = sideItems(kind)
+    sideWheel = createArcWheel(hosts[V_SIDE], {
+      side: 'right',
+      items,
+      onActivate: i => {
+        const it = items[i]
+        if (!it) return
+        if (kind === 'settings') {
+          lastFocus.settings = it.id
+          if (it.id === 'theme') {
+            cycleTheme()
+            repaint()
+          } else if (it.id === 'language') {
+            cycleLang()
+            repaint()
+          }
+          return
+        }
+        if (it.id === 'new') openProfileEditor(ctx, null, saved => {
+          if (saved) lastFocus.players = saved.id
+          buildSide('players', saved && saved.id)
+          renderHeader()
+        })
+        else { lastFocus.players = it.id; ctx.router.go('/players/' + it.id) }
+      }
+    })
+    const at = items.findIndex(it => it.id === focus)
+    if (at >= 0) sideWheel.setActive(at)
+    renderHeader()
+    if (index === V_SIDE) syncHash() // Giocatori <-> Impostazioni, camera still
+  }
+
+  // Same beads, new words: swap the labels in place on all three wheels. No
+  // rebuild, so nothing slides in from the corner and the arcs don't move.
+  function repaint() {
+    gamesWheel.setItems(games.map(g => ({ title: g.name, sub: g.description, lead: badge(g.glyph || 'play') })))
+    if (menuWheel) menuWheel.setItems(menuItems())
+    if (sideWheel) sideWheel.setItems(sideItems(sideKind))
     renderHeader()
   }
 
@@ -165,16 +235,18 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
   })
 
   // ---- circle B, left arc: menu del gioco ----
+  const menuItems = () => (games[selected].menu || []).map(m => ({ title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') }))
+
   function buildMenu() {
     const game = games[selected]
     hosts[V_MENU].replaceChildren()
     const menu = game.menu || []
-    createArcWheel(hosts[V_MENU], {
+    menuWheel = createArcWheel(hosts[V_MENU], {
       side: 'right',
-      items: menu.map(m => ({ title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') })),
+      items: menuItems(),
       onActivate: j => {
         if (menu[j].phase === 'setup' && game.table) openTable()
-        else ctx.router.go('/game/' + game.id + '/' + menu[j].phase)
+        else ctx.router.go('/' + game.id + '/' + menu[j].phase)
       }
     })
   }
@@ -185,23 +257,40 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
     return { cx: xB - cam[V_MENU], cy: H / 2, r: R }
   }
 
+  // "Gioca": the circle shrinks into the table and the menu beads leave with
+  // it, sliding out the way they came in. Arriving straight on the table
+  // (a reload on #/table/...) there is nothing to morph out of, so the beads
+  // just aren't there — no exit to play.
   function openTable(morph = true) {
     const game = games[selected]
     if (table || !game.table) return
+    if (morph && menuWheel) {
+      // the host's own fade would blank the beads in .22s, before they've gone
+      // anywhere: stretch it over the circle's travel instead
+      canvas.style.setProperty('--tabling-out', TABLE_MORPH_MS + 'ms')
+      menuWheel.exit({ ms: TABLE_MORPH_MS })
+    } else {
+      canvas.style.removeProperty('--tabling-out')
+    }
     canvas.classList.add('tabling')
     circleB.style.visibility = 'hidden' // the table's own circle takes over, same place
     table = openTableScene(canvas, header, ctx, game, { from: morph ? circleBOnScreen() : null })
-    history.replaceState(null, '', '#/table/' + game.id)
+    syncHash()
     renderHeader()
   }
 
+  // Leaving the table: it shrinks back into the game's circle. The menu beads
+  // ride in with it from the left instead of popping up where they stand —
+  // same duration as the table's own glide, so circle and beads arrive
+  // together. Every game with a table gets this, it isn't Mister White's.
   function closeTable() {
     if (!table) return
     const t = table
     table = null
     canvas.classList.remove('tabling')
-    history.replaceState(null, '', '#/menu/' + games[selected].id)
+    syncHash()
     renderHeader()
+    if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
     t.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
   }
 
@@ -235,6 +324,9 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false } 
   if (startMenuId) {
     const i = games.findIndex(g => g.id === startMenuId)
     if (i >= 0) { gamesWheel.setActive(i); selected = i; buildMenu(); index = V_MENU }
+  } else if (startSide) {
+    buildSide(startSide, focusId)
+    index = V_SIDE
   }
   layout(false)
   requestAnimationFrame(() => layout(false))

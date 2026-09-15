@@ -352,26 +352,52 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .result-headline { font-size: 27px; margin: 0 0 4px; font-weight: 800; letter-spacing: -.3px; }
 
 /* ---- Modal ---- */
+/* Asking something is a panel too: it rises from the bottom like the others,
+   where the thumb is, and blacks out everything behind it — that darkness is
+   the whole point of a question, and it's what a card floating in the middle
+   never quite said. */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 50;
-  background: rgba(0,0,0,.45);
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-  animation: fade .2s ease;
+  background: rgba(0, 0, 0, .62);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fade .22s ease;
 }
+:root[data-theme="light"] .modal-overlay { background: rgba(14, 16, 28, .45); }
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sheet-up { from { transform: translateY(100%) } to { transform: none } }
 .modal {
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 560px; max-height: 88%;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 22px;
+  border: 1px solid var(--border); border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -12px 34px rgba(0, 0, 0, .3);
+  padding: 4px 18px calc(18px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto; scrollbar-width: none;
+  animation: sheet-up .34s var(--pan-ease);
 }
-.modal-title { margin: 0; font-size: 20px; font-weight: 750; }
+.modal::-webkit-scrollbar { display: none; }
+/* the same grabber the drawer has: tap it or pull it down and the question goes */
+.modal-grip {
+  flex: 0 0 auto; align-self: center; position: relative;
+  width: 72px; height: 22px; margin: 0 0 2px; padding: 0; border: 0; background: none;
+  cursor: pointer; touch-action: none;
+}
+.modal-grip::before {
+  content: ''; position: absolute; left: 18px; right: 18px; top: 9px; height: 4px; border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 24%, transparent);
+}
+.modal-title { margin: 0; font-size: 20px; font-weight: 750; text-align: center; }
 .modal-content { display: flex; flex-direction: column; gap: 12px; }
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+/* a line of prose under a centred question reads as part of it, not as a
+   paragraph of a page; the fields of an editor keep their own alignment */
+.modal-content > p { text-align: center; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions > .btn { flex: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal { animation: none; }
+}
 
 /* ---- Toast ---- */
 .toast {
@@ -597,7 +623,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    The table ("Gioca"): seats on a circle, a drawer below
    ============================================================ */
 /* the menu gets out of the way quickly, before the table passes over it */
-.canvas.tabling .arc-host.here { opacity: 0; pointer-events: none; transition-duration: .22s !important; }
+/* While the table is up the menu wheel is out of the way. The fade is quick by
+   default; when the beads slide out with the circle the hub stretches it over
+   that travel (--tabling-out), so they don't blank out halfway. */
+.canvas.tabling .arc-host.here { opacity: 0; pointer-events: none; transition-duration: var(--tabling-out, .22s) !important; }
 /* a match screen continues the hub's scene: no slide-in, no page height of its own */
 .game-root.on-table { min-height: 0; animation: none; }
 
@@ -662,6 +691,8 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .seat-label.dea .seat-note { color: var(--accent); }
 .table-icon .icon { width: 44px; height: 44px; color: var(--accent); }
 .drawer-hint.dea-news { color: var(--accent); }
+.drawer-hint.meme-news { color: var(--primary); }
+.role-section { margin: 14px 0 0; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-dim); }
 .seat.lifted { z-index: 3; cursor: grabbing; }
 .seat.lifted > * { transform: scale(1.16); box-shadow: 0 0 0 3px var(--bg), 0 12px 26px rgba(0, 0, 0, .35); }
 .seat.dim > * { opacity: .4; }
@@ -707,6 +738,26 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 :root[data-theme="light"] .drawer { box-shadow: 0 -6px 24px rgba(30, 35, 60, .08); }
 .drawer.open { transform: none; }
+/* The sheet: same panel, one step above the drawer, covering it whole. Its
+   last child (the way out) sits at the bottom edge even when the sheet is
+   taller than its content, because it is as tall as what it hides. */
+/* Catches the touch that lands outside the sheet, so it closes instead of
+   reaching the table. Invisible on purpose: the table below stays readable —
+   it's the thing you came here to set up. */
+.sheet-scrim { position: absolute; inset: 0; z-index: 5; display: none; }
+.sheet-scrim.on { display: block; }
+/* It covers the table rather than squeezing it, so it may grow well past the
+   drawer's 66% — up to just under the header, which stays reachable. Past that
+   the sheet's own body scrolls. */
+.drawer.sheet { z-index: 6; max-height: 88%; }
+.drawer.sheet .drawer-page { flex: 1; }
+.drawer.sheet .drawer-page > *:last-child { margin-top: auto; }
+/* While the sheet is up, the table is out of play. Switching off the container
+   does nothing: .table-layer is already pointer-events:none, and the parts you
+   touch (the seats, the top you grab to turn it) each switch themselves back
+   on — so those are what has to go quiet. */
+.table-layer.blocked .seat,
+.table-layer.blocked .table-pad { pointer-events: none; }
 .drawer.instant { transition: none; }
 .drawer-handle {
   flex: 0 0 auto; align-self: center; position: relative;
@@ -719,11 +770,30 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .drawer-handle[hidden] { display: none; }
 .drawer-handle[hidden] + .drawer-body { padding-top: 16px; }
-.drawer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Scrolls, but without painting a scrollbar over the page: nothing else in the
+   app shows one (see .pick-row). */
+.drawer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.drawer-body::-webkit-scrollbar { display: none; }
 .drawer-page { display: flex; flex-direction: column; gap: 12px; }
 /* phases that follow each other keep one height, so the table stays still */
 .drawer-page.steady { min-height: 190px; justify-content: center; }
-.drawer.min .drawer-more { display: none; }
+/* Folding the drawer: the detail collapses and fades on its own way out while
+   the panel comes down with it. Switching it off with display:none instead
+   made the drawer look like it was sliding down whole, with the button that
+   was left riding on top of it. */
+.drawer-more {
+  /* the cap has to clear the tallest block of detail (the options list) without
+     towering over it: max-height animates linearly, so a value far above the
+     real height makes the way back up look like it finishes early */
+  overflow: hidden; max-height: 260px;
+  transition: max-height .34s var(--pan-ease), opacity .18s ease, transform .3s var(--pan-ease);
+}
+.drawer.min .drawer-page { gap: 0; }
+.drawer.min .drawer-more {
+  max-height: 0; opacity: 0; transform: translateY(8px); pointer-events: none;
+}
+/* an open role description folds away with the rest of the detail */
+.drawer.min .role-desc { display: none; }
 .drawer-row { display: flex; gap: 10px; }
 .drawer-row > * { flex: 1; }
 .drawer-title { font-size: 21px; font-weight: 800; letter-spacing: -.3px; text-align: center; }
@@ -752,11 +822,49 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .opt-row:first-child { border-top: 0; }
 .opt-label { font-size: 16px; }
 .opt-value { font-size: 14px; color: var(--text-dim); }
+/* A door on the drawer's main page: what it is on the left, what it holds on
+   the right, and a way in. */
+.opt-door {
+  width: 100%; background: none; border: 0; border-top: 1px solid var(--border);
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.opt-door:first-child { border-top: 0; }
+.opt-door-value { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.opt-door-value .opt-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opt-door-value .icon { width: 18px; height: 18px; color: var(--text-dim); }
+
+/* One row per role: ? · name · how many. The description opens under the row,
+   so the counts stay in sight while you read it. */
+.role-list { display: flex; flex-direction: column; }
+.role-row { border-top: 1px solid var(--border); }
+.role-row:first-child { border-top: 0; }
+.role-head { display: flex; align-items: center; gap: 10px; min-height: 52px; }
+.role-name { flex: 1; font-size: 16px; }
+.role-rest { font-size: 18px; font-weight: 750; min-width: 22px; text-align: center; color: var(--text-dim); }
+.role-info {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid var(--border); background: none; color: var(--text-dim);
+  display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.role-info .icon { width: 15px; height: 15px; }
+.role-info[aria-expanded="true"] { background: var(--primary); border-color: transparent; color: #fff; }
+.role-desc { margin: -2px 0 12px; padding-left: 36px; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
+
 .opt-row .stepper-ctrl { gap: 10px; }
 .opt-row .stepper-val { font-size: 18px; min-width: 22px; }
 .round-btn.sm { width: 36px; height: 36px; font-size: 19px; }
 
 /* Profiles to pick: a row that centres when it fits, scrolls when it doesn't. */
+/* Faces in a grid, name underneath: four or five to a row on a phone. */
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 14px 6px; padding: 2px 0; }
+.pick-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 2px 0; margin: 0; cursor: pointer;
+  color: inherit; font: inherit; transition: transform .1s ease;
+}
+.pick-cell:active { transform: scale(.94); }
+.pick-plus { display: grid; place-items: center; font-size: 22px; color: var(--text-dim); }
+
 .pick-row { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; }
 .pick-row::-webkit-scrollbar { display: none; }
 .pick-row > :first-child { margin-left: auto; }

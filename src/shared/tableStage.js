@@ -1,4 +1,5 @@
 import { el } from './ui.js'
+import { t } from './i18n.js'
 import { createTableView, seatFor } from './tableView.js'
 
 // cubic-bezier(x1, y1, x2, y2) as a function of progress — same curves as CSS.
@@ -22,6 +23,10 @@ function bezier(x1, y1, x2, y2) {
 const ease = bezier(0.4, 0, 0.18, 1)
 const smooth = (a, b, t) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a || 1))); return k * k * (3 - 2 * k) }
 
+// How long the table takes to fold away. Whoever animates alongside it (the
+// hub's menu wheel) reads it from here instead of guessing the same number.
+export const TABLE_CLOSE_MS = 640
+
 // Where the table and the drawer last were. The next stage (another screen)
 // starts from there, so moving between screens the table glides, never jumps.
 let lastGeo = null
@@ -35,10 +40,21 @@ let lastDrawer = 0
 //   shown: initial seat visibility (0 = seats still to appear)
 export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, onSwap, onMove, onRotate } = {}) {
   const layer = el('div', { class: 'table-layer' })
-  const handle = el('button', { class: 'drawer-handle', 'aria-label': 'Apri o chiudi il cassetto' })
+  const handle = el('button', { class: 'drawer-handle', 'aria-label': t('table.drawerToggle') })
   const body = el('div', { class: 'drawer-body' })
   const drawer = el('div', { class: 'drawer' }, [handle, body])
-  host.append(layer, drawer)
+  // A second panel that rises OVER the drawer, for one thing at a time (roles,
+  // word packs). It covers the drawer whole — never a strip of it peeking out
+  // above — and its handle has one meaning: drag it down and it's gone.
+  const sheetHandle = el('button', { class: 'drawer-handle', 'aria-label': t('table.sheetClose') })
+  const sheetBody = el('div', { class: 'drawer-body' })
+  const sheet = el('div', { class: 'drawer sheet' }, [sheetHandle, sheetBody])
+  // Everything outside the sheet is a way out of it: touching the table closes
+  // the sheet, and that same touch does nothing else. You're back on the
+  // drawer, with the table live again — a second tap moves a seat.
+  const scrim = el('div', { class: 'sheet-scrim' })
+  scrim.addEventListener('pointerdown', () => closeSheet())
+  host.append(layer, drawer, scrim, sheet)
   // the names changed size (new seats, notes): make the room they need
   const view = createTableView(layer, { onTap, onSwap, onMove, onRotate, onExtent: () => reflow() })
 
@@ -47,6 +63,9 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   let raf = 0
   let hTimer = 0
   let isOpen = false
+  let sheetOpen = false
+  let sheetDone = null
+  let sheetTimer = 0
   let size = host.clientWidth + 'x' + host.clientHeight
 
   function place(g, s = shown) {
@@ -62,6 +81,10 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   // The room above the drawer; the table takes it, centred. Names sit outside
   // the seats, so they get room at the sides and above/below. Seat size
   // depends on the radius, hence a couple of rounds to settle it.
+  // Only the drawer shapes the table's room. The sheet passes OVER the table
+  // instead of pushing it: it can grow with the roles and the packs it holds,
+  // and a table that shrank to a button every time one opened would be worse
+  // than a table temporarily covered.
   function room(drawerH = isOpen ? drawer.offsetHeight : 0) {
     const W = host.clientWidth, H = host.clientHeight
     const t = top ? top() : 0
@@ -156,11 +179,46 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     glide(room(h), { ms: geo ? 440 : 0 })
   }
 
+  // Show `node` on the sheet, over the drawer. Opening it also takes the table
+  // out of play: there's nothing to tap at on it from in here, and a tap that
+  // opened a page hidden underneath would only be confusing.
+  //   done: called when the sheet closes, however it was closed
+  function openSheet(node, { done } = {}) {
+    clearTimeout(sheetTimer)
+    sheetDone = done || null
+    sheetBody.replaceChildren(node)
+    if (!sheetOpen) {
+      sheetOpen = true
+      layer.classList.add('blocked')
+      scrim.classList.add('on')
+      // at least as tall as what it hides, so the drawer never peeks above it
+      sheet.style.minHeight = (isOpen ? drawer.offsetHeight : 0) + 'px'
+      sheet.classList.add('open')
+    }
+    node.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 260, easing: 'ease-out' })
+  }
+
+  function closeSheet() {
+    if (!sheetOpen) return
+    sheetOpen = false
+    sheet.classList.remove('open')
+    layer.classList.remove('blocked')
+    scrim.classList.remove('on')
+    const fn = sheetDone
+    sheetDone = null
+    // empty it only once it's off screen, so it doesn't blink on the way down
+    clearTimeout(sheetTimer)
+    sheetTimer = setTimeout(() => { if (!sheetOpen) sheetBody.replaceChildren() }, 600)
+    if (fn) fn()
+  }
+
   // Drawer goes down, seats fade, the table glides to `to`; then it's gone.
   function close(to, done) {
     isOpen = false
+    closeSheet()
     drawer.classList.remove('open')
-    glide(to, { ms: 640, shown: 0, span: [0, 0.5], done: () => { destroy(); if (done) done() } })
+    glide(to, { ms: TABLE_CLOSE_MS, shown: 0, span: [0, 0.5], done: () => { destroy(); if (done) done() } })
   }
 
   function refit() {
@@ -182,18 +240,49 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     hy = null
     const min = drawer.classList.contains('min')
     const next = dy > 20 ? true : dy < -20 ? false : !min
-    if (next !== min) morph(() => drawer.classList.toggle('min', next))
+    if (next === min) return
+    // NOT morph(): that pins a start and an end height, and the end height is
+    // read before the detail has collapsed — so the panel slid down whole and
+    // then snapped the last 170px. Left on its own the drawer is as tall as
+    // what's inside it, and the detail collapsing carries it down. The
+    // ResizeObserver hands the table the room, frame by frame.
+    drawer.style.height = ''
+    clearTimeout(hTimer)
+    drawer.classList.toggle('min', next)
   })
   handle.addEventListener('pointercancel', () => { hy = null })
+
+  // The sheet's handle doesn't fold anything: down (or a plain tap) closes it.
+  let sy = null
+  sheetHandle.addEventListener('pointerdown', e => {
+    sy = e.clientY
+    try { sheetHandle.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+  })
+  sheetHandle.addEventListener('pointerup', e => {
+    if (sy == null) return
+    const dy = e.clientY - sy
+    sy = null
+    if (dy > -20) closeSheet()
+  })
+  sheetHandle.addEventListener('pointercancel', () => { sy = null })
+
+  // The drawer changing height on its own hands the table back the room it
+  // takes. The sheet is not watched: it doesn't own any of the table's room.
+  const panels = new ResizeObserver(() => reflow())
+  panels.observe(drawer)
 
   function destroy() {
     cancelAnimationFrame(raf)
     raf = 0
     clearTimeout(hTimer)
+    clearTimeout(sheetTimer)
+    panels.disconnect()
     view.destroy()
     layer.remove()
     drawer.remove()
+    scrim.remove()
+    sheet.remove()
   }
 
-  return { view, room, glide, open, present, setDrawer, close, refit, destroy }
+  return { view, room, glide, open, present, setDrawer, openSheet, closeSheet, close, refit, destroy }
 }

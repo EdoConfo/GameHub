@@ -1,8 +1,17 @@
-// Hash-based router. Works on GitHub Pages (no server rewrites).
-// Routes: #/            -> home
-//         #/game/<id>   -> a registered game
-//         #/settings    -> global settings
-
+// Hash-based router. Works on GitHub Pages (no server rewrites): everything
+// after the # never reaches the server, so index.html is the only real page.
+//
+// The scheme reads like folders — the game first, then what you're doing in it:
+//   #/                      home (the wheel of games)
+//   #/<game>                that game's menu
+//   #/<game>/table          its table, ready to start
+//   #/<game>/<phase>        one of its screens (rules, words, stats, a match phase)
+//   #/players               the players arc
+//   #/players/<id>          one player's page
+//   #/settings              settings
+//
+// Routes match in the order they were registered, so the fixed ones go in
+// before #/<game>: a game may never be called "players" or "settings".
 const routes = []
 let notFound = () => {}
 

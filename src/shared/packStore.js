@@ -6,7 +6,20 @@
 // Every pack can be renamed and rewritten: custom packs change in place,
 // built-in ones keep the change aside (an override by pack id) so they can be
 // put back as they were.
+//
+// LANGUAGES — a pack holds one list per language, side by side in the same file:
+//   { "id": "animali",
+//     "name":  { "it": "Animali", "en": "Animals" },
+//     "words": { "it": [...],     "en": [...] } }
+// Adding a language means appending one block, never touching the others. The
+// lists are independent: the English one doesn't have to translate the Italian
+// one word for word. A pack without the active language is hidden — no Italian
+// words surfacing in an English game.
+//
+// The old flat shape ({ "language": "it", "words": [...] }) still loads, read as
+// that one language, so packs already saved on a phone keep working.
 import * as storage from './storage.js'
+import { t, getLang, getLocale } from './i18n.js'
 
 export function createPackStore({ namespace, bundledModules, codec, enableAllByDefault = false }) {
   const CUSTOM_KEY = `packs:${namespace}:custom`
@@ -17,17 +30,39 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     .map(m => m.default)
     .map(normalizePack)
     .filter(Boolean)
-    .sort((a, b) => a.name.localeCompare(b.name, 'it'))
 
+  // ---- internal shape: { id, names: {lang: str}, byLang: {lang: [items]} } ----
   function normalizePack(raw) {
     if (!raw || typeof raw !== 'object') return null
     const id = String(raw.id || '').trim()
-    const name = String(raw.name || '').trim()
-    if (!id || !name) return null
-    const rawItems = raw.items || raw[codec.field] || []
-    const items = normalizeItems(rawItems)
-    if (!items.length) return null
-    return { id, name, language: raw.language || 'it', items, custom: !!raw.custom }
+    if (!id) return null
+    const fallbackLang = String(raw.language || 'it').slice(0, 2).toLowerCase()
+
+    const names = {}
+    if (raw.name && typeof raw.name === 'object') {
+      for (const [lang, value] of Object.entries(raw.name)) {
+        const clean = String(value || '').trim()
+        if (clean) names[lang] = clean
+      }
+    } else if (String(raw.name || '').trim()) {
+      names[fallbackLang] = String(raw.name).trim()
+    }
+
+    const source = raw.items || raw[codec.field] || []
+    const byLang = {}
+    if (Array.isArray(source)) {
+      const items = normalizeItems(source)
+      if (items.length) byLang[fallbackLang] = items
+    } else if (source && typeof source === 'object') {
+      for (const [lang, list] of Object.entries(source)) {
+        const items = normalizeItems(list)
+        if (items.length) byLang[lang] = items
+      }
+    }
+
+    const langs = Object.keys(byLang)
+    if (!langs.length || !Object.keys(names).length) return null
+    return { id, names, byLang, custom: !!raw.custom }
   }
 
   function normalizeItems(list) {
@@ -45,54 +80,104 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     return out
   }
 
+  // A pack as the rest of the app wants it: one language, flat. Null when this
+  // pack doesn't speak it.
+  function resolve(pack, lang, extra = {}) {
+    const items = pack.byLang[lang]
+    if (!items || !items.length) return null
+    return {
+      id: pack.id,
+      name: pack.names[lang] || pack.names[Object.keys(pack.names)[0]],
+      language: lang,
+      langs: Object.keys(pack.byLang),
+      items,
+      custom: pack.custom,
+      ...extra
+    }
+  }
+
   function loadCustom() {
     const list = storage.get(CUSTOM_KEY, [])
     return Array.isArray(list) ? list.map(normalizePack).filter(Boolean) : []
   }
-  function saveCustom(list) { storage.set(CUSTOM_KEY, list) }
+  function saveCustom(list) {
+    storage.set(CUSTOM_KEY, list.map(p => ({ id: p.id, name: p.names, items: p.byLang, custom: true })))
+  }
 
+  // { [packId]: { [lang]: { name, items } } }. The old { name, items } shape is
+  // read as an Italian override.
   function loadOverrides() {
-    const o = storage.get(OVERRIDE_KEY, {})
-    return o && typeof o === 'object' && !Array.isArray(o) ? o : {}
+    const raw = storage.get(OVERRIDE_KEY, {})
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+    const out = {}
+    for (const [id, value] of Object.entries(raw)) {
+      if (!value || typeof value !== 'object') continue
+      out[id] = Array.isArray(value.items) || typeof value.name === 'string'
+        ? { it: value }
+        : value
+    }
+    return out
   }
   function saveOverrides(o) { storage.set(OVERRIDE_KEY, o) }
 
-  // Built-in packs with their edits laid over (marked `modified`), then yours.
+  // Built-in packs with their edits laid over (marked `modified`), then yours —
+  // all in the active language, packs that don't speak it left out.
   function allPacks() {
+    const lang = getLang()
     const over = loadOverrides()
-    const base = bundled.map(p => {
-      const o = over[p.id]
-      if (!o) return p
-      const items = normalizeItems(o.items)
-      return { ...p, name: String(o.name || p.name), items: items.length ? items : p.items, modified: true }
-    })
-    return [...base, ...loadCustom()]
+    const out = []
+    for (const pack of bundled) {
+      const edit = over[pack.id] && over[pack.id][lang]
+      if (!edit) { const r = resolve(pack, lang); if (r) out.push(r); continue }
+      const items = normalizeItems(edit.items)
+      const r = resolve(
+        { ...pack, names: { ...pack.names, [lang]: String(edit.name || pack.names[lang] || '') },
+          byLang: { ...pack.byLang, [lang]: items.length ? items : pack.byLang[lang] } },
+        lang,
+        { modified: true }
+      )
+      if (r) out.push(r)
+    }
+    out.sort((a, b) => a.name.localeCompare(b.name, getLocale()))
+    for (const pack of loadCustom()) {
+      const r = resolve(pack, lang)
+      if (r) out.push(r)
+    }
+    return out
   }
+
   function getPack(id) { return allPacks().find(p => p.id === id) || null }
 
   function defaultEnabled() {
     if (enableAllByDefault) return allPacks().map(p => p.id)
-    const preferred = bundled.find(p => p.id === 'default') || bundled[0]
+    const list = allPacks()
+    const preferred = list.find(p => p.id === 'default') || list[0]
     return preferred ? [preferred.id] : []
   }
 
-  function enabledIds() {
+  // What's stored, untouched — may name packs of other languages, and must stay
+  // that way: switching language and back must not wipe your choices.
+  function storedEnabled() {
     const stored = storage.get(ENABLED_KEY, null)
-    if (Array.isArray(stored)) {
-      const valid = new Set(allPacks().map(p => p.id))
-      return stored.filter(id => valid.has(id))
-    }
-    return defaultEnabled()
+    return Array.isArray(stored) ? stored : null
+  }
+
+  function enabledIds() {
+    const stored = storedEnabled()
+    if (!stored) return defaultEnabled()
+    const valid = new Set(allPacks().map(p => p.id))
+    return stored.filter(id => valid.has(id))
   }
 
   function setEnabled(ids) { storage.set(ENABLED_KEY, [...new Set(ids)]) }
 
   function toggleEnabled(id) {
-    const current = new Set(enabledIds())
+    const base = storedEnabled() || defaultEnabled()
+    const current = new Set(base)
     if (current.has(id)) current.delete(id)
     else current.add(id)
     setEnabled([...current])
-    return [...current]
+    return enabledIds()
   }
 
   function enabledPacks() {
@@ -116,25 +201,25 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
   }
 
   // Parse custom input: JSON (schema or bare array) or the line format.
-  // Returns { items } or throws Error with an Italian message.
+  // Returns { items } or throws Error with a translated message.
   function parsePackInput(text) {
     const trimmed = String(text || '').trim()
-    if (!trimmed) throw new Error('Il testo è vuoto.')
+    if (!trimmed) throw new Error(t('packs.emptyText'))
 
     let items = null
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       let data
-      try { data = JSON.parse(trimmed) } catch { throw new Error('JSON non valido. Controlla la sintassi.') }
+      try { data = JSON.parse(trimmed) } catch { throw new Error(t('packs.badJson')) }
       let rawItems
       if (Array.isArray(data)) rawItems = data
       else if (data && (Array.isArray(data.items) || Array.isArray(data[codec.field]))) rawItems = data.items || data[codec.field]
-      else throw new Error(`JSON senza campo "${codec.field}" valido.`)
+      else throw new Error(t('packs.missingField', { field: codec.field }))
       items = normalizeItems(rawItems)
     } else {
       items = normalizeItems(trimmed.split(/\r?\n/).map(codec.parseLine))
     }
 
-    if (!items || !items.length) throw new Error(codec.emptyMsg)
+    if (!items || !items.length) throw new Error(t(codec.emptyKey))
     return { items }
   }
 
@@ -143,58 +228,70 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
   function cleanName(name) {
     const clean = String(name || '').trim()
-    if (!clean) throw new Error('Dai un nome al pacchetto.')
+    if (!clean) throw new Error(t('packs.nameRequired'))
     return clean
   }
 
-  // enable: also switch it on (games that pick packs in the manager). Mister
-  // White picks them at the table, so a new pack starts off there.
+  // Packs you write are single-language: they're saved under the language that
+  // was active while writing them, and show up only there.
   function addCustomPack(name, text, { enable = true } = {}) {
+    const lang = getLang()
     const clean = cleanName(name)
     const { items } = parsePackInput(text)
     const id = 'custom-' + Date.now().toString(36)
-    const pack = { id, name: clean, language: 'it', items, custom: true }
+    const pack = { id, names: { [lang]: clean }, byLang: { [lang]: items }, custom: true }
     const list = loadCustom()
     list.push(pack)
     saveCustom(list)
-    if (enable) setEnabled([...new Set([...enabledIds(), id])])
-    return pack
+    if (enable) setEnabled([...new Set([...(storedEnabled() || defaultEnabled()), id])])
+    return resolve(pack, lang)
   }
 
-  // Rename / rewrite any pack.
+  // Rename / rewrite a pack — in the active language only, the other languages
+  // of a built-in pack stay as they came.
   function updatePack(id, { name, text }) {
+    const lang = getLang()
     const clean = cleanName(name)
     const { items } = parsePackInput(text)
     const list = loadCustom()
     const i = list.findIndex(p => p.id === id)
     if (i >= 0) {
-      list[i] = { ...list[i], name: clean, items }
+      list[i] = {
+        ...list[i],
+        names: { ...list[i].names, [lang]: clean },
+        byLang: { ...list[i].byLang, [lang]: items }
+      }
       saveCustom(list)
-      return list[i]
+      return resolve(list[i], lang)
     }
-    if (!bundled.some(p => p.id === id)) throw new Error('Pacchetto non trovato.')
+    if (!bundled.some(p => p.id === id)) throw new Error(t('packs.notFound'))
     const over = loadOverrides()
-    over[id] = { name: clean, items }
+    over[id] = { ...(over[id] || {}), [lang]: { name: clean, items } }
     saveOverrides(over)
     return getPack(id)
   }
 
-  // A built-in pack back as it came with the app.
+  // A built-in pack back as it came with the app, in this language.
   function resetPack(id) {
+    const lang = getLang()
     const over = loadOverrides()
-    delete over[id]
+    if (over[id]) {
+      delete over[id][lang]
+      if (!Object.keys(over[id]).length) delete over[id]
+    }
     saveOverrides(over)
   }
 
   function deleteCustomPack(id) {
     saveCustom(loadCustom().filter(p => p.id !== id))
-    setEnabled(enabledIds().filter(x => x !== id))
+    setEnabled((storedEnabled() || defaultEnabled()).filter(x => x !== id))
   }
 
   return {
     namespace,
-    unit: codec.unit || 'voci',
-    placeholder: codec.placeholder || '',
+    // live: these follow the interface language
+    get unit() { return t(codec.unitKey || 'packs.unit.items') },
+    get placeholder() { return t(codec.placeholderKey || '') },
     allPacks, getPack,
     enabledIds, setEnabled, toggleEnabled, enabledPacks, enabledItems,
     parsePackInput, toText, addCustomPack, updatePack, resetPack, deleteCustomPack

@@ -5,19 +5,20 @@
 //   selectable: on/off boxes to choose which packs to play with (Heads Up).
 //   Mister White chooses them at the table instead, so it passes false.
 import { el, screen, button, modal, toast, clear } from './ui.js'
+import { t } from './i18n.js'
 
-export function renderPackManager(store, { title = 'Parole', help = '', onBack, selectable = true } = {}) {
-  const view = screen({ title, onBack })
+export function renderPackManager(store, { title = '', help = '', onBack, selectable = true } = {}) {
+  const view = screen({ title: title || t('packs.title'), onBack })
   const list = el('div', { class: 'pack-list' })
 
   function refresh() {
     clear(list)
     const enabled = new Set(store.enabledIds())
     for (const pack of store.allPacks()) {
-      const tag = pack.custom ? ' · tuo' : pack.modified ? ' · modificato' : ''
+      const tag = pack.custom ? t('packs.tagCustom') : pack.modified ? t('packs.tagModified') : ''
       list.append(el('div', { class: 'pack-row' }, [
         selectable ? el('input', {
-          type: 'checkbox', class: 'pack-check', checked: enabled.has(pack.id), 'aria-label': 'Usa ' + pack.name,
+          type: 'checkbox', class: 'pack-check', checked: enabled.has(pack.id), 'aria-label': t('packs.use', { name: pack.name }),
           onchange: () => { store.toggleEnabled(pack.id); refresh() }
         }) : null,
         el('button', { class: 'pack-open', onclick: () => openEditor(pack) }, [
@@ -32,16 +33,16 @@ export function renderPackManager(store, { title = 'Parole', help = '', onBack, 
   }
 
   const sec = el('section', { class: 'card-section' }, [
-    el('h2', { class: 'section-title' }, 'Pacchetti'),
+    el('h2', { class: 'section-title' }, t('packs.section')),
     help ? el('p', { class: 'muted' }, help) : null,
     list
   ])
   view.body.append(sec)
-  view.body.append(button('+ Nuovo pacchetto', { variant: 'secondary', full: true, onClick: () => openEditor(null) }))
+  view.body.append(button(t('packs.new'), { variant: 'secondary', full: true, onClick: () => openEditor(null) }))
 
   // A new pack (no `pack`) or an existing one: its name and one item per line.
   function openEditor(pack) {
-    const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: 'Nome pacchetto', maxlength: '40', value: pack ? pack.name : '' })
+    const nameInput = el('input', { class: 'text-input', type: 'text', placeholder: t('packs.namePlaceholder'), maxlength: '40', value: pack ? pack.name : '' })
     const textArea = el('textarea', { class: 'text-area', rows: '10', placeholder: store.placeholder })
     textArea.value = pack ? store.toText(pack) : ''
     const errBox = el('p', { class: 'error-text' })
@@ -49,42 +50,42 @@ export function renderPackManager(store, { title = 'Parole', help = '', onBack, 
     const extra = []
     if (pack && pack.custom) {
       // two taps to delete: the first one asks
-      const del = button('Elimina', {
+      const del = button(t('common.delete'), {
         variant: 'ghost', onClick: () => {
-          if (!del.dataset.sure) { del.dataset.sure = '1'; del.textContent = 'Elimina davvero'; return }
+          if (!del.dataset.sure) { del.dataset.sure = '1'; del.textContent = t('packs.deleteSure'); return }
           store.deleteCustomPack(pack.id)
           m.close()
-          toast(`Eliminato “${pack.name}”`)
+          toast(t('packs.deleted', { name: pack.name }))
           refresh()
         }
       })
       extra.push(del)
     }
     if (pack && pack.modified) {
-      extra.push(button('Ripristina', {
+      extra.push(button(t('common.restore'), {
         variant: 'ghost', onClick: () => {
           store.resetPack(pack.id)
           m.close()
-          toast('Ripristinato com’era')
+          toast(t('packs.restored'))
           refresh()
         }
       }))
     }
 
     const m = modal({
-      title: pack ? 'Modifica pacchetto' : 'Nuovo pacchetto',
+      title: pack ? t('packs.editTitle') : t('packs.newTitle'),
       content: [nameInput, textArea, errBox],
       actions: [
         ...extra,
-        button('Annulla', { variant: 'ghost', onClick: () => m.close() }),
-        button('Salva', {
+        button(t('common.cancel'), { variant: 'ghost', onClick: () => m.close() }),
+        button(t('common.save'), {
           variant: 'primary', onClick: () => {
             try {
               const saved = pack
                 ? store.updatePack(pack.id, { name: nameInput.value, text: textArea.value })
                 : store.addCustomPack(nameInput.value, textArea.value, { enable: selectable })
               m.close()
-              toast(`${pack ? 'Salvato' : 'Aggiunto'} “${saved.name}” (${saved.items.length} ${store.unit})`)
+              toast(t(pack ? 'packs.saved' : 'packs.added', { name: saved.name, n: saved.items.length, unit: store.unit }))
               refresh()
             } catch (err) { errBox.textContent = err.message }
           }

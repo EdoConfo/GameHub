@@ -5,11 +5,10 @@ import * as players from './shared/players.js'
 import * as table from './shared/table.js'
 import * as stats from './shared/stats.js'
 import { renderHub } from './hub/hub.js'
-import { renderSettings } from './hub/settings.js'
-import { renderPlayers } from './hub/players.js'
 import { renderPlayer } from './hub/playerPage.js'
 import { getGame } from './games/registry.js'
-import { clear, screen, el } from './shared/ui.js'
+import { clear, el } from './shared/ui.js'
+import { applyTheme, getTheme, watchSystem } from './shared/theme.js'
 
 const root = document.getElementById('app')
 
@@ -27,8 +26,10 @@ document.addEventListener('touchmove', e => {
   if (t && t.closest && t.closest('.canvas') && !t.closest('.drawer-body, .pick-row')) e.preventDefault()
 }, { passive: false })
 
-// Apply persisted theme before first paint of content.
-applyTheme(storage.get('theme', 'dark'))
+// Paint in the chosen theme before any content shows. No choice yet means
+// following the system, so a fresh install matches the phone.
+applyTheme(getTheme())
+watchSystem()
 
 // Shared services handed to every game. Word packs are NOT here: each game
 // owns and manages its own packs (see games/<id>/packs.js).
@@ -48,33 +49,22 @@ router.on('/', () => {
   renderHub(root, ctx)
 })
 
-// Hub opened straight on a game's menu page (e.g. back from a game screen).
-router.on('/menu/:id', ({ id }) => {
+// Giocatori and Impostazioni are not separate screens: they're the left arc of
+// circle A. These routes open the hub already parked there.
+router.on('/players', () => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx, id)
-})
-
-// Hub opened on a game's table ("Gioca"), e.g. back from a match.
-router.on('/table/:id', ({ id }) => {
-  leaveCurrent()
-  clear(root)
-  renderHub(root, ctx, id, { table: true })
+  renderHub(root, ctx, null, { side: 'players' })
 })
 
 router.on('/settings', () => {
   leaveCurrent()
   clear(root)
-  renderSettings(root, ctx)
+  renderHub(root, ctx, null, { side: 'settings' })
 })
 
-router.on('/players', () => {
-  leaveCurrent()
-  clear(root)
-  renderPlayers(root, ctx)
-})
-
-router.on('/player/:id', ({ id }) => {
+// A player's own page.
+router.on('/players/:id', ({ id }) => {
   leaveCurrent()
   renderPlayer(root, ctx, id)
 })
@@ -88,17 +78,26 @@ function mountGame(id, phase) {
   root.append(container)
   currentCleanup = game.mount(container, ctx, phase) || null
 }
-router.on('/game/:id/:phase', ({ id, phase }) => mountGame(id, phase))
-router.on('/game/:id', ({ id }) => mountGame(id))
+
+// From here on the first piece is a game. Keep these last: whatever isn't one
+// of the fixed routes above is read as a game id.
+//
+// The hub owns the menu and the table — they're views of its scene, not
+// screens of their own — so those two go to renderHub, not to the game.
+router.on('/:game/table', ({ game }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, game, { table: true })
+})
+
+router.on('/:game/:phase', ({ game, phase }) => mountGame(game, phase))
+
+router.on('/:game', ({ game }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, game)
+})
 
 router.setNotFound(() => router.go('/'))
 
 router.start()
-
-export function applyTheme(theme) {
-  const t = theme === 'light' ? 'light' : 'dark'
-  document.documentElement.dataset.theme = t
-  const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', t === 'light' ? '#eaecf7' : '#0a0b16')
-  storage.set('theme', t)
-}

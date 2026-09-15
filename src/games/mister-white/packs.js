@@ -1,13 +1,14 @@
 // Mister White word packs: pairs { civilian, undercover }. Scoped to this game.
+// Each pack file carries one list per language (see shared/packStore.js).
 import { createPackStore } from '../../shared/packStore.js'
 
 const modules = import.meta.glob('./packs/*.json', { eager: true })
 
 const codec = {
   field: 'pairs',
-  unit: 'coppie',
-  placeholder: 'Una coppia per riga:\ncane,lupo\npizza,focaccia\n\n…oppure JSON: { "pairs": [ { "civilian": "cane", "undercover": "lupo" } ] }',
-  emptyMsg: 'Nessuna coppia valida. Formato: "parola,parola-simile" per riga.',
+  unitKey: 'mw.unit.pairs',
+  placeholderKey: 'mw.packsPlaceholder',
+  emptyKey: 'mw.packsEmpty',
   normalize(raw) {
     if (!raw || typeof raw !== 'object') return null
     const civilian = String(raw.civilian || '').trim()

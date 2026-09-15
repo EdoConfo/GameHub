@@ -1,13 +1,14 @@
 // Heads Up word packs: single words/names to guess. Scoped to this game.
+// Each pack file carries one list per language (see shared/packStore.js).
 import { createPackStore } from '../../shared/packStore.js'
 
 const modules = import.meta.glob('./packs/*.json', { eager: true })
 
 const codec = {
   field: 'words',
-  unit: 'parole',
-  placeholder: 'Una parola per riga:\nSpiderman\nPizza\nBallare la macarena\n\n…oppure JSON: { "words": ["Spiderman", "Pizza"] }',
-  emptyMsg: 'Nessuna parola valida. Scrivi una parola per riga.',
+  unitKey: 'hu.unit.words',
+  placeholderKey: 'hu.packsPlaceholder',
+  emptyKey: 'hu.packsEmpty',
   normalize(raw) {
     const s = String(raw == null ? '' : (typeof raw === 'string' ? raw : (raw.word || ''))).trim()
     return s ? s : null

@@ -6,8 +6,18 @@
 //   'mrwhite'    -> knows no word
 // Civili are the good guys; undercover + mrwhite are the "impostori".
 import { shuffle } from '../../shared/ui.js'
+import { t } from '../../shared/i18n.js'
 
 export const ROLE = { CIVILE: 'civile', UNDERCOVER: 'undercover', MRWHITE: 'mrwhite' }
+
+// Extras are not roles: they don't replace civilian/undercover/mrwhite, they
+// ride on top of whoever gets them. Each one is on or off for the whole table.
+//   meme     every clue round, one player at random describes by gesture only
+//   lovers   two players are bound: one goes, the other follows
+//   revenger whoever has it takes someone with them when eliminated
+// Lovers and Revenger need a table big enough to be worth it.
+export const EXTRAS = ['meme', 'lovers', 'revenger']
+export const extraMin = id => (id === 'meme' ? 3 : 5)
 
 // The most impostors a table of n can have: the civilians start in the
 // majority, as in the original game — 3–4 players -> 1, 5–6 -> 2, 7–8 -> 3, …
@@ -32,11 +42,11 @@ export function fitCounts(n, { mrwhite, undercover }) {
 
 // Validate a setup. Returns { ok:true } or { ok:false, message }.
 export function validateSetup(n, counts) {
-  if (n < 3) return { ok: false, message: 'Servono almeno 3 giocatori.' }
-  if (n > 20) return { ok: false, message: 'Massimo 20 giocatori.' }
+  if (n < 3) return { ok: false, message: t('mw.setup.min3') }
+  if (n > 20) return { ok: false, message: t('mw.setup.max20') }
   const impostori = counts.mrwhite + counts.undercover
-  if (impostori < 1) return { ok: false, message: 'Serve almeno un impostore.' }
-  if (impostori > maxImpostors(n)) return { ok: false, message: 'Troppi impostori: i civili devono essere di più.' }
+  if (impostori < 1) return { ok: false, message: t('mw.setup.needImpostor') }
+  if (impostori > maxImpostors(n)) return { ok: false, message: t('mw.setup.tooMany') }
   return { ok: true }
 }
 
@@ -69,6 +79,47 @@ export function buildRound(people, pair, counts) {
   return { players, pair, order }
 }
 
+// Hand out the extras that are switched on and that the table is big enough
+// for. Lovers are two different players; the Revenger may be anyone, including
+// one of the lovers — they're modifiers, not seats.
+export function assignExtras(round, extras = {}) {
+  const ids = round.players.map(p => p.id)
+  const n = ids.length
+  if (extras.lovers && n >= extraMin('lovers')) round.lovers = shuffle(ids).slice(0, 2)
+  if (extras.revenger && n >= extraMin('revenger')) round.revenger = shuffle(ids)[0]
+  round.meme = !!(extras.meme && n >= extraMin('meme'))
+  return round
+}
+
+export function loverOf(round, id) {
+  if (!round.lovers || !round.lovers.includes(id)) return null
+  const other = round.lovers.find(x => x !== id)
+  return round.players[other] || null
+}
+
+// Take `id` out of the game, and whoever the Lovers bond drags along. Returns
+// everyone who died, in the order they fell. The Revenger is NOT resolved
+// here: that one needs the table to choose, so the caller asks.
+export function killWithLovers(round, id) {
+  const dead = []
+  const queue = [id]
+  while (queue.length) {
+    const p = round.players[queue.shift()]
+    if (!p || !p.alive) continue
+    p.alive = false
+    dead.push(p)
+    const lover = loverOf(round, p.id)
+    if (lover && lover.alive) queue.push(lover.id)
+  }
+  return dead
+}
+
+// Mr Meme moves every round: a player still in the game, drawn fresh.
+export function pickMeme(players) {
+  const alive = players.filter(p => p.alive)
+  return alive.length ? alive[Math.floor(Math.random() * alive.length)] : null
+}
+
 // The Goddess of Justice: a random player still in the game. When the vote
 // ends in a tie, she decides who goes.
 export function pickGoddess(players) {
@@ -95,7 +146,7 @@ export function guessMatches(guess, civilianWord) {
 }
 
 export function roleLabel(role) {
-  if (role === ROLE.MRWHITE) return 'Mister White'
-  if (role === ROLE.UNDERCOVER) return 'Undercover'
-  return 'Civile'
+  if (role === ROLE.MRWHITE) return t('mw.role.mrwhite')
+  if (role === ROLE.UNDERCOVER) return t('mw.role.undercover')
+  return t('mw.role.civile')
 }

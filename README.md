@@ -3,7 +3,7 @@
 Hub di giochi da tavolo per feste, da giocare tutti insieme su **un solo telefono** (pass-and-play).
 Nessun server, nessun account: gira tutto nel browser e **funziona offline**.
 
-Primo gioco incluso: **Mister White** (trova l'impostore che non conosce la parola).
+Primo gioco incluso: **Mr White** (trova l'impostore che non conosce la parola).
 L'architettura è pronta per aggiungerne altri (es. un gioco col telefono in fronte e il giroscopio).
 
 ## Cosa serve
@@ -71,7 +71,7 @@ Per gestirli: entra nel gioco → **Gestisci parole**. Lì attivi/disattivi le
 categorie, ne aggiungi di tue (salvate nel browser, `localStorage`, per quel
 gioco) e le elimini. Ogni gioco ha il suo spazio di archiviazione separato.
 
-### Mister White — coppie
+### Mr White — coppie
 
 Servono **coppie** (parola dei civili + parola simile per gli undercover).
 
@@ -150,14 +150,14 @@ Ogni gioco è un modulo autonomo. Il resto dell'app (hub, router, impostazioni) 
    export const games = [misterWhite, headsUp]
    ```
 
-Fatto: la card compare nella home e la rotta `#/game/heads-up` funziona.
+Fatto: la card compare nella home e la rotta `#/heads-up` funziona.
 
 ## Struttura
 
 ```
 src/
   main.js              boot + rotte
-  router.js            router hash (#/, #/game/<id>, #/settings)
+  router.js            router hash (#/, #/<gioco>, #/<gioco>/<fase>, #/players, #/settings)
   styles.css           token tema + UI condivisa
   shared/              storage, giocatori, packStore + packManagerScreen, helper UI
   hub/                 home + impostazioni (solo tema + giocatori)
@@ -167,11 +167,11 @@ src/
     heads-up/          screens + motion + packs.js + packs/*.json (parole)
 ```
 
-## Come si gioca a Mister White
+## Come si gioca a Mr White
 
 - I **Civili** ricevono la parola segreta.
 - Gli **Undercover** ricevono una parola simile ma diversa.
-- **Mister White** non riceve nessuna parola e deve fingere.
+- **Mr White** non riceve nessuna parola e deve fingere.
 - A turno ognuno dice a voce una parola collegata alla propria. Poi si vota chi eliminare.
 - Vincono i Civili se smascherano tutti gli impostori; vincono gli impostori se sopravvivono;
-  Mister White vince se, una volta eliminato, indovina la parola dei Civili.
+  Mr White vince se, una volta eliminato, indovina la parola dei Civili.

@@ -1,6 +1,11 @@
 import { el, icon, button } from '../shared/ui.js'
+import { t } from '../shared/i18n.js'
 import { createTableStage } from '../shared/tableStage.js'
 import { avatar, openProfileEditor } from './players.js'
+
+// How long the game's circle takes to become the table, coming out of the
+// menu. Exported for whoever rides along with it.
+export const TABLE_MORPH_MS = 780
 
 const pill = (glyph, label, onClick) =>
   el('button', { class: 'pill', onclick: onClick }, [icon(glyph), el('span', {}, label)])
@@ -15,11 +20,13 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   // of their own in the drawer (e.g. choosing word packs); "Fatto" comes back.
   const options = cfg.options(ctx, {
     changed: () => refresh(),
-    open: (title, content) => stage.setDrawer(el('div', { class: 'drawer-page' }, [
+    // a page of the game's own: it rises OVER this drawer and covers it, and
+    // leaves either way you close it — "Fatto" or the handle pulled down
+    open: (title, content) => stage.openSheet(el('div', { class: 'drawer-page' }, [
       el('div', { class: 'drawer-title' }, title),
       ...content,
-      button('Fatto', { variant: 'ghost', full: true, onClick: done })
-    ]))
+      button(t('common.done'), { variant: 'ghost', full: true, onClick: () => stage.closeSheet() })
+    ]), { done: () => refresh() })
   })
   let picking = null // seat index whose chair we're filling, or 'new'
 
@@ -34,15 +41,15 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   })
 
   // ---- drawer: table controls + game options + start ----
-  const startBtn = button('Inizia', { variant: 'primary', full: true, onClick: () => cfg.start(ctx) })
+  const startBtn = button(t('table.start'), { variant: 'primary', full: true, onClick: () => cfg.start(ctx) })
   const main = el('div', { class: 'drawer-page' }, [
     el('div', { class: 'drawer-more drawer-row' }, [
-      pill('plus', 'Sedia', () => { ctx.table.addSeat(); refresh() }),
-      pill('players', 'Giocatore', () => pick('new'))
+      pill('plus', t('table.addSeat'), () => { ctx.table.addSeat(); refresh() }),
+      pill('players', t('table.addPlayer'), () => openPlayers())
     ]),
     el('p', { class: 'drawer-more drawer-hint' }, [
-      el('span', {}, 'Su un giocatore lo scambi, tra due lo inserisci'),
-      el('span', {}, 'Trascina il tavolo per girarlo')
+      el('span', {}, t('table.swapHint')),
+      el('span', {}, t('table.rotateHint'))
     ]),
     el('div', { class: 'drawer-more drawer-options' }, options.node),
     startBtn
@@ -53,16 +60,68 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     const roster = new Map(ctx.players.all().map(p => [p.id, p]))
     stage.view.set(seats.map((s, i) => {
       const p = s.pid ? roster.get(s.pid) || null : null
-      return { key: s.id, p, name: p ? p.name : 'libero', cls: picking === i ? 'on' : '' }
+      return { key: s.id, p, name: p ? p.name : t('table.free'), cls: picking === i ? 'on' : '' }
     }))
     stage.view.setCenter(el('div', { class: 'table-count' }, [
       el('b', {}, String(seats.length)),
-      el('span', {}, seats.length === 1 ? 'posto' : 'posti')
+      el('span', {}, seats.length === 1 ? t('table.seat') : t('table.seats'))
     ]))
     // the button says why it can't start yet
-    const msg = seats.length < cfg.min ? `Servono almeno ${cfg.min} posti` : options.check(seats.length)
-    startBtn.textContent = msg || 'Inizia'
+    const msg = seats.length < cfg.min ? t('table.needSeats', { n: cfg.min }) : options.check(seats.length)
+    startBtn.textContent = msg || t('table.start')
     startBtn.disabled = !!msg
+  }
+
+  // ---- sheet: everyone who isn't at the table yet ----
+  // Tapping doesn't close it: you seat six people with six taps and then get
+  // out. Each one takes the first free chair, or a new chair if there is none —
+  // the order you sort out afterwards, on the table itself.
+  function openPlayers() {
+    const list = el('div', { class: 'pick-grid' })
+    const hint = el('p', { class: 'drawer-hint drawer-more' }, t('table.playersHint'))
+    const empty = el('p', { class: 'drawer-hint' }, t('table.allSeated'))
+
+    function seat(pid) {
+      const empty = ctx.table.seats().find(s => !s.pid)
+      if (empty) ctx.table.sit(empty.id, pid)
+      else ctx.table.addSeat(pid)
+      refresh()
+      paint()
+    }
+
+    function paint() {
+      const seated = new Set(ctx.table.seats().map(s => s.pid).filter(Boolean))
+      const standing = ctx.players.all().filter(p => !seated.has(p.id))
+      // replaceChildren() has no opinion about null — it would print the word.
+      // A face and a name under it, four or five to a row: a dozen people fit
+      // on one screen, where a list of rows would have you scrolling.
+      // replaceChildren() has no opinion about null — it would print the word.
+      const cells = [
+        ...standing.map(p => el('button', { class: 'pick-cell', onclick: () => seat(p.id) }, [
+          avatar(p, 52),
+          el('span', { class: 'pick-name' }, p.name)
+        ])),
+        el('button', {
+          class: 'pick-cell',
+          onclick: () => openProfileEditor(ctx, null, p => { if (p) seat(p.id) })
+        }, [
+          el('span', { class: 'avatar avatar-empty pick-plus', style: 'width:52px;height:52px' }, '+'),
+          el('span', { class: 'pick-name' }, t('common.new'))
+        ])
+      ]
+      list.replaceChildren(...cells)
+      empty.hidden = standing.length > 0
+      hint.hidden = !standing.length
+    }
+
+    paint()
+    stage.openSheet(el('div', { class: 'drawer-page' }, [
+      el('div', { class: 'drawer-title' }, t('hub.players')),
+      hint,
+      empty,
+      list,
+      button(t('common.done'), { variant: 'ghost', full: true, onClick: () => stage.closeSheet() })
+    ]), { done: () => refresh() })
   }
 
   // ---- drawer: choose who sits on a chair (or on a new one) ----
@@ -86,19 +145,19 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     }
 
     stage.setDrawer(el('div', { class: 'drawer-page' }, [
-      el('div', { class: 'drawer-title' }, seat ? (current ? current.name : 'Posto libero') : 'Chi si siede?'),
+      el('div', { class: 'drawer-title' }, seat ? (current ? current.name : t('table.seatFree')) : t('table.whoSits')),
       el('p', { class: 'drawer-hint' }, seat && !current
-        ? 'Scegli chi siede qui, o lascialo libero: chi lo trova si presenta quando riceve il telefono.'
-        : free.length ? 'Scegli un profilo o creane uno nuovo.' : 'Tutti i profili sono già al tavolo: creane uno nuovo.'),
+        ? t('table.pickForSeat')
+        : free.length ? t('table.pickProfile') : t('table.allSeated')),
       free.length ? el('div', { class: 'pick-row' }, free.map(p =>
         el('button', { class: 'pick', onclick: () => place(p.id) }, [avatar(p, 48), el('span', { class: 'pick-name' }, p.name)])
       )) : null,
       el('div', { class: 'drawer-row' }, [
-        pill('plus', 'Nuovo', () => openProfileEditor(ctx, null, p => { if (p) place(p.id) })),
-        current ? pill('minus', 'Libera', () => { ctx.table.sit(seat.id, null); done() }) : null,
-        seat ? pill('close', 'Togli', () => { ctx.table.removeSeat(seat.id); done() }) : null
+        pill('plus', t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) place(p.id) })),
+        current ? pill('minus', t('table.free.action'), () => { ctx.table.sit(seat.id, null); done() }) : null,
+        seat ? pill('close', t('table.remove'), () => { ctx.table.removeSeat(seat.id); done() }) : null
       ]),
-      button('Fatto', { variant: 'ghost', full: true, onClick: done })
+      button(t('common.done'), { variant: 'ghost', full: true, onClick: done })
     ]))
     refresh()
   }
@@ -113,7 +172,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   refresh()
   const h = stage.open({ slide: !!from })
   // out of the menu: the big circle shrinks into the table, seats appear late
-  stage.glide(stage.room(h), from ? { ms: 780, span: [0.3, 1] } : { ms: 460 })
+  stage.glide(stage.room(h), from ? { ms: TABLE_MORPH_MS, span: [0.3, 1] } : { ms: 460 })
 
   return { refit: stage.refit, close: stage.close }
 }
