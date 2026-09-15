@@ -81,6 +81,21 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     if (table) table.refit()
   }
 
+  // Where you are in the scene, written in the address bar. Panning isn't a
+  // navigation — no history entry, no re-render — but a reload has to come
+  // back to the view you were looking at, not to the last one that happened to
+  // write a hash.
+  function hashHere() {
+    if (index === V_MENU) return '#/' + (table ? 'table/' : 'menu/') + games[selected].id
+    if (index === V_SIDE) return sideKind === 'settings' ? '#/settings' : '#/players'
+    return '#/'
+  }
+
+  function syncHash() {
+    const here = hashHere()
+    if (location.hash !== here) history.replaceState(null, '', here)
+  }
+
   function moveCamera(i, animate = true) {
     const from = world.cam[index]
     index = Math.max(0, Math.min(2, i))
@@ -95,6 +110,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     })
     scene.style.transform = `translateX(${-to}px)`
     renderHeader()
+    syncHash()
     if (!animate) requestAnimationFrame(() => {
       scene.style.transitionDuration = ''
       hosts.forEach(h => { h.style.transitionDuration = '' })
@@ -187,6 +203,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     const at = items.findIndex(it => it.id === focus)
     if (at >= 0) sideWheel.setActive(at)
     renderHeader()
+    if (index === V_SIDE) syncHash() // Giocatori <-> Impostazioni, camera still
   }
 
   // Same beads, new words: swap the labels in place on all three wheels. No
@@ -246,7 +263,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     canvas.classList.add('tabling')
     circleB.style.visibility = 'hidden' // the table's own circle takes over, same place
     table = openTableScene(canvas, header, ctx, game, { from: morph ? circleBOnScreen() : null })
-    history.replaceState(null, '', '#/table/' + game.id)
+    syncHash()
     renderHeader()
   }
 
@@ -259,7 +276,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     const t = table
     table = null
     canvas.classList.remove('tabling')
-    history.replaceState(null, '', '#/menu/' + games[selected].id)
+    syncHash()
     renderHeader()
     if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
     t.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
