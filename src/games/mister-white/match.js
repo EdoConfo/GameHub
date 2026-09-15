@@ -31,7 +31,11 @@ function loadCounts(ctx, n) {
 
 const page = (children, cls = '') => el('div', { class: 'drawer-page' + (cls ? ' ' + cls : '') }, children)
 const count = (big, small) => el('div', { class: 'table-count' }, [el('b', {}, big), el('span', {}, small)])
-const pickRow = (list, onPick) => faceGrid(list, onPick)
+const pickRow = (list, onPick) => {
+  const grid = faceGrid(list, onPick)
+  grid.classList.add('list-scroll')
+  return grid
+}
 
 // The round's seats as table items; `look(player, i)` adds cls / note.
 function seatItems(api, look) {
@@ -200,16 +204,18 @@ export function tableOptions(ctx, ui) {
     paintPage = () => all.forEach(r => r.paint())
     paintPage()
     ui.open(t('mw.opt.characters'), [
-      el('div', { class: 'role-list' }, rows.map(r => r.node)),
-      el('h2', { class: 'role-section' }, t('mw.extra.section')),
-      el('div', { class: 'role-list' }, extraRows.map(r => r.node)),
+      el('div', { class: 'list-scroll' }, [
+        el('div', { class: 'role-list' }, rows.map(r => r.node)),
+        el('h2', { class: 'role-section' }, t('mw.extra.section')),
+        el('div', { class: 'role-list' }, extraRows.map(r => r.node))
+      ]),
       el('p', { class: 'drawer-hint drawer-more' }, t('mw.opt.charactersHint'))
     ])
   }
 
   // ---------- Parole: which packs this match draws from ----------
   function openPacks() {
-    const list = el('div', { class: 'pack-pick-list' })
+    const list = el('div', { class: 'pack-pick-list list-scroll' })
     paintPage = () => {
       const on = new Set(packs.enabledIds())
       list.replaceChildren(...packs.allPacks().map(p => el('button', {

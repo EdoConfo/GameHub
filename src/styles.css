@@ -770,11 +770,29 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .drawer-handle[hidden] { display: none; }
 .drawer-handle[hidden] + .drawer-body { padding-top: 16px; }
-/* Scrolls, but without painting a scrollbar over the page: nothing else in the
-   app shows one. */
-.drawer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+/* The body is a column with a definite height — that's what lets the one long
+   list inside a page give up room (.list-scroll) instead of pushing the title
+   and the buttons off the screen. A page with nothing marked as scrollable has
+   to fit; ours all do, and the long ones are marked. */
+.drawer-body {
+  min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  overscroll-behavior: contain; scrollbar-width: none;
+}
 .drawer-body::-webkit-scrollbar { display: none; }
+.drawer-body > .drawer-page { flex: 1 1 auto; min-height: 0; }
 .drawer-page { display: flex; flex-direction: column; gap: 12px; }
+/* The one long thing on a page scrolls inside it, so the title above and the
+   way out below stay put: with fifty profiles, "Fatto" was five rows of faces
+   past the bottom of the screen. `flex: 0 1 auto` — it gives up room when
+   there isn't enough, and doesn't stretch when there is plenty. */
+.list-scroll {
+  flex: 0 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+}
+.list-scroll::-webkit-scrollbar { display: none; }
+/* everything else on the page keeps its own size: by default a flex child
+   gives up room too, and the hint above the list was losing a line to it */
+.drawer-page > *:not(.list-scroll) { flex: 0 0 auto; }
 /* phases that follow each other keep one height, so the table stays still */
 .drawer-page.steady { min-height: 190px; justify-content: center; }
 /* Folding the drawer: the detail collapses and fades on its own way out while

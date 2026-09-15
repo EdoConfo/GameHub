@@ -7,6 +7,9 @@ import { avatar, faceGrid, newFaceCell, openProfileEditor } from './players.js'
 // menu. Exported for whoever rides along with it.
 export const TABLE_MORPH_MS = 780
 
+// Mark a node as the page's scrolling part (see .list-scroll).
+const scrollable = node => { node.classList.add('list-scroll'); return node }
+
 const pill = (glyph, label, onClick) =>
   el('button', { class: 'pill', onclick: onClick }, [icon(glyph), el('span', {}, label)])
 
@@ -77,7 +80,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   // out. Each one takes the first free chair, or a new chair if there is none —
   // the order you sort out afterwards, on the table itself.
   function openPlayers() {
-    const list = el('div', { class: 'pick-grid' })
+    const list = el('div', { class: 'pick-grid list-scroll' })
     const hint = el('p', { class: 'drawer-hint drawer-more' }, t('table.playersHint'))
     const empty = el('p', { class: 'drawer-hint' }, t('table.allSeated'))
 
@@ -137,8 +140,8 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
         : free.length ? t('table.pickProfile') : t('table.allSeated')),
       // same picker as the Giocatori panel: faces in a grid, the new profile
       // last in line instead of hiding behind a pill
-      faceGrid(free, p => place(p.id),
-        newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) place(p.id) }))),
+      scrollable(faceGrid(free, p => place(p.id),
+        newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) place(p.id) })))),
       el('div', { class: 'drawer-row' }, [
         current ? pill('minus', t('table.free.action'), () => { ctx.table.sit(seat.id, null); done() }) : null,
         seat ? pill('close', t('table.remove'), () => { ctx.table.removeSeat(seat.id); done() }) : null
