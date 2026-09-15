@@ -1,4 +1,4 @@
-import { el, dragToDismiss } from './ui.js'
+import { el, dragToDismiss, dragOrigin } from './ui.js'
 import { t } from './i18n.js'
 import { createTableView, seatFor } from './tableView.js'
 
@@ -265,11 +265,15 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   // (open) to 1 (only the button left), and the detail shrinks and fades along
   // it. Let go past halfway — or with a flick — and it finishes that way,
   // otherwise it springs back. A tap still just flips it.
-  let hy = null, hFrom = 0, hSpan = 0, hTime = 0, hMoved = false
+  let hy = null, hFrom = 0, hSpan = 0, hTime = 0, hMoved = false, hFromGrip = false
 
   const foldAt = v => drawer.style.setProperty('--fold', Math.max(0, Math.min(1, v)).toFixed(3))
 
-  handle.addEventListener('pointerdown', e => {
+  // The push starts anywhere on the drawer that isn't a button or a list: the
+  // grabber is the obvious place, not the only one.
+  drawer.addEventListener('pointerdown', e => {
+    if (!dragOrigin(e)) return
+    hFromGrip = dragOrigin(e) === 'grip'
     hy = e.clientY
     hTime = performance.now()
     hMoved = false
@@ -289,10 +293,10 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     clearTimeout(hTimer)
     drawer.classList.add('folding') // no easing between the finger and the panel
     foldAt(hFrom)
-    try { handle.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+    try { drawer.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
   })
 
-  handle.addEventListener('pointermove', e => {
+  drawer.addEventListener('pointermove', e => {
     if (hy == null) return
     const dy = e.clientY - hy
     if (Math.abs(dy) > 3) hMoved = true
@@ -302,7 +306,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   function settleFold(dy, ms) {
     const speed = dy / Math.max(1, ms) // px per ms, signed
     const at = hFrom + dy / hSpan
-    if (!hMoved) return hFrom < 0.5                    // a tap flips it
+    if (!hMoved) return hFromGrip ? hFrom < 0.5 : hFrom > 0.5 // only the grabber flips it on a tap
     if (Math.abs(dy) > 24) return dy > 0               // a clear pull wins: down folds, up opens
     if (Math.abs(speed) > 0.4) return speed > 0        // a flick goes where it was thrown
     return at > 0.5                                    // otherwise, wherever it was left
@@ -323,14 +327,14 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     clearTimeout(hTimer)
     hTimer = setTimeout(measureDetail, 420)
   }
-  handle.addEventListener('pointerup', endFold)
+  drawer.addEventListener('pointerup', endFold)
   // iOS hands the gesture back when it decides you were scrolling: leave the
   // drawer in a whole state, not halfway
-  handle.addEventListener('pointercancel', endFold)
+  drawer.addEventListener('pointercancel', endFold)
 
   // The sheet's grabber doesn't fold anything: it carries the sheet down with
   // the finger, and past a quarter of it (or with a flick) it leaves.
-  dragToDismiss(sheetHandle, sheet, { onDismiss: () => closeSheet() })
+  dragToDismiss(sheet, sheet, { onDismiss: () => closeSheet() })
 
   // The drawer changing height on its own hands the table back the room it
   // takes. The sheet is not watched: it doesn't own any of the table's room.

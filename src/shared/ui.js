@@ -103,24 +103,43 @@ export function button(label, opts = {}) {
   }, label)
 }
 
+// You can push a panel anywhere it isn't something you'd touch for its own
+// sake: the grabber, yes, but also the empty space, the titles, the padding.
+// Buttons, fields and scrolling lists keep their touches to themselves.
+export const GRIP = '.drawer-handle, .modal-grip'
+export const NO_DRAG = 'button, a, input, textarea, select, label, .list-scroll, .seat'
+
+// -> 'grip' | 'body' | null (this touch isn't for dragging)
+export function dragOrigin(e, { grip = GRIP, ignore = NO_DRAG } = {}) {
+  const t = e.target
+  if (!t || !t.closest) return null
+  if (t.closest(grip)) return 'grip'
+  return t.closest(ignore) ? null : 'body'
+}
+
 // Pull a panel down and it follows the finger; let go and it either leaves or
 // springs back. Every panel in the app that can be dismissed uses this, so the
 // gesture means the same thing everywhere.
-//   grip:  what you grab (the grabber bar)
+//   zone:  where a push may start (usually the panel itself)
 //   panel: what moves
 //   onDismiss: called once, when the panel is meant to go
-export function dragToDismiss(grip, panel, { onDismiss, part = 0.25, flick = 0.5 } = {}) {
-  let from = null, t0 = 0, dy = 0
+// A plain tap sends the panel away only from the grabber: tapping the middle of
+// a page is not a way of asking for it to leave.
+export function dragToDismiss(zone, panel, { onDismiss, part = 0.25, flick = 0.5 } = {}) {
+  let from = null, t0 = 0, dy = 0, onGrip = false
   const move = px => { panel.style.transform = px ? `translateY(${px}px)` : '' }
 
-  grip.addEventListener('pointerdown', e => {
+  zone.addEventListener('pointerdown', e => {
+    const where = dragOrigin(e)
+    if (!where) return
+    onGrip = where === 'grip'
     from = e.clientY
     t0 = performance.now()
     dy = 0
     panel.style.transition = 'none' // while the finger is down, no easing in the way
-    try { grip.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+    try { zone.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
   })
-  grip.addEventListener('pointermove', e => {
+  zone.addEventListener('pointermove', e => {
     if (from == null) return
     dy = Math.max(0, e.clientY - from) // it only goes down: up is where it already is
     move(dy)
@@ -131,11 +150,10 @@ export function dragToDismiss(grip, panel, { onDismiss, part = 0.25, flick = 0.5
     from = null
     panel.style.transition = ''
     move(0)
-    // a tap on the grabber, a pull past a quarter of the panel, or a flick
-    if (dy < 4 || dy > panel.offsetHeight * part || speed > flick) onDismiss()
+    if ((onGrip && dy < 4) || dy > panel.offsetHeight * part || speed > flick) onDismiss()
   }
-  grip.addEventListener('pointerup', end)
-  grip.addEventListener('pointercancel', end)
+  zone.addEventListener('pointerup', end)
+  zone.addEventListener('pointercancel', end)
 }
 
 // A question, asked as a panel rising from the bottom over a blacked-out page.
@@ -153,7 +171,7 @@ export function modal({ title, content, actions = [] } = {}) {
   overlay.append(box)
   overlay.addEventListener('click', e => { if (e.target === overlay) close() })
 
-  dragToDismiss(grip, box, { onDismiss: () => close() })
+  dragToDismiss(box, box, { onDismiss: () => close() })
 
   document.body.append(overlay)
   function close() { overlay.remove() }
