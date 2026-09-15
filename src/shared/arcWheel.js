@@ -18,7 +18,10 @@ export function arcGeometry(W, H, side) {
   return { sign, R, activeX, Cx: activeX - sign * R, Cy: H * 0.5 }
 }
 
-export function createArcWheel(host, { side = 'left', items, onActivate, step = 0.2 }) {
+// detail: 'always' keeps every subtitle on show instead of only the centred
+// one — for a wheel that IS a table of numbers (the ranking), where reading one
+// line at a time would defeat the point.
+export function createArcWheel(host, { side = 'left', items, onActivate, step = 0.2, detail = 'active' }) {
   const N = items.length
   const sign = side === 'left' ? 1 : -1
   let active = 0
@@ -30,7 +33,7 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
   const geom = { W: 0, H: 0, Cx: 0, Cy: 0, R: 0, activeX: 0, step, stepPx: 120 }
   let enterTimer = 0
 
-  const stage = el('div', { class: 'arc-stage' + (side === 'right' ? ' right' : '') })
+  const stage = el('div', { class: 'arc-stage' + (side === 'right' ? ' right' : '') + (detail === 'always' ? ' detailed' : '') })
 
   const nodes = items.map((it, i) =>
     el('button', { class: 'arc-item', 'aria-label': it.title, dataset: { i: String(i) } }, [

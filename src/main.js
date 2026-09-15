@@ -5,7 +5,7 @@ import * as players from './shared/players.js'
 import * as table from './shared/table.js'
 import * as stats from './shared/stats.js'
 import { renderHub } from './hub/hub.js'
-import { renderPlayer } from './hub/playerPage.js'
+import { openPlayerCard } from './hub/playerCard.js'
 import { getGame } from './games/registry.js'
 import { clear, el } from './shared/ui.js'
 import { applyTheme, getTheme, watchSystem } from './shared/theme.js'
@@ -63,10 +63,15 @@ router.on('/settings', () => {
   renderHub(root, ctx, null, { side: 'settings' })
 })
 
-// A player's own page.
+// A player opened by its own address: the arc behind, the card over it. From
+// inside the app nobody comes through here — the arcs open the card where they
+// stand, and closing it leaves you where you were — but a link, a bookmark or a
+// reload has to land somewhere whole.
 router.on('/players/:id', ({ id }) => {
   leaveCurrent()
-  renderPlayer(root, ctx, id)
+  clear(root)
+  renderHub(root, ctx, null, { side: 'players', focusId: id })
+  openPlayerCard(ctx, id)
 })
 
 function mountGame(id, phase) {

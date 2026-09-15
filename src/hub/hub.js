@@ -5,6 +5,7 @@ import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor, avatar } from './players.js'
 import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
 import { openPackEditor } from '../shared/packEditor.js'
+import { openPlayerCard } from './playerCard.js'
 import { TABLE_CLOSE_MS } from '../shared/tableStage.js'
 import { games } from '../games/registry.js'
 
@@ -233,7 +234,11 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           buildSide('players', saved && saved.id)
           renderHeader()
         })
-        else { lastFocus.players = it.id; ctx.router.go('/players/' + it.id) }
+        else {
+          // a panel over the arc, not a page: closing it leaves you here
+          lastFocus.players = it.id
+          openPlayerCard(ctx, it.id, { onChanged: () => { buildSide('players', it.id); renderHeader() } })
+        }
       }
     })
     const at = items.findIndex(it => it.id === focus)
@@ -339,6 +344,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     gameWheel = createArcWheel(hosts[V_GAME], {
       side: 'left',
       items,
+      detail: kind === 'stats' ? 'always' : 'active',
       onActivate: i => {
         const it = items[i]
         if (!it) return
@@ -348,7 +354,9 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           // circle B as it stands on screen, and from here the camera is two
           // views away from it
           if (it.id === 'none') { if (game.table) ctx.router.go('/' + game.id + '/table'); return }
-          ctx.router.go('/players/' + it.id)
+          // the card comes up over the ranking, and closing it leaves you on
+          // the ranking — not on the players arc, which is where a page went
+          openPlayerCard(ctx, it.id, { onChanged: () => buildGameSide('stats') })
           return
         }
         const store = game.packs

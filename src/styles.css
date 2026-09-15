@@ -238,6 +238,9 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .arc-name { font-size: 20px; font-weight: 750; letter-spacing: -.3px; color: var(--text); white-space: nowrap; }
 .arc-desc { font-size: 14px; color: var(--text-dim); margin-top: 5px; line-height: 1.35; display: none; }
 .arc-item.on .arc-desc { display: block; }
+/* a wheel of numbers shows them all: they fade with distance like everything
+   else on the arc, so the centred one still reads first */
+.arc-stage.detailed .arc-desc { display: block; }
 
 
 .offline-note {
@@ -388,6 +391,13 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   background: color-mix(in srgb, var(--text) 24%, transparent);
 }
 .modal-title { margin: 0; font-size: 20px; font-weight: 750; text-align: center; }
+/* A player's card: face, name and totals stay, the games scroll under them. */
+.modal-content { min-height: 0; }
+.player-card .modal { max-height: 88%; }
+.player-card .modal-content { flex: 1 1 auto; min-height: 0; }
+.card-head { display: flex; align-items: center; gap: 12px; }
+.card-name { flex: 1; font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+.card-tools { display: flex; gap: 4px; }
 .modal-content { display: flex; flex-direction: column; gap: 12px; }
 /* a line of prose under a centred question reads as part of it, not as a
    paragraph of a page; the fields of an editor keep their own alignment */
