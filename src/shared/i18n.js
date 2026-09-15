@@ -182,6 +182,28 @@ const DICT = {
     'mw.opt.packsHint': 'Scegli da quali pacchetti pescare la coppia. Si creano e si modificano da “Parole” nel menu del gioco.',
     'mw.opt.nPairs': '{n} coppie',
 
+    'mw.extra.meme': 'Mr Meme',
+    'mw.extra.memeDesc': 'A ogni giro di indizi tocca a uno a caso: descrive la sua parola solo a gesti, senza parlare.',
+    'mw.extra.lovers': 'Innamorati',
+    'mw.extra.loversDesc': 'Due giocatori si innamorano all’inizio, e lo sanno. Se uno viene eliminato l’altro lo segue, e si scopre solo in quel momento.',
+    'mw.extra.revenger': 'Vendicatore',
+    'mw.extra.revengerDesc': 'Quando viene eliminato si porta via un altro giocatore, scelto da lui. Vale una volta sola.',
+    'mw.extra.needPlayers': 'Serve da {n} giocatori in su.',
+    'mw.extra.section': 'In più',
+
+    'mw.deal.loverOf': 'Sei innamorato di {name}.',
+    'mw.deal.revenger': 'Sei il Vendicatore: se ti eliminano, ne porti via uno con te.',
+
+    'mw.play.meme': 'Tocca a {name}: descrive la sua parola a gesti, senza parlare.',
+    'mw.play.memeNote': 'gesti',
+    'mw.play.loversOut': '{a} e {b} erano innamorati.',
+
+    'mw.revenge.kicker': 'La vendetta di {name}',
+    'mw.revenge.hint': 'Tocca sul tavolo chi si porta via.',
+    'mw.revenge.pick': 'Scegli chi',
+    'mw.revenge.confirm': 'Porta via {name}',
+    'mw.revenge.note': 'vendetta',
+
     'mw.deal.counter': 'parole',
     'mw.deal.passTo': 'Passa il telefono a',
     'mw.deal.onlyYou': 'Solo tu devi vedere lo schermo.',
@@ -465,6 +487,28 @@ const DICT = {
     'mw.opt.nPacks': '{n} packs',
     'mw.opt.packsHint': 'Pick which packs the pair is drawn from. You create and edit them from “Words” in the game menu.',
     'mw.opt.nPairs': '{n} pairs',
+
+    'mw.extra.meme': 'Mr Meme',
+    'mw.extra.memeDesc': 'Every clue round one player at random gets it: they describe their word by gesture only, no talking.',
+    'mw.extra.lovers': 'The Lovers',
+    'mw.extra.loversDesc': 'Two players fall in love at the start, and they know it. If one is eliminated the other follows, and only then does the table find out.',
+    'mw.extra.revenger': 'The Revenger',
+    'mw.extra.revengerDesc': 'When eliminated, they take another player with them, their pick. Once per round.',
+    'mw.extra.needPlayers': 'Needs {n} players or more.',
+    'mw.extra.section': 'On top',
+
+    'mw.deal.loverOf': 'You are in love with {name}.',
+    'mw.deal.revenger': 'You are the Revenger: if they get you, you take one with you.',
+
+    'mw.play.meme': '{name}’s turn: describe your word by gesture only, no talking.',
+    'mw.play.memeNote': 'gestures',
+    'mw.play.loversOut': '{a} and {b} were lovers.',
+
+    'mw.revenge.kicker': '{name}’s revenge',
+    'mw.revenge.hint': 'Tap on the table who goes with them.',
+    'mw.revenge.pick': 'Pick who',
+    'mw.revenge.confirm': 'Take {name}',
+    'mw.revenge.note': 'revenge',
 
     'mw.deal.counter': 'words',
     'mw.deal.passTo': 'Pass the phone to',

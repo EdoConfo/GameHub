@@ -665,6 +665,8 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .seat-label.dea .seat-note { color: var(--accent); }
 .table-icon .icon { width: 44px; height: 44px; color: var(--accent); }
 .drawer-hint.dea-news { color: var(--accent); }
+.drawer-hint.meme-news { color: var(--primary); }
+.role-section { margin: 14px 0 0; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-dim); }
 .seat.lifted { z-index: 3; cursor: grabbing; }
 .seat.lifted > * { transform: scale(1.16); box-shadow: 0 0 0 3px var(--bg), 0 12px 26px rgba(0, 0, 0, .35); }
 .seat.dim > * { opacity: .4; }

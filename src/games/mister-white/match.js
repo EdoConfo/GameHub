@@ -6,11 +6,22 @@ import { t } from '../../shared/i18n.js'
 import { avatar, openProfileEditor } from '../../hub/players.js'
 import {
   ROLE, roleLabel, suggestCounts, fitCounts, maxImpostors, validateSetup,
-  buildRound, pickGoddess, checkWinner, guessMatches
+  buildRound, pickGoddess, checkWinner, guessMatches,
+  EXTRAS, extraMin, assignExtras, loverOf, killWithLovers, pickMeme
 } from './engine.js'
 import packs from './packs.js'
 
 const COUNTS_KEY = 'mister-white:counts'
+const EXTRAS_KEY = 'mister-white:extras'
+
+// Which extras are switched on. Stored apart from the counts: they're on/off,
+// they don't eat seats, and a table too small simply doesn't get them.
+function loadExtras(ctx) {
+  const saved = ctx.storage.get(EXTRAS_KEY, {}) || {}
+  const out = {}
+  for (const id of EXTRAS) out[id] = !!saved[id]
+  return out
+}
 
 function loadCounts(ctx, n) {
   const c = ctx.storage.get(COUNTS_KEY, null)
@@ -62,6 +73,7 @@ export function tableOptions(ctx, ui) {
   let counts = null
   let touched = false
   let paintPage = null // repaints the open sub-page, if one is open
+  const extras = loadExtras(ctx)
 
   // A row of the main page: what it is, what it holds, and a way in.
   function door(label, onClick) {
@@ -85,6 +97,7 @@ export function tableOptions(ctx, ui) {
     if (counts.mrwhite) parts.push(counts.mrwhite + ' ' + t('mw.role.mrwhite'))
     if (counts.undercover) parts.push(counts.undercover + ' ' + t('mw.role.undercover'))
     parts.push(civilians() + ' ' + t('mw.roles.civili'))
+    for (const id of EXTRAS) if (extras[id] && n >= extraMin(id)) parts.push(t('mw.extra.' + id))
     return parts.join(' · ')
   }
 
@@ -97,7 +110,7 @@ export function tableOptions(ctx, ui) {
   // One row per role. The ? opens its description right under the row instead
   // of covering the page: you read what a role does with its own count in
   // sight. New roles slot in as more rows, nothing else moves.
-  function roleRow({ name, desc, key }) {
+  function roleRow({ name, desc, key, extra }) {
     const info = el('button', {
       class: 'role-info', 'aria-label': t('common.whatItDoes'), 'aria-expanded': 'false',
       onclick: () => {
@@ -109,7 +122,28 @@ export function tableOptions(ctx, ui) {
     const descEl = el('p', { class: 'role-desc', hidden: true }, desc)
 
     let control, paint
-    if (key) {
+    if (extra) {
+      // on or off, and off for good while the table is too small for it
+      const min = extraMin(extra)
+      const sw = el('button', {
+        class: 'switch', role: 'switch', 'aria-label': name,
+        onclick: () => {
+          if (n < min) return
+          extras[extra] = !extras[extra]
+          ctx.storage.set(EXTRAS_KEY, extras)
+          ui.changed()
+        }
+      }, el('span', { class: 'switch-knob' }))
+      control = sw
+      paint = () => {
+        const allowed = n >= min
+        const on = allowed && extras[extra]
+        sw.classList.toggle('on', on)
+        sw.setAttribute('aria-checked', String(on))
+        sw.disabled = !allowed
+        descEl.textContent = allowed ? desc : desc + ' ' + t('mw.extra.needPlayers', { n: min })
+      }
+    } else if (key) {
       const other = key === 'mrwhite' ? 'undercover' : 'mrwhite'
       const val = el('span', { class: 'stepper-val' })
       const bump = d => {
@@ -150,10 +184,20 @@ export function tableOptions(ctx, ui) {
       roleRow({ name: t('mw.role.undercover'), desc: t('mw.rules.undercover'), key: 'undercover' }),
       roleRow({ name: t('mw.roles.civili'), desc: t('mw.rules.civili'), key: null })
     ]
-    paintPage = () => rows.forEach(r => r.paint())
+    // The extras go under a line of their own: they're not seats to share out,
+    // they're things that happen on top of the roles above.
+    const extraRows = [
+      roleRow({ name: t('mw.extra.meme'), desc: t('mw.extra.memeDesc'), extra: 'meme' }),
+      roleRow({ name: t('mw.extra.lovers'), desc: t('mw.extra.loversDesc'), extra: 'lovers' }),
+      roleRow({ name: t('mw.extra.revenger'), desc: t('mw.extra.revengerDesc'), extra: 'revenger' })
+    ]
+    const all = [...rows, ...extraRows]
+    paintPage = () => all.forEach(r => r.paint())
     paintPage()
     ui.open(t('mw.opt.characters'), [
       el('div', { class: 'role-list' }, rows.map(r => r.node)),
+      el('h2', { class: 'role-section' }, t('mw.extra.section')),
+      el('div', { class: 'role-list' }, extraRows.map(r => r.node)),
       el('p', { class: 'drawer-hint drawer-more' }, t('mw.opt.charactersHint'))
     ])
   }
@@ -217,8 +261,8 @@ export function start(api) {
   if (!validateSetup(people.length, counts).ok || !pairs.length) { api.toTable(); return }
   const pair = pairs[Math.floor(Math.random() * pairs.length)]
   Object.assign(state, {
-    round: buildRound(people, pair, counts),
-    dealIndex: 0, revealed: false, winner: null, mrWhiteGuess: null, recorded: false, lastOut: null
+    round: assignExtras(buildRound(people, pair, counts), loadExtras(ctx)),
+    dealIndex: 0, revealed: false, winner: null, mrWhiteGuess: null, recorded: false, lastOut: null, lastDead: null
   })
   api.goPhase('deal')
 }
@@ -253,9 +297,20 @@ export function deal(api, stage) {
           el('p', { class: 'drawer-hint' }, t('mw.deal.mrWhiteHint'))]
         : [el('p', { class: 'drawer-kicker' }, t('mw.deal.yourWord')),
           el('div', { class: 'drawer-word' }, me.word)]),
+      ...extraNotes(state.round, me),
       button(last ? t('mw.deal.hideAndStart') : t('mw.deal.hideAndPass'), { variant: 'secondary', full: true, onClick: next })
     ], 'steady'))
   }
+}
+
+// What else this player carries, shown under their word — the only moment
+// they're told, and only to them.
+function extraNotes(round, me) {
+  const notes = []
+  const lover = loverOf(round, me.id)
+  if (lover) notes.push(el('p', { class: 'drawer-hint' }, t('mw.deal.loverOf', { name: lover.name })))
+  if (round.revenger === me.id) notes.push(el('p', { class: 'drawer-hint' }, t('mw.deal.revenger')))
+  return notes
 }
 
 // An empty chair: whoever got the phone here says who they are first, then
@@ -306,15 +361,34 @@ export function play(api, stage) {
   // from the first player still in, round the table — never a Mister White
   const inOrder = round.order.map(i => players[i]).filter(p => p.alive)
   const starter = inOrder.find(p => p.role !== ROLE.MRWHITE) || inOrder[0]
-  stage.view.set(seatItems(api, pl => seatLook(pl, { starter, goddess: round.goddess, lit: pl === starter })))
+  // Mr Meme is drawn again every clue round, among who's still in.
+  const meme = round.meme ? pickMeme(players) : null
+  round.memeWho = meme ? meme.id : null
+
+  stage.view.set(seatItems(api, pl => {
+    const look = seatLook(pl, { starter, goddess: round.goddess, lit: pl === starter })
+    if (pl.alive && meme && pl === meme) {
+      look.cls = (look.cls + ' meme').trim()
+      look.note = [look.note, t('mw.play.memeNote')].filter(Boolean).join(' · ')
+    }
+    return look
+  }))
   stage.view.setCenter(count(String(alive.length), t('mw.play.inGame')))
-  const out = state.lastOut
+
+  // Who fell last time, one line each — a lovers' pair gets its own line too.
+  const dead = state.lastDead && state.lastDead.length ? state.lastDead : (state.lastOut ? [state.lastOut] : [])
+  const obits = dead.map(d => t('mw.play.wasRole', { name: d.name, role: roleLabel(d.role) }))
+  const pair = round.lovers && dead.filter(d => round.lovers.includes(d.id))
+  const loversLine = pair && pair.length === 2 ? t('mw.play.loversOut', { a: pair[0].name, b: pair[1].name }) : null
   const news = round.goddessNew ? t('mw.goddess.new', { name: round.goddess.name }) : null
   round.goddessNew = false
+
   stage.present(page([
-    out ? el('p', { class: 'drawer-kicker' }, t('mw.play.wasRole', { name: out.name, role: roleLabel(out.role) })) : null,
+    ...obits.map(line => el('p', { class: 'drawer-kicker' }, line)),
+    loversLine ? el('p', { class: 'drawer-hint' }, loversLine) : null,
     el('div', { class: 'drawer-title' }, t('mw.play.title')),
     el('p', { class: 'drawer-hint' }, t('mw.play.hint', { name: starter.name })),
+    meme ? el('p', { class: 'drawer-hint meme-news' }, t('mw.play.meme', { name: meme.name })) : null,
     news ? el('p', { class: 'drawer-hint dea-news' }, news) : null,
     button(t('mw.play.toVote'), { variant: 'primary', full: true, onClick: () => api.goPhase('vote') })
   ], 'steady'))
@@ -375,7 +449,49 @@ export function vote(api, stage) {
 
   function eliminate(p) {
     if (p.role === ROLE.MRWHITE) askGuess(p)
-    else { p.alive = false; afterElimination(p) }
+    else strike(p)
+  }
+
+  // One elimination can cost more than one seat: the Lovers bond drags the
+  // other half along, and a Revenger among the fallen still gets to point at
+  // someone. Everything that falls in one go is announced together.
+  function strike(p) {
+    const dead = killWithLovers(round, p.id)
+    state.lastOut = p
+    const avenger = dead.find(d => round.revenger === d.id)
+    if (avenger && !round.revengeUsed && players.some(x => x.alive)) {
+      round.revengeUsed = true
+      askRevenge(avenger, dead)
+      return
+    }
+    settle(dead)
+  }
+
+  function askRevenge(avenger, dead) {
+    let target = null
+    const paintRevenge = () => {
+      stage.view.set(seatItems(api, (pl, i) => {
+        const look = seatLook(pl, { goddess: round.goddess, lit: target === i })
+        if (pl === avenger) look.note = t('mw.revenge.note')
+        if (pl.alive && target != null && target !== i) look.cls += ' dim'
+        return look
+      }))
+      stage.present(page([
+        el('p', { class: 'drawer-kicker' }, t('mw.revenge.kicker', { name: avenger.name })),
+        el('div', { class: 'drawer-name' }, target == null ? '?' : players[target].name),
+        el('p', { class: 'drawer-hint' }, t('mw.revenge.hint')),
+        button(target == null ? t('mw.revenge.pick') : t('mw.revenge.confirm', { name: players[target].name }), {
+          variant: 'danger', full: true, disabled: target == null,
+          onClick: () => settle([...dead, ...killWithLovers(round, target)])
+        })
+      ], 'steady'))
+    }
+    api.onSeat = i => {
+      if (!players[i] || !players[i].alive) return
+      target = target === i ? null : i
+      paintRevenge()
+    }
+    paintRevenge()
   }
 
   function askGuess(p) {
@@ -384,15 +500,19 @@ export function vote(api, stage) {
       title: t('mw.vote.guessTitle', { name: p.name }),
       content: [el('p', {}, t('mw.vote.guessBody')), input],
       actions: [
-        button(t('mw.vote.guessWrong'), { variant: 'ghost', onClick: () => { m.close(); p.alive = false; afterElimination(p) } }),
+        button(t('mw.vote.guessWrong'), { variant: 'ghost', onClick: () => { m.close(); strike(p) } }),
         button(t('mw.vote.guessConfirm'), {
           variant: 'primary',
           onClick: () => {
             const correct = guessMatches(input.value, round.pair.civilian)
             m.close()
-            p.alive = false
             state.mrWhiteGuess = { name: p.name, correct }
-            if (correct) { state.winner = 'mrwhite-guess'; api.goPhase('results') } else afterElimination(p)
+            if (correct) {
+              p.alive = false
+              state.lastDead = [p]
+              state.winner = 'mrwhite-guess'
+              api.goPhase('results')
+            } else strike(p)
           }
         })
       ]
@@ -402,9 +522,9 @@ export function vote(api, stage) {
 
   // The news goes in the next drawer ("Anna era Civile"), not in a toast.
   // If the Goddess herself is out, another one is drawn among who's left.
-  function afterElimination(p) {
-    state.lastOut = p
-    if (p === round.goddess) { round.goddess = pickGoddess(players); round.goddessNew = true }
+  function settle(dead) {
+    state.lastDead = dead
+    if (dead.includes(round.goddess)) { round.goddess = pickGoddess(players); round.goddessNew = true }
     const w = checkWinner(players)
     if (w) { state.winner = w; api.goPhase('results') } else api.goPhase('play')
   }
