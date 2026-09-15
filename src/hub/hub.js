@@ -298,9 +298,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   buildMenu()
 
   // ---- horizontal swipe pans the window ----
+  // With the table up the same swipe means one thing only: to the right and
+  // you're back at the game's menu, the circle reforming the way it came. It
+  // has to start on the background, though — the seats, the table top and the
+  // drawer all own their own gestures, and a swipe there belongs to them.
+  const TABLE_OWN = '.drawer, .seat, .table-pad'
   let sx = 0, sy = 0, tracking = false, hSwipe = false
   canvas.addEventListener('pointerdown', e => {
-    if (table) { tracking = false; return } // the table has its own gestures
+    if (table && e.target && e.target.closest && e.target.closest(TABLE_OWN)) { tracking = false; return }
     sx = e.clientX; sy = e.clientY; tracking = true; hSwipe = false
   }, true)
   canvas.addEventListener('pointermove', e => {
@@ -313,6 +318,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     tracking = false
     if (!hSwipe) return
     const dx = e.clientX - sx
+    if (table) { if (dx > 55) closeTable(); return }
     if (dx > 55) goto(index - 1)
     else if (dx < -55) goto(index + 1)
   }, true)
