@@ -72,6 +72,9 @@ const DICT = {
     'stats.playedShort': 'Giocate',
     'stats.wonShort': 'Vinte',
     'stats.empty': 'Ancora nessuna partita registrata. Gioca per vedere le statistiche!',
+    'stats.sub': '{played} partite · {won} vinte · {pct}%',
+    'stats.emptyTitle': 'Nessuna partita',
+    'stats.emptySub': 'Gioca per riempire la classifica',
 
     'time.now': 'ora',
     'time.min': '{n}m fa',
@@ -381,6 +384,9 @@ const DICT = {
     'stats.playedShort': 'Played',
     'stats.wonShort': 'Won',
     'stats.empty': 'No games recorded yet. Play a round to see the stats!',
+    'stats.sub': '{played} games · {won} won · {pct}%',
+    'stats.emptyTitle': 'No games yet',
+    'stats.emptySub': 'Play a round to fill the ranking',
 
     'time.now': 'now',
     'time.min': '{n}m ago',

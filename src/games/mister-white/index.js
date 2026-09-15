@@ -2,7 +2,6 @@
 import { el, clear, icon } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { createTableStage } from '../../shared/tableStage.js'
-import * as screens from './screens.js'
 import * as match from './match.js'
 import packs from './packs.js'
 
@@ -105,11 +104,11 @@ function mount(container, ctx, initialPhase) {
     api.onSeat = null
     if (state.phase === 'setup') { api.toTable(); return }
     if (TABLE_PHASES.includes(state.phase)) { match[state.phase](api, tableScreen()); return }
+    // Everything that isn't played around the table lives in the hub now:
+    // words, rules and stats are arcs of the game's own circle.
     teardown()
     clear(container)
-    const map = { stats: screens.renderStats }
-    if (map[state.phase]) container.append(map[state.phase](api))
-    else api.toMenu()
+    api.toMenu()
   }
 
   function teardown() {

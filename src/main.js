@@ -84,10 +84,10 @@ function mountGame(id, phase) {
 //
 // The hub owns the menu and the table — they're views of its scene, not
 // screens of their own — so those two go to renderHub, not to the game.
-// The word packs and the rules are views of the hub's scene too — the same
-// right arc of that game's circle, showing one or the other — so they go to
-// renderHub, like the menu and the table.
-for (const kind of ['words', 'rules']) {
+// Words, rules and stats are views of the hub's scene too — the same right arc
+// of that game's circle, showing one of the three — so they go to renderHub,
+// like the menu and the table.
+for (const kind of ['words', 'rules', 'stats']) {
   router.on('/:game/' + kind, ({ game }) => {
     leaveCurrent()
     clear(root)

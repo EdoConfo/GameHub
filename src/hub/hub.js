@@ -13,7 +13,8 @@ import { games } from '../games/registry.js'
 // ride them live in the same world and move together, 1:1 with the camera.
 //
 //   circle A: left arc = Giocatori / Impostazioni · right arc = GIOCHI
-//   circle B: left arc = menu del gioco           · right arc = parole / regole
+//   circle B: left arc = menu del gioco           · right arc = parole / regole /
+//                                                   statistiche
 //
 // Both side arcs hold more than one thing: which one you see depends on the
 // voice you came in from — Giocatori or Impostazioni on the left of A, Parole
@@ -158,7 +159,9 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       header.replaceChildren(
         el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => goto(V_MENU) }, icon('back')),
         el('span', { class: 'wordmark game-home-title' },
-          (gameKind === 'rules' ? t('mw.rules.title') : t('packs.title')).toUpperCase())
+          (gameKind === 'rules' ? t('mw.rules.title')
+            : gameKind === 'stats' ? t('stats.title')
+              : t('packs.title')).toUpperCase())
       )
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
@@ -287,8 +290,34 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     }))
   }
 
+  // Who wins at this game, best first — so scrolling the arc IS the ranking.
+  // A face is easier to place than a row of a table, and tapping one opens that
+  // player's page, where the same numbers live across every game.
+  function statsItems() {
+    const game = games[selected]
+    const rows = Object.entries(ctx.stats.get(game.id) || {})
+      .map(([id, rec]) => ({ p: ctx.players.get(id), ...rec }))
+      .filter(r => r.p)
+      .sort((a, b) => b.won - a.won || b.played - a.played)
+    if (!rows.length) {
+      return [{ id: 'none', title: t('stats.emptyTitle'), sub: t('stats.emptySub'), lead: badge('stats') }]
+    }
+    return rows.map(r => ({
+      id: r.p.id,
+      title: r.p.name,
+      sub: t('stats.sub', {
+        played: r.played,
+        won: r.won,
+        pct: r.played ? Math.round((r.won / r.played) * 100) : 0
+      }),
+      lead: avatar(r.p, 56)
+    }))
+  }
+
   function gameSideItems(kind) {
-    return kind === 'rules' ? rulesItems() : wordsItems()
+    if (kind === 'rules') return rulesItems()
+    if (kind === 'stats') return statsItems()
+    return wordsItems()
   }
 
   function openRules(section) {
@@ -314,6 +343,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
         const it = items[i]
         if (!it) return
         if (kind === 'rules') { openRules(game.rules[i]); return }
+        if (kind === 'stats') {
+          // through the route, not openTable(): that one grows the table out of
+          // circle B as it stands on screen, and from here the camera is two
+          // views away from it
+          if (it.id === 'none') { if (game.table) ctx.router.go('/' + game.id + '/table'); return }
+          ctx.router.go('/players/' + it.id)
+          return
+        }
         const store = game.packs
         if (!store) return
         const again = () => { buildGameSide('words'); renderHeader() }
@@ -337,7 +374,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
         const phase = menu[j].phase
         if (phase === 'setup' && game.table) openTable()
         // these two live on the arc next door: pan there, don't rebuild the hub
-        else if (phase === 'words' || phase === 'rules') { buildGameSide(phase); moveCamera(V_GAME) }
+        else if (phase === 'words' || phase === 'rules' || phase === 'stats') { buildGameSide(phase); moveCamera(V_GAME) }
         else ctx.router.go('/' + game.id + '/' + phase)
       }
     })
