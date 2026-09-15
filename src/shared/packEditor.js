@@ -5,7 +5,7 @@
 // A table and not a free text box on purpose: a pack written by hand in a
 // textarea is a pack with a missing comma in it, and you find out at the table
 // with six people waiting. Here a row is either whole or it says it isn't.
-import { el, button, modal, toast, walls, icon } from './ui.js'
+import { el, button, modal, toast, icon } from './ui.js'
 import { t } from './i18n.js'
 
 // What a pack can be called by: line icons from the app's own set (ui.js), not
@@ -28,6 +28,15 @@ export function openPackEditor(store, pack, { onDone } = {}) {
     maxlength: '40', value: pack ? pack.name : ''
   })
   const errBox = el('p', { class: 'error-text' })
+  // The column names sit above the scrolling part, not inside it: they belong
+  // to the table, not to the list of rows, and they must never scroll away.
+  // No fading walls here either — they're right for a list you read, wrong for
+  // a table you type in, where the first and last rows would go dim under your
+  // fingers.
+  const heading = el('div', { class: 'pack-row head' }, [
+    ...columns.map(c => el('span', { class: 'cell-label' }, c.label)),
+    el('span', { class: 'cell-label' })
+  ])
   const table = el('div', { class: 'pack-table list-scroll' })
   const count = el('p', { class: 'muted small center' })
 
@@ -74,21 +83,14 @@ export function openPackEditor(store, pack, { onDone } = {}) {
   }
 
   function paint() {
-    table.replaceChildren(
-      el('div', { class: 'pack-row head' }, [
-        ...columns.map(c => el('span', { class: 'cell-label' }, c.label)),
-        el('span', { class: 'cell-label' })
-      ]),
-      ...rows.map(rowNode)
-    )
-    walls(table)
+    table.replaceChildren(...rows.map(rowNode))
     mark()
     tally()
   }
 
   // A row that was started and left open is the only real mistake here.
   function mark() {
-    const nodes = [...table.querySelectorAll('.pack-row')].slice(1)
+    const nodes = [...table.querySelectorAll('.pack-row')]
     nodes.forEach((node, i) => {
       const row = rows[i]
       if (!row) return
@@ -154,6 +156,7 @@ export function openPackEditor(store, pack, { onDone } = {}) {
     content: [
       head,
       ...switches,
+      heading,
       table,
       el('div', { class: 'pack-foot' }, [
         button(t('packs.addRow'), { variant: 'secondary', onClick: () => { rows.push(store.blankRow()); paint(); table.scrollTop = table.scrollHeight } }),
