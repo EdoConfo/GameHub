@@ -110,7 +110,7 @@ export function tableOptions(ctx, ui) {
   // One row per role. The ? opens its description right under the row instead
   // of covering the page: you read what a role does with its own count in
   // sight. New roles slot in as more rows, nothing else moves.
-  function roleRow({ name, desc, key, extra }) {
+  function roleRow({ name, desc, key, extra, fixed }) {
     const info = el('button', {
       class: 'role-info', 'aria-label': t('common.whatItDoes'), 'aria-expanded': 'false',
       onclick: () => {
@@ -122,7 +122,12 @@ export function tableOptions(ctx, ui) {
     const descEl = el('p', { class: 'role-desc', hidden: true }, desc)
 
     let control, paint
-    if (extra) {
+    if (fixed) {
+      // always in play, nothing to decide: it's here for its description
+      const val = el('span', { class: 'role-rest role-always' }, fixed)
+      control = val
+      paint = () => {}
+    } else if (extra) {
       // on or off, and off for good while the table is too small for it
       const min = extraMin(extra)
       const sw = el('button', {
@@ -182,7 +187,8 @@ export function tableOptions(ctx, ui) {
     const rows = [
       roleRow({ name: t('mw.role.mrwhite'), desc: t('mw.rules.mrwhite'), key: 'mrwhite' }),
       roleRow({ name: t('mw.role.undercover'), desc: t('mw.rules.undercover'), key: 'undercover' }),
-      roleRow({ name: t('mw.roles.civili'), desc: t('mw.rules.civili'), key: null })
+      roleRow({ name: t('mw.roles.civili'), desc: t('mw.rules.civili'), key: null }),
+      roleRow({ name: t('mw.rules.goddess'), desc: t('mw.rules.goddessDesc'), fixed: t('mw.opt.always') })
     ]
     // The extras go under a line of their own: they're not seats to share out,
     // they're things that happen on top of the roles above.

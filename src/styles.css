@@ -815,6 +815,8 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .role-head { display: flex; align-items: center; gap: 10px; min-height: 52px; }
 .role-name { flex: 1; font-size: 16px; }
 .role-rest { font-size: 18px; font-weight: 750; min-width: 22px; text-align: center; color: var(--text-dim); }
+/* a word, not a count: the role is in every game and nothing can change that */
+.role-always { font-size: 13px; font-weight: 600; letter-spacing: .4px; text-transform: lowercase; }
 .role-info {
   flex: none; width: 26px; height: 26px; border-radius: 50%;
   border: 1px solid var(--border); background: none; color: var(--text-dim);
