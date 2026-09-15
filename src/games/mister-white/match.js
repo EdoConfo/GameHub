@@ -124,7 +124,7 @@ export function tableOptions(ctx, ui) {
     let control, paint
     if (fixed) {
       // always in play, nothing to decide: it's here for its description
-      const val = el('span', { class: 'role-rest role-always' }, fixed)
+      const val = el('span', { class: 'role-rest' }, fixed)
       control = val
       paint = () => {}
     } else if (extra) {
@@ -188,7 +188,7 @@ export function tableOptions(ctx, ui) {
       roleRow({ name: t('mw.role.mrwhite'), desc: t('mw.rules.mrwhite'), key: 'mrwhite' }),
       roleRow({ name: t('mw.role.undercover'), desc: t('mw.rules.undercover'), key: 'undercover' }),
       roleRow({ name: t('mw.roles.civili'), desc: t('mw.rules.civili'), key: null }),
-      roleRow({ name: t('mw.rules.goddess'), desc: t('mw.rules.goddessDesc'), fixed: t('mw.opt.always') })
+      roleRow({ name: t('mw.rules.goddess'), desc: t('mw.rules.goddessDesc'), fixed: '1' })
     ]
     // The extras go under a line of their own: they're not seats to share out,
     // they're things that happen on top of the roles above.
@@ -367,7 +367,12 @@ export function play(api, stage) {
   // from the first player still in, round the table — never a Mister White
   const inOrder = round.order.map(i => players[i]).filter(p => p.alive)
   const starter = inOrder.find(p => p.role !== ROLE.MRWHITE) || inOrder[0]
-  // Mr Meme is drawn again every clue round, among who's still in.
+  // Both of these are drawn again at the top of every clue round, among who's
+  // still in: the Goddess of Justice, who breaks a tied vote, and Mr Meme.
+  // Not on the first one, though — that Goddess was just drawn and announced
+  // in her own page, and replacing her a second later would make a liar of it.
+  if (round.clueRounds) round.goddess = pickGoddess(players)
+  round.clueRounds = (round.clueRounds || 0) + 1
   const meme = round.meme ? pickMeme(players) : null
   round.memeWho = meme ? meme.id : null
 
@@ -386,8 +391,7 @@ export function play(api, stage) {
   const obits = dead.map(d => t('mw.play.wasRole', { name: d.name, role: roleLabel(d.role) }))
   const pair = round.lovers && dead.filter(d => round.lovers.includes(d.id))
   const loversLine = pair && pair.length === 2 ? t('mw.play.loversOut', { a: pair[0].name, b: pair[1].name }) : null
-  const news = round.goddessNew ? t('mw.goddess.new', { name: round.goddess.name }) : null
-  round.goddessNew = false
+  const news = round.goddess ? t('mw.goddess.round', { name: round.goddess.name }) : null
 
   stage.present(page([
     ...obits.map(line => el('p', { class: 'drawer-kicker' }, line)),
@@ -526,11 +530,11 @@ export function vote(api, stage) {
     input.focus()
   }
 
-  // The news goes in the next drawer ("Anna era Civile"), not in a toast.
-  // If the Goddess herself is out, another one is drawn among who's left.
+  // The news goes in the next drawer ("Anna era Civile"), not in a toast. The
+  // Goddess isn't replaced here even if she just fell: the next clue round
+  // draws one afresh anyway.
   function settle(dead) {
     state.lastDead = dead
-    if (dead.includes(round.goddess)) { round.goddess = pickGoddess(players); round.goddessNew = true }
     const w = checkWinner(players)
     if (w) { state.winner = w; api.goPhase('results') } else api.goPhase('play')
   }
