@@ -3,7 +3,7 @@
 //   start -> deal -> goddess -> play <-> vote -> results
 import { el, button, modal, icon } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { avatar, openProfileEditor } from '../../hub/players.js'
+import { avatar, faceGrid, openProfileEditor } from '../../hub/players.js'
 import {
   ROLE, roleLabel, suggestCounts, fitCounts, maxImpostors, validateSetup,
   buildRound, pickGoddess, checkWinner, guessMatches,
@@ -31,8 +31,7 @@ function loadCounts(ctx, n) {
 
 const page = (children, cls = '') => el('div', { class: 'drawer-page' + (cls ? ' ' + cls : '') }, children)
 const count = (big, small) => el('div', { class: 'table-count' }, [el('b', {}, big), el('span', {}, small)])
-const pickRow = (list, onPick) => el('div', { class: 'pick-row' }, list.map(p =>
-  el('button', { class: 'pick', onclick: () => onPick(p) }, [avatar(p, 48), el('span', { class: 'pick-name' }, p.name)])))
+const pickRow = (list, onPick) => faceGrid(list, onPick)
 
 // The round's seats as table items; `look(player, i)` adds cls / note.
 function seatItems(api, look) {

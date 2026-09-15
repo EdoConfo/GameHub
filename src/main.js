@@ -23,7 +23,7 @@ const root = document.getElementById('app')
 document.addEventListener('touchmove', e => {
   if (e.touches && e.touches.length > 1) { e.preventDefault(); return }
   const t = e.target
-  if (t && t.closest && t.closest('.canvas') && !t.closest('.drawer-body, .pick-row')) e.preventDefault()
+  if (t && t.closest && t.closest('.canvas') && !t.closest('.drawer-body')) e.preventDefault()
 }, { passive: false })
 
 // Paint in the chosen theme before any content shows. No choice yet means

@@ -771,7 +771,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .drawer-handle[hidden] { display: none; }
 .drawer-handle[hidden] + .drawer-body { padding-top: 16px; }
 /* Scrolls, but without painting a scrollbar over the page: nothing else in the
-   app shows one (see .pick-row). */
+   app shows one. */
 .drawer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .drawer-body::-webkit-scrollbar { display: none; }
 .drawer-page { display: flex; flex-direction: column; gap: 12px; }
@@ -856,7 +856,13 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 /* Profiles to pick: a row that centres when it fits, scrolls when it doesn't. */
 /* Faces in a grid, name underneath: four or five to a row on a phone. */
-.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 14px 6px; padding: 2px 0; }
+/* align-items:start keeps every face of a row on the same line even when one
+   name below them runs onto two: the taller cell grows downwards, and the
+   whole next row starts lower — together, not staggered. */
+.pick-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  align-items: start; gap: 14px 6px; padding: 2px 0;
+}
 .pick-cell {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   background: none; border: 0; padding: 2px 0; margin: 0; cursor: pointer;
@@ -865,15 +871,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .pick-cell:active { transform: scale(.94); }
 .pick-plus { display: grid; place-items: center; font-size: 22px; color: var(--text-dim); }
 
-.pick-row { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; }
-.pick-row::-webkit-scrollbar { display: none; }
-.pick-row > :first-child { margin-left: auto; }
-.pick-row > :last-child { margin-right: auto; }
-.pick {
-  flex: 0 0 auto; width: 66px; padding: 0; border: 0; background: none; color: var(--text);
-  display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+/* "Gaia Bianchi" breaks after the first name instead of being cut: two lines
+   at most, and a single word too long for the cell is cut as before. */
+.pick-name {
+  max-width: 100%; font-size: 12px; line-height: 1.25; text-align: center;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
 }
-.pick:active { transform: scale(.96); }
-.pick-name { max-width: 100%; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 

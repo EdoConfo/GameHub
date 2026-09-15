@@ -21,6 +21,30 @@ export function avatar(p, size = 32) {
   return el('span', { class: 'avatar', style: `${base};background:${bg}`, html: USER_SVG(Math.round(size * 0.64)) })
 }
 
+// Picking a person, anywhere in the app: faces in a grid with the name under
+// each, four or five to a row. A dozen profiles fit without scrolling, which a
+// single row of faces never managed.
+//   extra: one more cell at the end (creating a profile on the spot)
+export function faceGrid(list, onPick, extra = null) {
+  const grid = el('div', { class: 'pick-grid' })
+  for (const p of list) {
+    grid.append(el('button', { class: 'pick-cell', onclick: () => onPick(p) }, [
+      avatar(p, 52),
+      el('span', { class: 'pick-name' }, p.name)
+    ]))
+  }
+  if (extra) grid.append(extra)
+  return grid
+}
+
+// The cell that makes a new profile: a dashed circle with a plus in it.
+export function newFaceCell(label, onClick) {
+  return el('button', { class: 'pick-cell', onclick: onClick }, [
+    el('span', { class: 'avatar avatar-empty pick-plus', style: 'width:52px;height:52px' }, '+'),
+    el('span', { class: 'pick-name' }, label)
+  ])
+}
+
 // An empty chair at the table: dashed outline, same generic user icon.
 export function emptyAvatar(size = 32) {
   return el('span', { class: 'avatar avatar-empty', style: `width:${size}px;height:${size}px`, html: USER_SVG(Math.round(size * 0.5)) })

@@ -1,7 +1,7 @@
 import { el, icon, button } from '../shared/ui.js'
 import { t } from '../shared/i18n.js'
 import { createTableStage } from '../shared/tableStage.js'
-import { avatar, openProfileEditor } from './players.js'
+import { avatar, faceGrid, newFaceCell, openProfileEditor } from './players.js'
 
 // How long the game's circle takes to become the table, coming out of the
 // menu. Exported for whoever rides along with it.
@@ -93,23 +93,9 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
       const seated = new Set(ctx.table.seats().map(s => s.pid).filter(Boolean))
       const standing = ctx.players.all().filter(p => !seated.has(p.id))
       // replaceChildren() has no opinion about null — it would print the word.
-      // A face and a name under it, four or five to a row: a dozen people fit
-      // on one screen, where a list of rows would have you scrolling.
-      // replaceChildren() has no opinion about null — it would print the word.
-      const cells = [
-        ...standing.map(p => el('button', { class: 'pick-cell', onclick: () => seat(p.id) }, [
-          avatar(p, 52),
-          el('span', { class: 'pick-name' }, p.name)
-        ])),
-        el('button', {
-          class: 'pick-cell',
-          onclick: () => openProfileEditor(ctx, null, p => { if (p) seat(p.id) })
-        }, [
-          el('span', { class: 'avatar avatar-empty pick-plus', style: 'width:52px;height:52px' }, '+'),
-          el('span', { class: 'pick-name' }, t('common.new'))
-        ])
-      ]
-      list.replaceChildren(...cells)
+      const grid = faceGrid(standing, p => seat(p.id),
+        newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) seat(p.id) })))
+      list.replaceChildren(...grid.children)
       empty.hidden = standing.length > 0
       hint.hidden = !standing.length
     }
@@ -149,11 +135,11 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
       el('p', { class: 'drawer-hint' }, seat && !current
         ? t('table.pickForSeat')
         : free.length ? t('table.pickProfile') : t('table.allSeated')),
-      free.length ? el('div', { class: 'pick-row' }, free.map(p =>
-        el('button', { class: 'pick', onclick: () => place(p.id) }, [avatar(p, 48), el('span', { class: 'pick-name' }, p.name)])
-      )) : null,
+      // same picker as the Giocatori panel: faces in a grid, the new profile
+      // last in line instead of hiding behind a pill
+      faceGrid(free, p => place(p.id),
+        newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) place(p.id) }))),
       el('div', { class: 'drawer-row' }, [
-        pill('plus', t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) place(p.id) })),
         current ? pill('minus', t('table.free.action'), () => { ctx.table.sit(seat.id, null); done() }) : null,
         seat ? pill('close', t('table.remove'), () => { ctx.table.removeSeat(seat.id); done() }) : null
       ]),
