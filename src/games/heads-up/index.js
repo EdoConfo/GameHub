@@ -10,7 +10,7 @@ const DURATIONS = [30, 60, 90]
 // Built on read so the labels follow the interface language.
 const menu = () => [
   { title: t('hu.menu.play'), sub: t('hu.menu.playSub'), phase: 'setup', glyph: 'play' },
-  { title: t('hu.menu.words'), sub: t('hu.menu.wordsSub'), phase: 'packs', glyph: 'words' },
+  { title: t('hu.menu.words'), sub: t('hu.menu.wordsSub'), phase: 'words', glyph: 'words' },
   { title: t('hu.menu.rules'), sub: t('hu.menu.rulesSub'), phase: 'rules', glyph: 'help' }
 ]
 
@@ -51,14 +51,14 @@ function mount(container, ctx, initialPhase) {
     stopRuntime,
     render,
     goPhase(phase) { state.phase = phase; render() },
-    toMenu() { stopRuntime(); if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/menu/heads-up') }
+    toMenu() { stopRuntime(); if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/heads-up') }
   }
 
   function render() {
     clear(container)
     const map = {
       setup: screens.renderSetup,
-      packs: screens.renderPacks,
+      words: screens.renderPacks,
       rules: screens.renderRules,
       ready: screens.renderReady,
       countdown: screens.renderCountdown,

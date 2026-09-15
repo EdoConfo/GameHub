@@ -16,7 +16,7 @@ export function renderPlayer(root, ctx, id) {
 
     const view = screen({
       title: '',
-      onBack: () => ctx.router.go('/players/' + p.id),
+      onBack: () => ctx.router.go('/players'),
       actions: [
         el('button', { class: 'icon-btn', 'aria-label': t('common.edit'), html: PENCIL_SVG, onclick: () => openProfileEditor(ctx, p, draw) }),
         el('button', { class: 'icon-btn', 'aria-label': t('common.delete'), html: TRASH_SVG, onclick: () => confirmDelete(p) })

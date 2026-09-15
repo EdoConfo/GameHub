@@ -49,50 +49,22 @@ router.on('/', () => {
   renderHub(root, ctx)
 })
 
-// Hub opened straight on a game's menu page (e.g. back from a game screen).
-router.on('/menu/:id', ({ id }) => {
-  leaveCurrent()
-  clear(root)
-  renderHub(root, ctx, id)
-})
-
-// Hub opened on a game's table ("Gioca"), e.g. back from a match.
-router.on('/table/:id', ({ id }) => {
-  leaveCurrent()
-  clear(root)
-  renderHub(root, ctx, id, { table: true })
-})
-
 // Giocatori and Impostazioni are not separate screens: they're the left arc of
-// circle A. These routes open the hub already parked there, so coming back from
-// a player's page lands on the wheel it was opened from.
-router.on('/settings', () => {
-  leaveCurrent()
-  clear(root)
-  renderHub(root, ctx, null, { side: 'settings' })
-})
-
-// Same arc, centred on one setting — where changing the language comes back to.
-router.on('/settings/:focus', ({ focus }) => {
-  leaveCurrent()
-  clear(root)
-  renderHub(root, ctx, null, { side: 'settings', focusId: focus })
-})
-
+// circle A. These routes open the hub already parked there.
 router.on('/players', () => {
   leaveCurrent()
   clear(root)
   renderHub(root, ctx, null, { side: 'players' })
 })
 
-// Same wheel, centred on the player you just came back from.
-router.on('/players/:id', ({ id }) => {
+router.on('/settings', () => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx, null, { side: 'players', focusId: id })
+  renderHub(root, ctx, null, { side: 'settings' })
 })
 
-router.on('/player/:id', ({ id }) => {
+// A player's own page.
+router.on('/players/:id', ({ id }) => {
   leaveCurrent()
   renderPlayer(root, ctx, id)
 })
@@ -106,8 +78,25 @@ function mountGame(id, phase) {
   root.append(container)
   currentCleanup = game.mount(container, ctx, phase) || null
 }
-router.on('/game/:id/:phase', ({ id, phase }) => mountGame(id, phase))
-router.on('/game/:id', ({ id }) => mountGame(id))
+
+// From here on the first piece is a game. Keep these last: whatever isn't one
+// of the fixed routes above is read as a game id.
+//
+// The hub owns the menu and the table — they're views of its scene, not
+// screens of their own — so those two go to renderHub, not to the game.
+router.on('/:game/table', ({ game }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, game, { table: true })
+})
+
+router.on('/:game/:phase', ({ game, phase }) => mountGame(game, phase))
+
+router.on('/:game', ({ game }) => {
+  leaveCurrent()
+  clear(root)
+  renderHub(root, ctx, game)
+})
 
 router.setNotFound(() => router.go('/'))
 

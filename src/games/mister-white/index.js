@@ -11,7 +11,7 @@ import packs from './packs.js'
 // import: the labels follow the interface language.
 const menu = () => [
   { title: t('mw.menu.play'), sub: t('mw.menu.playSub'), phase: 'setup', glyph: 'play' },
-  { title: t('mw.menu.words'), sub: t('mw.menu.wordsSub'), phase: 'packs', glyph: 'words' },
+  { title: t('mw.menu.words'), sub: t('mw.menu.wordsSub'), phase: 'words', glyph: 'words' },
   { title: t('mw.menu.rules'), sub: t('mw.menu.rulesSub'), phase: 'rules', glyph: 'help' },
   { title: t('mw.menu.stats'), sub: t('mw.menu.statsSub'), phase: 'stats', glyph: 'stats' }
 ]
@@ -39,8 +39,8 @@ function mount(container, ctx, initialPhase) {
     render,
     onSeat: null, // the current phase's handler for taps on the table
     goPhase(phase) { state.phase = phase; render() },
-    toMenu() { if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/menu/mister-white') },
-    toTable() { ctx.router.go('/table/mister-white') }
+    toMenu() { if (ctx.exitToMenu) ctx.exitToMenu(); else ctx.router.go('/mister-white') },
+    toTable() { ctx.router.go('/mister-white/table') }
   }
 
   // One table screen for the whole match: header, table, drawer. It picks the
@@ -69,7 +69,7 @@ function mount(container, ctx, initialPhase) {
     if (TABLE_PHASES.includes(state.phase)) { match[state.phase](api, tableScreen()); return }
     teardown()
     clear(container)
-    const map = { packs: screens.renderPacks, rules: screens.renderRules, stats: screens.renderStats }
+    const map = { words: screens.renderPacks, rules: screens.renderRules, stats: screens.renderStats }
     if (map[state.phase]) container.append(map[state.phase](api))
     else api.toMenu()
   }
@@ -97,7 +97,7 @@ export default {
   table: {
     min: 3,
     options: match.tableOptions,
-    start: ctx => ctx.router.go('/game/mister-white/start')
+    start: ctx => ctx.router.go('/mister-white/start')
   },
   mount
 }

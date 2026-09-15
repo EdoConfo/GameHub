@@ -62,7 +62,7 @@ export function renderSetup(api) {
   }
   refreshPacks()
   sec1.append(chips)
-  sec1.append(el('button', { class: 'link-btn', onclick: () => api.goPhase('packs') }, t('hu.setup.manage')))
+  sec1.append(el('button', { class: 'link-btn', onclick: () => api.goPhase('words') }, t('hu.setup.manage')))
 
   // Duration
   const sec2 = section(t('hu.setup.duration'))

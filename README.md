@@ -150,14 +150,14 @@ Ogni gioco è un modulo autonomo. Il resto dell'app (hub, router, impostazioni) 
    export const games = [misterWhite, headsUp]
    ```
 
-Fatto: la card compare nella home e la rotta `#/game/heads-up` funziona.
+Fatto: la card compare nella home e la rotta `#/heads-up` funziona.
 
 ## Struttura
 
 ```
 src/
   main.js              boot + rotte
-  router.js            router hash (#/, #/game/<id>, #/settings)
+  router.js            router hash (#/, #/<gioco>, #/<gioco>/<fase>, #/players, #/settings)
   styles.css           token tema + UI condivisa
   shared/              storage, giocatori, packStore + packManagerScreen, helper UI
   hub/                 home + impostazioni (solo tema + giocatori)

@@ -22,6 +22,12 @@ const V_SIDE = 0, V_GAMES = 1, V_MENU = 2
 // A line icon in a round badge that sits on the circle like a bead.
 const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 
+// Which bead each side arc should come back to. Kept here, not in the address:
+// the address names the page, and "the wheel happens to be turned to Anna" is
+// not a page. Lives as long as the session, which is as long as it matters —
+// you left that page a second ago.
+const lastFocus = { players: null, settings: null }
+
 export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, focusId = null } = {}) {
   let index = V_GAMES
   let selected = 0
@@ -86,7 +92,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // back to the view you were looking at, not to the last one that happened to
   // write a hash.
   function hashHere() {
-    if (index === V_MENU) return '#/' + (table ? 'table/' : 'menu/') + games[selected].id
+    if (index === V_MENU) return '#/' + games[selected].id + (table ? '/table' : '')
     if (index === V_SIDE) return sideKind === 'settings' ? '#/settings' : '#/players'
     return '#/'
   }
@@ -178,6 +184,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // through repaint(), which leaves the wheel where it stands.
   function buildSide(kind, focus = null) {
     sideKind = kind
+    if (focus == null) focus = lastFocus[kind]
     hosts[V_SIDE].replaceChildren()
     const items = sideItems(kind)
     sideWheel = createArcWheel(hosts[V_SIDE], {
@@ -187,6 +194,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
         const it = items[i]
         if (!it) return
         if (kind === 'settings') {
+          lastFocus.settings = it.id
           if (it.id === 'theme') {
             cycleTheme()
             repaint()
@@ -196,8 +204,12 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           }
           return
         }
-        if (it.id === 'new') openProfileEditor(ctx, null, saved => { buildSide('players', saved && saved.id); renderHeader() })
-        else ctx.router.go('/player/' + it.id)
+        if (it.id === 'new') openProfileEditor(ctx, null, saved => {
+          if (saved) lastFocus.players = saved.id
+          buildSide('players', saved && saved.id)
+          renderHeader()
+        })
+        else { lastFocus.players = it.id; ctx.router.go('/players/' + it.id) }
       }
     })
     const at = items.findIndex(it => it.id === focus)
@@ -234,7 +246,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       items: menuItems(),
       onActivate: j => {
         if (menu[j].phase === 'setup' && game.table) openTable()
-        else ctx.router.go('/game/' + game.id + '/' + menu[j].phase)
+        else ctx.router.go('/' + game.id + '/' + menu[j].phase)
       }
     })
   }

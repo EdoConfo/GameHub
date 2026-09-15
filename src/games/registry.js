@@ -4,12 +4,16 @@
 //
 // Game contract (default export):
 //   {
-//     id:          string  unique, matches the folder + route #/game/<id>
+//     id:          string  unique, matches the folder AND the address: a game
+//                          lives at #/<id>, its screens at #/<id>/<phase>.
+//                          Never 'players' or 'settings': those addresses are
+//                          taken, and the fixed routes win (see router.js).
 //     name:        string  shown on the hub card and top bar
 //     description: string  short line on the hub card
 //     icon:        string  emoji or short text glyph
 //     glyph:       string  line icon name (shared/ui.js) shown on the hub circle
 //     menu:        [{ title, sub, phase, glyph }]  the game's own menu wheel
+//                  each phase is an address of its own: #/<id>/<phase>
 //     table:       optional — "Gioca" opens the shared table in the hub:
 //                  { min, options(ctx, { changed, open }) -> { node, check(n) }, start(ctx) }
 //                  open(title, content) shows a page of the game's own in the drawer
