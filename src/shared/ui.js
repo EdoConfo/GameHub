@@ -103,6 +103,41 @@ export function button(label, opts = {}) {
   }, label)
 }
 
+// Pull a panel down and it follows the finger; let go and it either leaves or
+// springs back. Every panel in the app that can be dismissed uses this, so the
+// gesture means the same thing everywhere.
+//   grip:  what you grab (the grabber bar)
+//   panel: what moves
+//   onDismiss: called once, when the panel is meant to go
+export function dragToDismiss(grip, panel, { onDismiss, part = 0.25, flick = 0.5 } = {}) {
+  let from = null, t0 = 0, dy = 0
+  const move = px => { panel.style.transform = px ? `translateY(${px}px)` : '' }
+
+  grip.addEventListener('pointerdown', e => {
+    from = e.clientY
+    t0 = performance.now()
+    dy = 0
+    panel.style.transition = 'none' // while the finger is down, no easing in the way
+    try { grip.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+  })
+  grip.addEventListener('pointermove', e => {
+    if (from == null) return
+    dy = Math.max(0, e.clientY - from) // it only goes down: up is where it already is
+    move(dy)
+  })
+  const end = e => {
+    if (from == null) return
+    const speed = dy / Math.max(1, performance.now() - t0) // px per ms
+    from = null
+    panel.style.transition = ''
+    move(0)
+    // a tap on the grabber, a pull past a quarter of the panel, or a flick
+    if (dy < 4 || dy > panel.offsetHeight * part || speed > flick) onDismiss()
+  }
+  grip.addEventListener('pointerup', end)
+  grip.addEventListener('pointercancel', end)
+}
+
 // A question, asked as a panel rising from the bottom over a blacked-out page.
 // Three ways out, all the same one: the grabber (tapped or pulled down), the
 // dark behind it, or one of the answers. Returns a controller with close().
@@ -118,18 +153,7 @@ export function modal({ title, content, actions = [] } = {}) {
   overlay.append(box)
   overlay.addEventListener('click', e => { if (e.target === overlay) close() })
 
-  let gy = null
-  grip.addEventListener('pointerdown', e => {
-    gy = e.clientY
-    try { grip.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
-  })
-  grip.addEventListener('pointerup', e => {
-    if (gy == null) return
-    const dy = e.clientY - gy
-    gy = null
-    if (dy > -20) close() // a tap, or a pull downwards
-  })
-  grip.addEventListener('pointercancel', () => { gy = null })
+  dragToDismiss(grip, box, { onDismiss: () => close() })
 
   document.body.append(overlay)
   function close() { overlay.remove() }

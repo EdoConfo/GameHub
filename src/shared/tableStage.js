@@ -1,4 +1,4 @@
-import { el } from './ui.js'
+import { el, dragToDismiss } from './ui.js'
 import { t } from './i18n.js'
 import { createTableView, seatFor } from './tableView.js'
 
@@ -63,10 +63,23 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   let raf = 0
   let hTimer = 0
   let isOpen = false
+  let folding = false // a finger is on the drawer's grabber right now
+  let pending = false // a reflow that arrived while the table was already moving
   let sheetOpen = false
   let sheetDone = null
   let sheetTimer = 0
   let size = host.clientWidth + 'x' + host.clientHeight
+
+  // Each block of detail carries its own open height, so folding it is linear:
+  // with one cap for all of them the first stretch of a drag moved nothing,
+  // because the cap sat above the real height. Measured while the drawer is
+  // open — folded they're all zero and there'd be nothing to read.
+  function measureDetail() {
+    if (drawer.classList.contains('min')) return
+    for (const node of body.querySelectorAll('.drawer-more')) {
+      node.style.setProperty('--h', node.offsetHeight + 'px')
+    }
+  }
 
   function place(g, s = shown) {
     geo = g
@@ -98,7 +111,17 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     return { cx: W / 2, cy: t + (b - t) / 2, r: Math.max(48, r) }
   }
 
-  function reflow() { if (isOpen && geo && !raf) glide(room(), { ms: 360 }) }
+  // The table takes back the room a panel gives up. While a finger is dragging
+  // it goes there at once, frame by frame — that's the whole point of dragging.
+  // Otherwise it glides; and a reflow asked for mid-glide isn't dropped any
+  // more but replayed at the end, which is how the table used to staylow after
+  // unfolding the drawer and end up under it.
+  function reflow() {
+    if (!isOpen || !geo) return
+    if (folding) { place(room()); return }
+    if (raf) { pending = true; return }
+    glide(room(), { ms: 360 })
+  }
 
   // Tween the table to `to`; seats reach visibility `shown` within `span`.
   function glide(to, { ms = 440, shown: s1 = 1, span = [0, 1], done } = {}) {
@@ -115,7 +138,11 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
         r: g0.r + (to.r - g0.r) * e
       }, s0 + (s1 - s0) * smooth(span[0], span[1], p))
       if (p < 1) raf = requestAnimationFrame(step)
-      else { raf = 0; if (done) done() }
+      else {
+        raf = 0
+        if (done) done()
+        if (pending) { pending = false; reflow() }
+      }
     }
     raf = requestAnimationFrame(step)
   }
@@ -127,6 +154,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     clearTimeout(hTimer)
     drawer.style.height = ''
     mutate()
+    measureDetail()
     const h1 = drawer.offsetHeight
     if (!isOpen) return h1
     lastDrawer = h1
@@ -228,43 +256,70 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     if (geo && isOpen) place(room())
   }
 
-  // Pull the handle down to fold the drawer (the table grows), up to unfold.
-  let hy = null
+  // Pull the grabber and the drawer folds WITH the finger: --fold runs from 0
+  // (open) to 1 (only the button left), and the detail shrinks and fades along
+  // it. Let go past halfway — or with a flick — and it finishes that way,
+  // otherwise it springs back. A tap still just flips it.
+  let hy = null, hFrom = 0, hSpan = 0, hTime = 0, hMoved = false
+
+  const foldAt = v => drawer.style.setProperty('--fold', Math.max(0, Math.min(1, v)).toFixed(3))
+
   handle.addEventListener('pointerdown', e => {
     hy = e.clientY
-    try { handle.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
-  })
-  handle.addEventListener('pointerup', e => {
-    if (hy == null) return
-    const dy = e.clientY - hy
-    hy = null
-    const min = drawer.classList.contains('min')
-    const next = dy > 20 ? true : dy < -20 ? false : !min
-    if (next === min) return
-    // NOT morph(): that pins a start and an end height, and the end height is
-    // read before the detail has collapsed — so the panel slid down whole and
-    // then snapped the last 170px. Left on its own the drawer is as tall as
-    // what's inside it, and the detail collapsing carries it down. The
-    // ResizeObserver hands the table the room, frame by frame.
+    hTime = performance.now()
+    hMoved = false
+    hFrom = drawer.classList.contains('min') ? 1 : 0
+    // how much height there is to fold away: everything marked as detail
+    measureDetail()
+    // What the drawer loses by folding: each block of detail, plus the gap that
+    // closes above each of them. Without the gaps the panel outran the finger
+    // by a fifth.
+    const detail = [...body.querySelectorAll('.drawer-more')]
+    const gap = parseFloat(getComputedStyle(body.querySelector('.drawer-page') || body).rowGap) || 0
+    hSpan = detail.reduce((n, node) =>
+      n + (parseFloat(node.style.getPropertyValue('--h')) || node.offsetHeight) + gap, 0) || 1
+    folding = true
     drawer.style.height = ''
     clearTimeout(hTimer)
-    drawer.classList.toggle('min', next)
+    drawer.classList.add('folding') // no easing between the finger and the panel
+    foldAt(hFrom)
+    try { handle.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
   })
-  handle.addEventListener('pointercancel', () => { hy = null })
 
-  // The sheet's handle doesn't fold anything: down (or a plain tap) closes it.
-  let sy = null
-  sheetHandle.addEventListener('pointerdown', e => {
-    sy = e.clientY
-    try { sheetHandle.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+  handle.addEventListener('pointermove', e => {
+    if (hy == null) return
+    const dy = e.clientY - hy
+    if (Math.abs(dy) > 3) hMoved = true
+    foldAt(hFrom + dy / hSpan)
   })
-  sheetHandle.addEventListener('pointerup', e => {
-    if (sy == null) return
-    const dy = e.clientY - sy
-    sy = null
-    if (dy > -20) closeSheet()
+
+  const endFold = e => {
+    if (hy == null) return
+    const dy = (e.clientY || hy) - hy
+    const speed = dy / Math.max(1, performance.now() - hTime) // px per ms, signed
+    hy = null
+    folding = false
+    drawer.classList.remove('folding')
+    drawer.style.removeProperty('--fold')
+    const at = hFrom + dy / hSpan
+    const min = !hMoved ? hFrom < 0.5             // a tap flips it
+      : Math.abs(speed) > 0.4 ? speed > 0          // a flick goes where it was thrown
+        : at > 0.5                                 // otherwise, wherever it was left
+    drawer.classList.toggle('min', min)
+    reflow()
+  }
+  handle.addEventListener('pointerup', endFold)
+  handle.addEventListener('pointercancel', () => {
+    if (hy == null) return
+    hy = null
+    folding = false
+    drawer.classList.remove('folding')
+    drawer.style.removeProperty('--fold')
   })
-  sheetHandle.addEventListener('pointercancel', () => { sy = null })
+
+  // The sheet's grabber doesn't fold anything: it carries the sheet down with
+  // the finger, and past a quarter of it (or with a flick) it leaves.
+  dragToDismiss(sheetHandle, sheet, { onDismiss: () => closeSheet() })
 
   // The drawer changing height on its own hands the table back the room it
   // takes. The sheet is not watched: it doesn't own any of the table's room.
