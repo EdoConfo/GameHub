@@ -8,6 +8,7 @@ import { renderHub } from './hub/hub.js'
 import { renderPlayer } from './hub/playerPage.js'
 import { getGame } from './games/registry.js'
 import { clear, el } from './shared/ui.js'
+import { applyTheme, getTheme, watchSystem } from './shared/theme.js'
 
 const root = document.getElementById('app')
 
@@ -25,8 +26,10 @@ document.addEventListener('touchmove', e => {
   if (t && t.closest && t.closest('.canvas') && !t.closest('.drawer-body, .pick-row')) e.preventDefault()
 }, { passive: false })
 
-// Apply persisted theme before first paint of content.
-applyTheme(storage.get('theme', 'dark'))
+// Paint in the chosen theme before any content shows. No choice yet means
+// following the system, so a fresh install matches the phone.
+applyTheme(getTheme())
+watchSystem()
 
 // Shared services handed to every game. Word packs are NOT here: each game
 // owns and manages its own packs (see games/<id>/packs.js).
@@ -109,11 +112,3 @@ router.on('/game/:id', ({ id }) => mountGame(id))
 router.setNotFound(() => router.go('/'))
 
 router.start()
-
-export function applyTheme(theme) {
-  const t = theme === 'light' ? 'light' : 'dark'
-  document.documentElement.dataset.theme = t
-  const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', t === 'light' ? '#eaecf7' : '#0a0b16')
-  storage.set('theme', t)
-}

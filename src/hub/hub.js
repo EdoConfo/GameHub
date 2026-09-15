@@ -1,5 +1,6 @@
 import { el, icon } from '../shared/ui.js'
 import { t, langName, cycleLang } from '../shared/i18n.js'
+import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import { openProfileEditor, avatar } from './players.js'
 import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
@@ -137,9 +138,12 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // the theme it will switch AWAY from, the language bead the current language.
   function sideItems(kind) {
     if (kind === 'settings') {
-      const dark = ctx.storage.get('theme', 'dark') !== 'light'
+      // the bead names the CHOICE, not the colour: on 'Sistema' it says so,
+      // whichever of the two the phone is showing at that moment
+      const theme = getTheme()
+      const themeGlyph = { system: 'system', light: 'sun', dark: 'moon' }
       return [
-        { id: 'theme', title: t('settings.theme'), sub: dark ? t('settings.dark') : t('settings.light'), lead: badge(dark ? 'moon' : 'sun') },
+        { id: 'theme', title: t('settings.theme'), sub: t('settings.theme.' + theme), lead: badge(themeGlyph[theme]) },
         { id: 'language', title: t('settings.language'), sub: langName(), lead: badge('globe') },
         { id: 'offline', title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
       ]
@@ -168,7 +172,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
         if (!it) return
         if (kind === 'settings') {
           if (it.id === 'theme') {
-            ctx.applyTheme(ctx.storage.get('theme', 'dark') === 'light' ? 'dark' : 'light')
+            cycleTheme()
             repaint()
           } else if (it.id === 'language') {
             cycleLang()
