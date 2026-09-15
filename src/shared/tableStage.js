@@ -49,7 +49,12 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   const sheetHandle = el('button', { class: 'drawer-handle', 'aria-label': t('table.sheetClose') })
   const sheetBody = el('div', { class: 'drawer-body' })
   const sheet = el('div', { class: 'drawer sheet' }, [sheetHandle, sheetBody])
-  host.append(layer, drawer, sheet)
+  // Everything outside the sheet is a way out of it: touching the table closes
+  // the sheet, and that same touch does nothing else. You're back on the
+  // drawer, with the table live again — a second tap moves a seat.
+  const scrim = el('div', { class: 'sheet-scrim' })
+  scrim.addEventListener('pointerdown', () => closeSheet())
+  host.append(layer, drawer, scrim, sheet)
   // the names changed size (new seats, notes): make the room they need
   const view = createTableView(layer, { onTap, onSwap, onMove, onRotate, onExtent: () => reflow() })
 
@@ -182,6 +187,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     if (!sheetOpen) {
       sheetOpen = true
       layer.classList.add('blocked')
+      scrim.classList.add('on')
       // at least as tall as what it hides, so the drawer never peeks above it
       sheet.style.minHeight = (isOpen ? drawer.offsetHeight : 0) + 'px'
       sheet.classList.add('open')
@@ -196,6 +202,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     sheetOpen = false
     sheet.classList.remove('open')
     layer.classList.remove('blocked')
+    scrim.classList.remove('on')
     const fn = sheetDone
     sheetDone = null
     glide(room(), { ms: 440 })
@@ -265,6 +272,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     view.destroy()
     layer.remove()
     drawer.remove()
+    scrim.remove()
     sheet.remove()
   }
 

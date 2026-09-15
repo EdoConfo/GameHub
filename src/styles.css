@@ -713,7 +713,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 /* The sheet: same panel, one step above the drawer, covering it whole. Its
    last child (the way out) sits at the bottom edge even when the sheet is
    taller than its content, because it is as tall as what it hides. */
-.drawer.sheet { z-index: 5; }
+/* Catches the touch that lands outside the sheet, so it closes instead of
+   reaching the table. Invisible on purpose: the table below stays readable —
+   it's the thing you came here to set up. */
+.sheet-scrim { position: absolute; inset: 0; z-index: 5; display: none; }
+.sheet-scrim.on { display: block; }
+.drawer.sheet { z-index: 6; }
 .drawer.sheet .drawer-page { flex: 1; }
 .drawer.sheet .drawer-page > *:last-child { margin-top: auto; }
 /* While the sheet is up, the table is out of play. Switching off the container
