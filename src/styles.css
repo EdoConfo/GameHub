@@ -389,6 +389,9 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .modal-title { margin: 0; font-size: 20px; font-weight: 750; text-align: center; }
 .modal-content { display: flex; flex-direction: column; gap: 12px; }
+/* a line of prose under a centred question reads as part of it, not as a
+   paragraph of a page; the fields of an editor keep their own alignment */
+.modal-content > p { text-align: center; }
 .modal-actions { display: flex; gap: 10px; }
 .modal-actions > .btn { flex: 1; }
 
