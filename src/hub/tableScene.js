@@ -104,13 +104,35 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
       hint.hidden = !standing.length
     }
 
+    // Emptying the table is one tap away from a table you spent a minute
+    // arranging, so the first tap only asks — the same two-step the word packs
+    // use for deleting.
+    const wipe = button(t('table.empty'), {
+      variant: 'ghost',
+      onClick: () => {
+        if (!wipe.dataset.sure) {
+          wipe.dataset.sure = '1'
+          wipe.textContent = t('table.emptySure')
+          return
+        }
+        ctx.table.reset()
+        delete wipe.dataset.sure
+        wipe.textContent = t('table.empty')
+        refresh()
+        paint()
+      }
+    })
+
     paint()
     stage.openSheet(el('div', { class: 'drawer-page' }, [
       el('div', { class: 'drawer-title' }, t('hub.players')),
       hint,
       empty,
       list,
-      button(t('common.done'), { variant: 'ghost', full: true, onClick: () => stage.closeSheet() })
+      el('div', { class: 'drawer-row' }, [
+        wipe,
+        button(t('common.done'), { variant: 'ghost', onClick: () => stage.closeSheet() })
+      ])
     ]), { done: () => refresh() })
   }
 

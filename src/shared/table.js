@@ -11,18 +11,20 @@ import * as players from './players.js'
 const KEY = 'table'
 const newId = () => 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
+// A table as it comes: chairs, nobody on them. Who sits where is a decision,
+// not something to guess from the roster.
+const SEATS = 4
+const fresh = () => Array.from({ length: SEATS }, () => ({ id: newId(), pid: null }))
+
 function load() {
   const raw = storage.get(KEY, null)
   let list
   if (Array.isArray(raw)) {
     list = raw.filter(s => s && s.id).map(s => ({ id: s.id, pid: s.pid || null }))
   } else {
-    // First time: chairs, nobody on them. Who sits where is a decision, not
-    // something to guess from the roster — and it's written down right away,
-    // so the table is yours from the first look instead of being recomputed
-    // (and quietly reshuffled) at every read.
-    list = [0, 1, 2, 3].map(() => ({ id: newId(), pid: null }))
-    save(list)
+    // Written down right away, so the table is yours from the first look
+    // instead of being recomputed (and quietly reshuffled) at every read.
+    list = save(fresh())
   }
   // A deleted profile leaves its chair empty; nobody sits twice.
   const known = new Set(players.all().map(p => p.id))
@@ -37,6 +39,9 @@ function load() {
 function save(list) { storage.set(KEY, list); return list }
 
 export function seats() { return load() }
+
+// Clear it and start over: the same table a new phone gets.
+export function reset() { return save(fresh()) }
 
 export function addSeat(pid = null) {
   const list = load()
