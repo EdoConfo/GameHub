@@ -6,7 +6,7 @@ const modules = import.meta.glob('./packs/*.json', { eager: true })
 
 const codec = {
   field: 'pairs',
-  emoji: '💬',
+  icon: 'words',
   // what a row of the editor looks like: the civilians' word and the one the
   // Undercovers get. Mister White gets no word at all, so he has no column.
   columns: [

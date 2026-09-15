@@ -36,7 +36,9 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     if (!raw || typeof raw !== 'object') return null
     const id = String(raw.id || '').trim()
     if (!id) return null
-    const emoji = String(raw.emoji || '').trim() || codec.emoji || '💬'
+    // an icon by name, drawn in the app's line style (see ui.js). Packs saved
+    // before icons had names fall back to the game's default.
+    const icon = String(raw.icon || '').trim() || codec.icon || 'words'
     const fallbackLang = String(raw.language || 'it').slice(0, 2).toLowerCase()
 
     const names = {}
@@ -63,7 +65,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
     const langs = Object.keys(byLang)
     if (!langs.length || !Object.keys(names).length) return null
-    return { id, names, byLang, emoji, custom: !!raw.custom }
+    return { id, names, byLang, icon, custom: !!raw.custom }
   }
 
   function normalizeItems(list) {
@@ -89,7 +91,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     return {
       id: pack.id,
       name: pack.names[lang] || pack.names[Object.keys(pack.names)[0]],
-      emoji: pack.emoji,
+      icon: pack.icon,
       language: lang,
       langs: Object.keys(pack.byLang),
       items,
@@ -103,7 +105,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     return Array.isArray(list) ? list.map(normalizePack).filter(Boolean) : []
   }
   function saveCustom(list) {
-    storage.set(CUSTOM_KEY, list.map(p => ({ id: p.id, name: p.names, emoji: p.emoji, items: p.byLang, custom: true })))
+    storage.set(CUSTOM_KEY, list.map(p => ({ id: p.id, name: p.names, icon: p.icon, items: p.byLang, custom: true })))
   }
 
   // { [packId]: { [lang]: { name, items } } }. The old { name, items } shape is
@@ -134,7 +136,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
       const items = normalizeItems(edit.items)
       const r = resolve(
         { ...pack,
-          emoji: edit.emoji || pack.emoji,
+          icon: edit.icon || pack.icon,
           names: { ...pack.names, [lang]: String(edit.name || pack.names[lang] || '') },
           byLang: { ...pack.byLang, [lang]: items.length ? items : pack.byLang[lang] } },
         lang,
@@ -263,7 +265,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
   // Packs you write are single-language: they're saved under the language that
   // was active while writing them, and show up only there.
-  function addCustomPack(name, source, { enable = true, emoji } = {}) {
+  function addCustomPack(name, source, { enable = true, icon } = {}) {
     const lang = getLang()
     const clean = cleanName(name)
     const items = Array.isArray(source) ? normalizeItems(source) : parsePackInput(source).items
@@ -271,7 +273,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     const id = 'custom-' + Date.now().toString(36)
     const pack = {
       id, names: { [lang]: clean }, byLang: { [lang]: items },
-      emoji: String(emoji || codec.emoji || '💬'), custom: true
+      icon: String(icon || codec.icon || 'words'), custom: true
     }
     const list = loadCustom()
     list.push(pack)
@@ -282,7 +284,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
   // Rename / rewrite a pack — in the active language only, the other languages
   // of a built-in pack stay as they came.
-  function updatePack(id, { name, text, items: given, emoji }) {
+  function updatePack(id, { name, text, items: given, icon }) {
     const lang = getLang()
     const clean = cleanName(name)
     const items = Array.isArray(given) ? normalizeItems(given) : parsePackInput(text).items
@@ -292,7 +294,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     if (i >= 0) {
       list[i] = {
         ...list[i],
-        emoji: emoji || list[i].emoji,
+        icon: icon || list[i].icon,
         names: { ...list[i].names, [lang]: clean },
         byLang: { ...list[i].byLang, [lang]: items }
       }
@@ -301,7 +303,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     }
     if (!bundled.some(p => p.id === id)) throw new Error(t('packs.notFound'))
     const over = loadOverrides()
-    over[id] = { ...(over[id] || {}), [lang]: { name: clean, items, emoji } }
+    over[id] = { ...(over[id] || {}), [lang]: { name: clean, items, icon } }
     saveOverrides(over)
     return getPack(id)
   }

@@ -6,7 +6,7 @@ const modules = import.meta.glob('./packs/*.json', { eager: true })
 
 const codec = {
   field: 'words',
-  emoji: '💬',
+  icon: 'words',
   // one word per row, so one column
   columns: [{ key: 'word', label: 'hu.unit.words' }],
   toRow(it) { return { word: it } },

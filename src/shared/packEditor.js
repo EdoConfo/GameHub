@@ -5,23 +5,24 @@
 // A table and not a free text box on purpose: a pack written by hand in a
 // textarea is a pack with a missing comma in it, and you find out at the table
 // with six people waiting. Here a row is either whole or it says it isn't.
-import { el, button, modal, toast, walls } from './ui.js'
+import { el, button, modal, toast, walls, icon } from './ui.js'
 import { t } from './i18n.js'
 
-// Emoji for a pack's icon, in the app's own key: things you'd name a pack
-// after, not a full keyboard to get lost in.
-const PACK_EMOJIS = [
-  '💬', '🎲', '🐾', '🍕', '🎬', '⚽', '🎭', '⭐', '🎵', '🌍',
-  '🧠', '💼', '🏠', '🚗', '✈️', '🏖️', '🎄', '🎃', '❤️', '🔥',
-  '🌙', '☀️', '🍀', '🎓', '🔬', '🎨', '📚', '👻', '🦄', '🤖'
+// What a pack can be called by: line icons from the app's own set (ui.js), not
+// emoji — the rest of the app is drawn, not typed, and a coloured emoji in a
+// row of line icons shouts.
+const PACK_ICONS = [
+  'words', 'dice', 'paw', 'food', 'film', 'ball', 'mask', 'star',
+  'music', 'globe', 'bulb', 'bag', 'home', 'car', 'plane', 'gift',
+  'ghost', 'robot', 'book', 'flask', 'palette', 'heart', 'flame', 'leaf'
 ]
 
 export function openPackEditor(store, pack, { onDone } = {}) {
   const columns = store.columns
-  let emoji = (pack && pack.emoji) || '💬'
+  let iconName = (pack && pack.icon) || 'words'
   const rows = pack ? store.toRows(pack) : [store.blankRow(), store.blankRow(), store.blankRow()]
 
-  const iconBtn = el('button', { class: 'pack-icon', 'aria-label': t('packs.icon'), onclick: () => pickEmoji() }, emoji)
+  const iconBtn = el('button', { class: 'pack-icon', 'aria-label': t('packs.icon'), onclick: () => pickIcon() }, icon(iconName))
   const nameInput = el('input', {
     class: 'text-input', type: 'text', placeholder: t('packs.namePlaceholder'),
     maxlength: '40', value: pack ? pack.name : ''
@@ -30,18 +31,22 @@ export function openPackEditor(store, pack, { onDone } = {}) {
   const table = el('div', { class: 'pack-table list-scroll' })
   const count = el('p', { class: 'muted small center' })
 
-  function pickEmoji() {
-    const grid = el('div', { class: 'emoji-grid' })
+  function pickIcon() {
+    const grid = el('div', { class: 'icon-grid' })
     const sheet = modal({
       title: t('packs.icon'),
       content: [grid],
       actions: [button(t('common.cancel'), { variant: 'ghost', onClick: () => sheet.close() })]
     })
-    for (const e of PACK_EMOJIS) {
+    for (const name of PACK_ICONS) {
       grid.append(el('button', {
-        class: 'emoji-cell' + (e === emoji ? ' on' : ''),
-        onclick: () => { emoji = e; iconBtn.textContent = e; sheet.close() }
-      }, e))
+        class: 'icon-cell' + (name === iconName ? ' on' : ''), 'aria-label': name,
+        onclick: () => {
+          iconName = name
+          iconBtn.replaceChildren(icon(name))
+          sheet.close()
+        }
+      }, icon(name)))
     }
   }
 
@@ -168,8 +173,8 @@ export function openPackEditor(store, pack, { onDone } = {}) {
           }
           try {
             const saved = pack
-              ? store.updatePack(pack.id, { name: nameInput.value, items, emoji })
-              : store.addCustomPack(nameInput.value, items, { enable: !!store.selectable, emoji })
+              ? store.updatePack(pack.id, { name: nameInput.value, items, icon: iconName })
+              : store.addCustomPack(nameInput.value, items, { enable: !!store.selectable, icon: iconName })
             m.close()
             toast(t(pack ? 'packs.saved' : 'packs.added', { name: saved.name, n: saved.items.length, unit: store.unit }))
             if (onDone) onDone()

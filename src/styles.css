@@ -222,12 +222,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   transition: color .3s ease, border-color .3s ease;
 }
 .arc-badge .icon { width: 26px; height: 26px; }
-/* a pack wears its own icon on the arc, in the same round bead */
-.arc-emoji {
-  display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--text) 26%, transparent); font-size: 26px;
-}
-.arc-item.on .arc-emoji { border-color: color-mix(in srgb, var(--text) 60%, transparent); }
 .arc-item.on .arc-badge { color: var(--text); border-color: color-mix(in srgb, var(--text) 60%, transparent); }
 
 /* Name (+ description) hangs to the right of each number, inside the item,
@@ -401,10 +395,20 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .pack-head { display: flex; align-items: center; gap: 10px; }
 .pack-head .text-input { flex: 1; }
 .pack-icon {
-  flex: none; width: 48px; height: 48px; border-radius: 14px; font-size: 24px;
-  border: 1px solid var(--border); background: var(--surface-2); cursor: pointer;
-  display: grid; place-items: center; padding: 0;
+  flex: none; width: 48px; height: 48px; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  cursor: pointer; display: grid; place-items: center; padding: 0;
 }
+.pack-icon .icon { width: 24px; height: 24px; }
+/* the icons to choose from, in the same round bead they'll wear on the arc */
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 10px; }
+.icon-cell {
+  aspect-ratio: 1; border-radius: 50%; padding: 0; cursor: pointer; color: var(--text);
+  border: 1.5px solid var(--border); background: var(--surface-2);
+  display: grid; place-items: center;
+}
+.icon-cell .icon { width: 24px; height: 24px; }
+.icon-cell.on { border-color: transparent; background: var(--primary); color: #fff; }
 .pack-editor .modal { max-height: 88%; }
 .pack-editor .modal-content { flex: 1 1 auto; min-height: 0; }
 .pack-table { display: flex; flex-direction: column; gap: 8px; }
