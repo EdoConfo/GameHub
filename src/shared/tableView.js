@@ -118,19 +118,27 @@ export function createTableView(host, { onTap, onSwap, onMove, onRotate, onExten
     })
     for (const s of old.values()) { s.to = 0; leaving.push(s) }
     first = false
+    const e = measure() // sizes first: render() places the labels by them
     render()
     kick()
-    const e = measure()
     if (Math.abs(e.w - extent.w) > 1 || Math.abs(e.h - extent.h) > 1) {
       extent = e
       if (onExtent) onExtent()
     }
   }
 
-  // The biggest name label: the room names need around the table.
+  // Each label's own size, kept on the seat, plus the biggest of them: the room
+  // the names need around the table. Measured here and not while drawing —
+  // reading a size forces the browser to lay the page out, and every frame of
+  // a moving table would pay for it.
   function measure() {
     let w = 0, h = 0
-    for (const s of seats) { w = Math.max(w, s.label.offsetWidth); h = Math.max(h, s.label.offsetHeight) }
+    for (const s of seats) {
+      s.lw = s.label.offsetWidth
+      s.lh = s.label.offsetHeight
+      w = Math.max(w, s.lw)
+      h = Math.max(h, s.lh)
+    }
     return { w, h }
   }
 
@@ -144,16 +152,21 @@ export function createTableView(host, { onTap, onSwap, onMove, onRotate, onExten
     pad.style.transform = `translate(${cx - pr}px, ${cy - pr}px)`
     const k = size / BASE
     layer.style.setProperty('--seat-k', k.toFixed(3)) // names shrink with the seats
-    const d = size * 0.55 + 7
+    const gap = size * 0.55 + 7 // from the seat's centre to where its name starts
     for (const s of leaving.length ? seats.concat(leaving) : seats) {
       const c = Math.cos(s.a), sn = Math.sin(s.a)
       const x = cx + r * c, y = cy + r * sn
       const vis = Math.max(0, Math.min(1, s.o * shown))
       s.node.style.opacity = vis
       s.node.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${k * (0.6 + 0.4 * vis)})`
-      // the name: just outside the seat, pushed outwards along its radius
+      // The name, centred on a point pushed out along the seat's own radius,
+      // far enough that the whole label clears the seat: half its width counts
+      // when it sits beside the seat, half its height when it sits above or
+      // below, and in between a bit of each. Aligning by percentages instead
+      // left a corner of a two-line label lying on the avatar.
+      const off = gap + (Math.abs(c) * (s.lw || 0) + Math.abs(sn) * (s.lh || 0)) / 2
       s.label.style.opacity = vis
-      s.label.style.transform = `translate(${x + c * d}px, ${y + sn * d}px) translate(${-50 + 50 * c}%, ${-50 + 50 * sn}%)`
+      s.label.style.transform = `translate(${x + c * off}px, ${y + sn * off}px) translate(-50%, -50%)`
     }
     drawTicks()
     center.style.opacity = shown

@@ -352,26 +352,49 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .result-headline { font-size: 27px; margin: 0 0 4px; font-weight: 800; letter-spacing: -.3px; }
 
 /* ---- Modal ---- */
+/* Asking something is a panel too: it rises from the bottom like the others,
+   where the thumb is, and blacks out everything behind it — that darkness is
+   the whole point of a question, and it's what a card floating in the middle
+   never quite said. */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 50;
-  background: rgba(0,0,0,.45);
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-  animation: fade .2s ease;
+  background: rgba(0, 0, 0, .62);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fade .22s ease;
 }
+:root[data-theme="light"] .modal-overlay { background: rgba(14, 16, 28, .45); }
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sheet-up { from { transform: translateY(100%) } to { transform: none } }
 .modal {
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 560px; max-height: 88%;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 22px;
+  border: 1px solid var(--border); border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -12px 34px rgba(0, 0, 0, .3);
+  padding: 4px 18px calc(18px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto; scrollbar-width: none;
+  animation: sheet-up .34s var(--pan-ease);
 }
-.modal-title { margin: 0; font-size: 20px; font-weight: 750; }
+.modal::-webkit-scrollbar { display: none; }
+/* the same grabber the drawer has: tap it or pull it down and the question goes */
+.modal-grip {
+  flex: 0 0 auto; align-self: center; position: relative;
+  width: 72px; height: 22px; margin: 0 0 2px; padding: 0; border: 0; background: none;
+  cursor: pointer; touch-action: none;
+}
+.modal-grip::before {
+  content: ''; position: absolute; left: 18px; right: 18px; top: 9px; height: 4px; border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 24%, transparent);
+}
+.modal-title { margin: 0; font-size: 20px; font-weight: 750; text-align: center; }
 .modal-content { display: flex; flex-direction: column; gap: 12px; }
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions > .btn { flex: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal { animation: none; }
+}
 
 /* ---- Toast ---- */
 .toast {

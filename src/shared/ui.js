@@ -103,16 +103,34 @@ export function button(label, opts = {}) {
   }, label)
 }
 
-// Simple modal. Returns a controller with close().
+// A question, asked as a panel rising from the bottom over a blacked-out page.
+// Three ways out, all the same one: the grabber (tapped or pulled down), the
+// dark behind it, or one of the answers. Returns a controller with close().
 export function modal({ title, content, actions = [] } = {}) {
   const overlay = el('div', { class: 'modal-overlay' })
+  const grip = el('button', { class: 'modal-grip', 'aria-label': t('table.sheetClose') })
   const box = el('div', { class: 'modal' }, [
+    grip,
     title ? el('h2', { class: 'modal-title' }, title) : null,
     el('div', { class: 'modal-content' }, content),
     el('div', { class: 'modal-actions' }, actions)
   ])
   overlay.append(box)
   overlay.addEventListener('click', e => { if (e.target === overlay) close() })
+
+  let gy = null
+  grip.addEventListener('pointerdown', e => {
+    gy = e.clientY
+    try { grip.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+  })
+  grip.addEventListener('pointerup', e => {
+    if (gy == null) return
+    const dy = e.clientY - gy
+    gy = null
+    if (dy > -20) close() // a tap, or a pull downwards
+  })
+  grip.addEventListener('pointercancel', () => { gy = null })
+
   document.body.append(overlay)
   function close() { overlay.remove() }
   return { overlay, close }
