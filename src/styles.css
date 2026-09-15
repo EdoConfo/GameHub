@@ -751,8 +751,22 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .drawer-page { display: flex; flex-direction: column; gap: 12px; }
 /* phases that follow each other keep one height, so the table stays still */
 .drawer-page.steady { min-height: 190px; justify-content: center; }
-.drawer.min .drawer-more { display: none; }
-/* folded: an open role description folds away with the rest of the detail */
+/* Folding the drawer: the detail collapses and fades on its own way out while
+   the panel comes down with it. Switching it off with display:none instead
+   made the drawer look like it was sliding down whole, with the button that
+   was left riding on top of it. */
+.drawer-more {
+  /* the cap has to clear the tallest block of detail (the options list) without
+     towering over it: max-height animates linearly, so a value far above the
+     real height makes the way back up look like it finishes early */
+  overflow: hidden; max-height: 260px;
+  transition: max-height .34s var(--pan-ease), opacity .18s ease, transform .3s var(--pan-ease);
+}
+.drawer.min .drawer-page { gap: 0; }
+.drawer.min .drawer-more {
+  max-height: 0; opacity: 0; transform: translateY(8px); pointer-events: none;
+}
+/* an open role description folds away with the rest of the detail */
 .drawer.min .role-desc { display: none; }
 .drawer-row { display: flex; gap: 10px; }
 .drawer-row > * { flex: 1; }
@@ -815,6 +829,16 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .round-btn.sm { width: 36px; height: 36px; font-size: 19px; }
 
 /* Profiles to pick: a row that centres when it fits, scrolls when it doesn't. */
+/* Faces in a grid, name underneath: four or five to a row on a phone. */
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 14px 6px; padding: 2px 0; }
+.pick-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 2px 0; margin: 0; cursor: pointer;
+  color: inherit; font: inherit; transition: transform .1s ease;
+}
+.pick-cell:active { transform: scale(.94); }
+.pick-plus { display: grid; place-items: center; font-size: 22px; color: var(--text-dim); }
+
 .pick-row { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; }
 .pick-row::-webkit-scrollbar { display: none; }
 .pick-row > :first-child { margin-left: auto; }

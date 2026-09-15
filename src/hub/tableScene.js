@@ -77,8 +77,9 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   // out. Each one takes the first free chair, or a new chair if there is none —
   // the order you sort out afterwards, on the table itself.
   function openPlayers() {
-    const list = el('div', { class: 'profile-list' })
+    const list = el('div', { class: 'pick-grid' })
     const hint = el('p', { class: 'drawer-hint drawer-more' }, t('table.playersHint'))
+    const empty = el('p', { class: 'drawer-hint' }, t('table.allSeated'))
 
     function seat(pid) {
       const empty = ctx.table.seats().find(s => !s.pid)
@@ -92,22 +93,24 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
       const seated = new Set(ctx.table.seats().map(s => s.pid).filter(Boolean))
       const standing = ctx.players.all().filter(p => !seated.has(p.id))
       // replaceChildren() has no opinion about null — it would print the word.
-      const rows = [
-        ...standing.map(p => el('button', { class: 'profile-row', onclick: () => seat(p.id) }, [
-          avatar(p, 40),
-          el('span', { class: 'profile-name' }, p.name),
-          el('span', { class: 'profile-arrow', 'aria-hidden': 'true' }, '+')
+      // A face and a name under it, four or five to a row: a dozen people fit
+      // on one screen, where a list of rows would have you scrolling.
+      // replaceChildren() has no opinion about null — it would print the word.
+      const cells = [
+        ...standing.map(p => el('button', { class: 'pick-cell', onclick: () => seat(p.id) }, [
+          avatar(p, 52),
+          el('span', { class: 'pick-name' }, p.name)
         ])),
-        standing.length ? null : el('p', { class: 'drawer-hint' }, t('table.allSeated')),
         el('button', {
-          class: 'profile-row',
+          class: 'pick-cell',
           onclick: () => openProfileEditor(ctx, null, p => { if (p) seat(p.id) })
         }, [
-          el('span', { class: 'avatar avatar-empty', style: 'width:40px;height:40px' }, '+'),
-          el('span', { class: 'profile-name' }, t('players.newTitle'))
+          el('span', { class: 'avatar avatar-empty pick-plus', style: 'width:52px;height:52px' }, '+'),
+          el('span', { class: 'pick-name' }, t('common.new'))
         ])
-      ].filter(Boolean)
-      list.replaceChildren(...rows)
+      ]
+      list.replaceChildren(...cells)
+      empty.hidden = standing.length > 0
       hint.hidden = !standing.length
     }
 
@@ -115,6 +118,7 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     stage.openSheet(el('div', { class: 'drawer-page' }, [
       el('div', { class: 'drawer-title' }, t('hub.players')),
       hint,
+      empty,
       list,
       button(t('common.done'), { variant: 'ghost', full: true, onClick: () => stage.closeSheet() })
     ]), { done: () => refresh() })

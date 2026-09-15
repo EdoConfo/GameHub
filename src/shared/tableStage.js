@@ -240,7 +240,15 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     hy = null
     const min = drawer.classList.contains('min')
     const next = dy > 20 ? true : dy < -20 ? false : !min
-    if (next !== min) morph(() => drawer.classList.toggle('min', next))
+    if (next === min) return
+    // NOT morph(): that pins a start and an end height, and the end height is
+    // read before the detail has collapsed — so the panel slid down whole and
+    // then snapped the last 170px. Left on its own the drawer is as tall as
+    // what's inside it, and the detail collapsing carries it down. The
+    // ResizeObserver hands the table the room, frame by frame.
+    drawer.style.height = ''
+    clearTimeout(hTimer)
+    drawer.classList.toggle('min', next)
   })
   handle.addEventListener('pointercancel', () => { hy = null })
 
