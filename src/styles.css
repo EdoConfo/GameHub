@@ -710,6 +710,14 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 :root[data-theme="light"] .drawer { box-shadow: 0 -6px 24px rgba(30, 35, 60, .08); }
 .drawer.open { transform: none; }
+/* The sheet: same panel, one step above the drawer, covering it whole. Its
+   last child (the way out) sits at the bottom edge even when the sheet is
+   taller than its content, because it is as tall as what it hides. */
+.drawer.sheet { z-index: 5; }
+.drawer.sheet .drawer-page { flex: 1; }
+.drawer.sheet .drawer-page > *:last-child { margin-top: auto; }
+/* while the sheet is up, the table is out of play */
+.table-layer.blocked { pointer-events: none; }
 .drawer.instant { transition: none; }
 .drawer-handle {
   flex: 0 0 auto; align-self: center; position: relative;

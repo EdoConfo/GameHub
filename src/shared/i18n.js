@@ -80,6 +80,7 @@ const DICT = {
 
     'table.seatFree': 'Posto libero',
     'table.drawerToggle': 'Apri o chiudi il cassetto',
+    'table.sheetClose': 'Chiudi',
     'table.free': 'libero',
     'table.seat': 'posto',
     'table.seats': 'posti',
@@ -363,6 +364,7 @@ const DICT = {
 
     'table.seatFree': 'Free seat',
     'table.drawerToggle': 'Open or close the drawer',
+    'table.sheetClose': 'Close',
     'table.free': 'free',
     'table.seat': 'seat',
     'table.seats': 'seats',

@@ -43,7 +43,13 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   const handle = el('button', { class: 'drawer-handle', 'aria-label': t('table.drawerToggle') })
   const body = el('div', { class: 'drawer-body' })
   const drawer = el('div', { class: 'drawer' }, [handle, body])
-  host.append(layer, drawer)
+  // A second panel that rises OVER the drawer, for one thing at a time (roles,
+  // word packs). It covers the drawer whole — never a strip of it peeking out
+  // above — and its handle has one meaning: drag it down and it's gone.
+  const sheetHandle = el('button', { class: 'drawer-handle', 'aria-label': t('table.sheetClose') })
+  const sheetBody = el('div', { class: 'drawer-body' })
+  const sheet = el('div', { class: 'drawer sheet' }, [sheetHandle, sheetBody])
+  host.append(layer, drawer, sheet)
   // the names changed size (new seats, notes): make the room they need
   const view = createTableView(layer, { onTap, onSwap, onMove, onRotate, onExtent: () => reflow() })
 
@@ -52,6 +58,9 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   let raf = 0
   let hTimer = 0
   let isOpen = false
+  let sheetOpen = false
+  let sheetDone = null
+  let sheetTimer = 0
   let size = host.clientWidth + 'x' + host.clientHeight
 
   function place(g, s = shown) {
@@ -70,7 +79,8 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   function room(drawerH = isOpen ? drawer.offsetHeight : 0) {
     const W = host.clientWidth, H = host.clientHeight
     const t = top ? top() : 0
-    const b = H - drawerH
+    // whichever panel is taller decides where the table's room ends
+    const b = H - Math.max(drawerH, sheetOpen ? sheet.offsetHeight : 0)
     const e = view.extent(), n = view.count()
     let r = Math.min(W, b - t) / 2
     for (let i = 0; i < 3; i++) {
@@ -161,9 +171,44 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     glide(room(h), { ms: geo ? 440 : 0 })
   }
 
+  // Show `node` on the sheet, over the drawer. Opening it also takes the table
+  // out of play: there's nothing to tap at on it from in here, and a tap that
+  // opened a page hidden underneath would only be confusing.
+  //   done: called when the sheet closes, however it was closed
+  function openSheet(node, { done } = {}) {
+    clearTimeout(sheetTimer)
+    sheetDone = done || null
+    sheetBody.replaceChildren(node)
+    if (!sheetOpen) {
+      sheetOpen = true
+      layer.classList.add('blocked')
+      // at least as tall as what it hides, so the drawer never peeks above it
+      sheet.style.minHeight = (isOpen ? drawer.offsetHeight : 0) + 'px'
+      sheet.classList.add('open')
+    }
+    node.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 260, easing: 'ease-out' })
+    glide(room(), { ms: 440 })
+  }
+
+  function closeSheet() {
+    if (!sheetOpen) return
+    sheetOpen = false
+    sheet.classList.remove('open')
+    layer.classList.remove('blocked')
+    const fn = sheetDone
+    sheetDone = null
+    glide(room(), { ms: 440 })
+    // empty it only once it's off screen, so it doesn't blink on the way down
+    clearTimeout(sheetTimer)
+    sheetTimer = setTimeout(() => { if (!sheetOpen) sheetBody.replaceChildren() }, 600)
+    if (fn) fn()
+  }
+
   // Drawer goes down, seats fade, the table glides to `to`; then it's gone.
   function close(to, done) {
     isOpen = false
+    closeSheet()
     drawer.classList.remove('open')
     glide(to, { ms: TABLE_CLOSE_MS, shown: 0, span: [0, 0.5], done: () => { destroy(); if (done) done() } })
   }
@@ -191,14 +236,37 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   })
   handle.addEventListener('pointercancel', () => { hy = null })
 
+  // The sheet's handle doesn't fold anything: down (or a plain tap) closes it.
+  let sy = null
+  sheetHandle.addEventListener('pointerdown', e => {
+    sy = e.clientY
+    try { sheetHandle.setPointerCapture(e.pointerId) } catch { /* not capturable */ }
+  })
+  sheetHandle.addEventListener('pointerup', e => {
+    if (sy == null) return
+    const dy = e.clientY - sy
+    sy = null
+    if (dy > -20) closeSheet()
+  })
+  sheetHandle.addEventListener('pointercancel', () => { sy = null })
+
+  // A panel that grows or shrinks on its own (a role description opening) has
+  // to hand the table back the room it takes.
+  const panels = new ResizeObserver(() => reflow())
+  panels.observe(drawer)
+  panels.observe(sheet)
+
   function destroy() {
     cancelAnimationFrame(raf)
     raf = 0
     clearTimeout(hTimer)
+    clearTimeout(sheetTimer)
+    panels.disconnect()
     view.destroy()
     layer.remove()
     drawer.remove()
+    sheet.remove()
   }
 
-  return { view, room, glide, open, present, setDrawer, close, refit, destroy }
+  return { view, room, glide, open, present, setDrawer, openSheet, closeSheet, close, refit, destroy }
 }

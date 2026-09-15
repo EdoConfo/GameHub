@@ -20,11 +20,13 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   // of their own in the drawer (e.g. choosing word packs); "Fatto" comes back.
   const options = cfg.options(ctx, {
     changed: () => refresh(),
-    open: (title, content) => stage.setDrawer(el('div', { class: 'drawer-page' }, [
+    // a page of the game's own: it rises OVER this drawer and covers it, and
+    // leaves either way you close it — "Fatto" or the handle pulled down
+    open: (title, content) => stage.openSheet(el('div', { class: 'drawer-page' }, [
       el('div', { class: 'drawer-title' }, title),
       ...content,
-      button(t('common.done'), { variant: 'ghost', full: true, onClick: done })
-    ]))
+      button(t('common.done'), { variant: 'ghost', full: true, onClick: () => stage.closeSheet() })
+    ]), { done: () => refresh() })
   })
   let picking = null // seat index whose chair we're filling, or 'new'
 
