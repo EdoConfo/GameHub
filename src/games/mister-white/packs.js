@@ -6,6 +6,19 @@ const modules = import.meta.glob('./packs/*.json', { eager: true })
 
 const codec = {
   field: 'pairs',
+  emoji: '💬',
+  // what a row of the editor looks like: the civilians' word and the one the
+  // Undercovers get. Mister White gets no word at all, so he has no column.
+  columns: [
+    { key: 'civilian', label: 'mw.roles.civili' },
+    { key: 'undercover', label: 'mw.role.undercover' }
+  ],
+  toRow(it) { return { civilian: it.civilian, undercover: it.undercover } },
+  fromRow(row) {
+    const civilian = String(row.civilian || '').trim()
+    const undercover = String(row.undercover || '').trim()
+    return civilian && undercover ? { civilian, undercover } : null
+  },
   unitKey: 'mw.unit.pairs',
   placeholderKey: 'mw.packsPlaceholder',
   emptyKey: 'mw.packsEmpty',

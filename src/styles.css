@@ -222,6 +222,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   transition: color .3s ease, border-color .3s ease;
 }
 .arc-badge .icon { width: 26px; height: 26px; }
+/* a pack wears its own icon on the arc, in the same round bead */
+.arc-emoji {
+  display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--text) 26%, transparent); font-size: 26px;
+}
+.arc-item.on .arc-emoji { border-color: color-mix(in srgb, var(--text) 60%, transparent); }
 .arc-item.on .arc-badge { color: var(--text); border-color: color-mix(in srgb, var(--text) 60%, transparent); }
 
 /* Name (+ description) hangs to the right of each number, inside the item,
@@ -391,6 +397,27 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   background: color-mix(in srgb, var(--text) 24%, transparent);
 }
 .modal-title { margin: 0; font-size: 20px; font-weight: 750; text-align: center; }
+/* The pack editor: icon and name on top, the rows scrolling under them. */
+.pack-head { display: flex; align-items: center; gap: 10px; }
+.pack-head .text-input { flex: 1; }
+.pack-icon {
+  flex: none; width: 48px; height: 48px; border-radius: 14px; font-size: 24px;
+  border: 1px solid var(--border); background: var(--surface-2); cursor: pointer;
+  display: grid; place-items: center; padding: 0;
+}
+.pack-editor .modal { max-height: 88%; }
+.pack-editor .modal-content { flex: 1 1 auto; min-height: 0; }
+.pack-table { display: flex; flex-direction: column; gap: 8px; }
+.pack-row { display: flex; align-items: center; gap: 8px; }
+.pack-row .cell { flex: 1; min-width: 0; }
+.pack-row.head { gap: 8px; padding: 0 2px; }
+.pack-row.head .cell-label { flex: 1; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); }
+.pack-row.head .cell-label:last-child { flex: 0 0 36px; }
+.pack-row.half .cell { border-color: var(--accent); }
+.pack-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pack-foot .muted { margin: 0; }
+.pack-foot .warn { color: var(--accent); }
+
 /* A player's card: face, name and totals stay, the games scroll under them. */
 .modal-content { min-height: 0; }
 .player-card .modal { max-height: 88%; }

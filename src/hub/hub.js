@@ -277,7 +277,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       title: p.name,
       sub: `${p.items.length} ${store.unit}` +
         (p.custom ? t('packs.tagCustom') : p.modified ? t('packs.tagModified') : ''),
-      lead: badge('words')
+      lead: el('span', { class: 'arc-emoji' }, p.emoji || '💬')
     }))
     items.push({ id: 'new', title: t('packs.newTitle'), sub: t('packs.newSub'), lead: badge('plus') })
     return items

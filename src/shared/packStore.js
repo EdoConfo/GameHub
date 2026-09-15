@@ -36,6 +36,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     if (!raw || typeof raw !== 'object') return null
     const id = String(raw.id || '').trim()
     if (!id) return null
+    const emoji = String(raw.emoji || '').trim() || codec.emoji || '💬'
     const fallbackLang = String(raw.language || 'it').slice(0, 2).toLowerCase()
 
     const names = {}
@@ -62,7 +63,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
     const langs = Object.keys(byLang)
     if (!langs.length || !Object.keys(names).length) return null
-    return { id, names, byLang, custom: !!raw.custom }
+    return { id, names, byLang, emoji, custom: !!raw.custom }
   }
 
   function normalizeItems(list) {
@@ -88,6 +89,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     return {
       id: pack.id,
       name: pack.names[lang] || pack.names[Object.keys(pack.names)[0]],
+      emoji: pack.emoji,
       language: lang,
       langs: Object.keys(pack.byLang),
       items,
@@ -101,7 +103,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     return Array.isArray(list) ? list.map(normalizePack).filter(Boolean) : []
   }
   function saveCustom(list) {
-    storage.set(CUSTOM_KEY, list.map(p => ({ id: p.id, name: p.names, items: p.byLang, custom: true })))
+    storage.set(CUSTOM_KEY, list.map(p => ({ id: p.id, name: p.names, emoji: p.emoji, items: p.byLang, custom: true })))
   }
 
   // { [packId]: { [lang]: { name, items } } }. The old { name, items } shape is
@@ -131,7 +133,9 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
       if (!edit) { const r = resolve(pack, lang); if (r) out.push(r); continue }
       const items = normalizeItems(edit.items)
       const r = resolve(
-        { ...pack, names: { ...pack.names, [lang]: String(edit.name || pack.names[lang] || '') },
+        { ...pack,
+          emoji: edit.emoji || pack.emoji,
+          names: { ...pack.names, [lang]: String(edit.name || pack.names[lang] || '') },
           byLang: { ...pack.byLang, [lang]: items.length ? items : pack.byLang[lang] } },
         lang,
         { modified: true }
@@ -226,6 +230,31 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
   // A pack's items as editable text, one per line (the format parsePackInput reads).
   function toText(pack) { return pack.items.map(it => (codec.toLine ? codec.toLine(it) : String(it))).join('\n') }
 
+  // The same items as rows of cells, which is how they're edited: one row per
+  // item, one cell per column the game declares.
+  function toRows(pack) { return (pack ? pack.items : []).map(it => codec.toRow(it)) }
+
+  // Back the other way. A row with every cell empty is nothing and disappears;
+  // a row half filled in is a mistake, and says so.
+  //   -> { items, blanks } — blanks: how many rows were started and left open
+  function fromRows(rows) {
+    const items = []
+    let blanks = 0
+    const seen = new Set()
+    for (const row of rows) {
+      const cells = codec.columns.map(c => String(row[c.key] || '').trim())
+      if (cells.every(v => !v)) continue
+      if (cells.some(v => !v)) { blanks++; continue }
+      const item = codec.fromRow(row)
+      if (item == null) { blanks++; continue }
+      const key = codec.key(item)
+      if (seen.has(key)) continue
+      seen.add(key)
+      items.push(item)
+    }
+    return { items, blanks }
+  }
+
   function cleanName(name) {
     const clean = String(name || '').trim()
     if (!clean) throw new Error(t('packs.nameRequired'))
@@ -234,12 +263,16 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
   // Packs you write are single-language: they're saved under the language that
   // was active while writing them, and show up only there.
-  function addCustomPack(name, text, { enable = true } = {}) {
+  function addCustomPack(name, source, { enable = true, emoji } = {}) {
     const lang = getLang()
     const clean = cleanName(name)
-    const { items } = parsePackInput(text)
+    const items = Array.isArray(source) ? normalizeItems(source) : parsePackInput(source).items
+    if (!items.length) throw new Error(t(codec.emptyKey))
     const id = 'custom-' + Date.now().toString(36)
-    const pack = { id, names: { [lang]: clean }, byLang: { [lang]: items }, custom: true }
+    const pack = {
+      id, names: { [lang]: clean }, byLang: { [lang]: items },
+      emoji: String(emoji || codec.emoji || '💬'), custom: true
+    }
     const list = loadCustom()
     list.push(pack)
     saveCustom(list)
@@ -249,15 +282,17 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
 
   // Rename / rewrite a pack — in the active language only, the other languages
   // of a built-in pack stay as they came.
-  function updatePack(id, { name, text }) {
+  function updatePack(id, { name, text, items: given, emoji }) {
     const lang = getLang()
     const clean = cleanName(name)
-    const { items } = parsePackInput(text)
+    const items = Array.isArray(given) ? normalizeItems(given) : parsePackInput(text).items
+    if (!items.length) throw new Error(t(codec.emptyKey))
     const list = loadCustom()
     const i = list.findIndex(p => p.id === id)
     if (i >= 0) {
       list[i] = {
         ...list[i],
+        emoji: emoji || list[i].emoji,
         names: { ...list[i].names, [lang]: clean },
         byLang: { ...list[i].byLang, [lang]: items }
       }
@@ -266,7 +301,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     }
     if (!bundled.some(p => p.id === id)) throw new Error(t('packs.notFound'))
     const over = loadOverrides()
-    over[id] = { ...(over[id] || {}), [lang]: { name: clean, items } }
+    over[id] = { ...(over[id] || {}), [lang]: { name: clean, items, emoji } }
     saveOverrides(over)
     return getPack(id)
   }
@@ -293,6 +328,9 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     // live: these follow the interface language
     get unit() { return t(codec.unitKey || 'packs.unit.items') },
     get placeholder() { return t(codec.placeholderKey || '') },
+    get columns() { return codec.columns.map(c => ({ key: c.key, label: t(c.label) })) },
+    blankRow: () => Object.fromEntries(codec.columns.map(c => [c.key, ''])),
+    toRows, fromRows,
     allPacks, getPack,
     enabledIds, setEnabled, toggleEnabled, enabledPacks, enabledItems,
     parsePackInput, toText, addCustomPack, updatePack, resetPack, deleteCustomPack
