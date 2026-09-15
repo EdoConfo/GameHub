@@ -72,12 +72,17 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
 
   // Each block of detail carries its own open height, so folding it is linear:
   // with one cap for all of them the first stretch of a drag moved nothing,
-  // because the cap sat above the real height. Measured while the drawer is
-  // open — folded they're all zero and there'd be nothing to read.
+  // because the cap sat above the real height.
+  //
+  // scrollHeight, not offsetHeight: the block is capped by that very height, so
+  // reading what's on screen while it's folding writes back a smaller number
+  // every time — and the drawer ratchets down to a white sliver. scrollHeight
+  // is what's inside, cap or no cap.
   function measureDetail() {
-    if (drawer.classList.contains('min')) return
+    if (folding) return // mid-drag the numbers are meaningless
     for (const node of body.querySelectorAll('.drawer-more')) {
-      node.style.setProperty('--h', node.offsetHeight + 'px')
+      const h = node.scrollHeight
+      if (h > 0) node.style.setProperty('--h', h + 'px')
     }
   }
 
@@ -277,7 +282,8 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     const detail = [...body.querySelectorAll('.drawer-more')]
     const gap = parseFloat(getComputedStyle(body.querySelector('.drawer-page') || body).rowGap) || 0
     hSpan = detail.reduce((n, node) =>
-      n + (parseFloat(node.style.getPropertyValue('--h')) || node.offsetHeight) + gap, 0) || 1
+      n + (parseFloat(node.style.getPropertyValue('--h')) || node.scrollHeight) + gap, 0)
+    if (!(hSpan > 40)) hSpan = 140 // nothing sensible to measure: a usable default
     folding = true
     drawer.style.height = ''
     clearTimeout(hTimer)
@@ -293,29 +299,34 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     foldAt(hFrom + dy / hSpan)
   })
 
+  function settleFold(dy, ms) {
+    const speed = dy / Math.max(1, ms) // px per ms, signed
+    const at = hFrom + dy / hSpan
+    if (!hMoved) return hFrom < 0.5                    // a tap flips it
+    if (Math.abs(dy) > 24) return dy > 0               // a clear pull wins: down folds, up opens
+    if (Math.abs(speed) > 0.4) return speed > 0        // a flick goes where it was thrown
+    return at > 0.5                                    // otherwise, wherever it was left
+  }
+
   const endFold = e => {
     if (hy == null) return
-    const dy = (e.clientY || hy) - hy
-    const speed = dy / Math.max(1, performance.now() - hTime) // px per ms, signed
+    const dy = (e.clientY == null ? hy : e.clientY) - hy
+    const ms = performance.now() - hTime
     hy = null
     folding = false
     drawer.classList.remove('folding')
     drawer.style.removeProperty('--fold')
-    const at = hFrom + dy / hSpan
-    const min = !hMoved ? hFrom < 0.5             // a tap flips it
-      : Math.abs(speed) > 0.4 ? speed > 0          // a flick goes where it was thrown
-        : at > 0.5                                 // otherwise, wherever it was left
-    drawer.classList.toggle('min', min)
+    drawer.classList.toggle('min', settleFold(dy, ms))
     reflow()
+    // once it has settled, take the detail's height again: that's what keeps a
+    // stale number from surviving a gesture the phone cut short
+    clearTimeout(hTimer)
+    hTimer = setTimeout(measureDetail, 420)
   }
   handle.addEventListener('pointerup', endFold)
-  handle.addEventListener('pointercancel', () => {
-    if (hy == null) return
-    hy = null
-    folding = false
-    drawer.classList.remove('folding')
-    drawer.style.removeProperty('--fold')
-  })
+  // iOS hands the gesture back when it decides you were scrolling: leave the
+  // drawer in a whole state, not halfway
+  handle.addEventListener('pointercancel', endFold)
 
   // The sheet's grabber doesn't fold anything: it carries the sheet down with
   // the finger, and past a quarter of it (or with a flick) it leaves.
@@ -323,7 +334,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
 
   // The drawer changing height on its own hands the table back the room it
   // takes. The sheet is not watched: it doesn't own any of the table's room.
-  const panels = new ResizeObserver(() => reflow())
+  const panels = new ResizeObserver(() => { measureDetail(); reflow() })
   panels.observe(drawer)
 
   function destroy() {
