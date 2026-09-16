@@ -128,11 +128,21 @@ export function button(label, opts = {}) {
   }, label)
 }
 
-// Give a scrolling box its fading ends only while it has somewhere to scroll.
-// Watched, because a list grows and shrinks as people sit down and get up.
+// Fading ends for a scrolling box — but only on the side there's something
+// hidden. At the top of a list nothing is above it, so the first row stays
+// plain; scroll down and it starts fading into the wall it's passing under.
+// Same at the bottom. A box with nothing to scroll gets no walls at all.
+//
+// Watched and listened to, because a list grows and shrinks as people sit down
+// and get up, and the sides change as it moves.
 export function walls(box) {
-  const check = () => box.classList.toggle('walled', box.scrollHeight > box.clientHeight + 2)
+  const check = () => {
+    const room = box.scrollHeight - box.clientHeight
+    box.classList.toggle('wall-top', room > 2 && box.scrollTop > 2)
+    box.classList.toggle('wall-bottom', room > 2 && box.scrollTop < room - 2)
+  }
   check()
+  box.addEventListener('scroll', check, { passive: true })
   const ro = new ResizeObserver(check)
   ro.observe(box)
   for (const child of box.children) ro.observe(child)

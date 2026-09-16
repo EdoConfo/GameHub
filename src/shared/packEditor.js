@@ -5,7 +5,7 @@
 // A table and not a free text box on purpose: a pack written by hand in a
 // textarea is a pack with a missing comma in it, and you find out at the table
 // with six people waiting. Here a row is either whole or it says it isn't.
-import { el, button, modal, toast, icon } from './ui.js'
+import { el, button, modal, toast, walls, icon } from './ui.js'
 import { t } from './i18n.js'
 
 // What a pack can be called by: line icons from the app's own set (ui.js), not
@@ -28,11 +28,16 @@ export function openPackEditor(store, pack, { onDone } = {}) {
     maxlength: '40', value: pack ? pack.name : ''
   })
   const errBox = el('p', { class: 'error-text' })
+  // The minus asks before it takes: the first tap turns it into a red cross,
+  // the second one drops the row, and touching anything else puts it back.
+  // Losing a line you just typed to a fat finger is the one mistake here that
+  // can't be undone.
+  let armed = null
   // The column names sit above the scrolling part, not inside it: they belong
   // to the table, not to the list of rows, and they must never scroll away.
-  // No fading walls here either — they're right for a list you read, wrong for
-  // a table you type in, where the first and last rows would go dim under your
-  // fingers.
+  // The rows fade into the edges as they scroll past them, but never while
+  // they're the first or the last one on screen: nobody wants the line they're
+  // typing to go dim.
   const heading = el('div', { class: 'pack-row head' }, [
     ...columns.map(c => el('span', { class: 'cell-label' }, c.label)),
     el('span', { class: 'cell-label' })
@@ -70,20 +75,41 @@ export function openPackEditor(store, pack, { onDone } = {}) {
       })
       node.append(cell)
     }
-    node.append(el('button', {
-      class: 'round-btn sm', 'aria-label': t('packs.dropRow'),
+    const drop = el('button', {
+      class: 'round-btn sm row-drop', 'aria-label': t('packs.dropRow'),
       onclick: () => {
+        if (armed !== drop) { arm(drop); return }
+        disarm()
         const i = rows.indexOf(row)
         if (i >= 0) rows.splice(i, 1)
         if (!rows.length) rows.push(store.blankRow())
         paint()
       }
-    }, '−'))
+    }, '−')
+    node.append(drop)
     return node
   }
 
+  function arm(btn) {
+    disarm()
+    armed = btn
+    btn.classList.add('sure')
+    btn.replaceChildren(icon('close'))
+    btn.setAttribute('aria-label', t('packs.dropRowSure'))
+  }
+
+  function disarm() {
+    if (!armed) return
+    armed.classList.remove('sure')
+    armed.replaceChildren('−')
+    armed.setAttribute('aria-label', t('packs.dropRow'))
+    armed = null
+  }
+
   function paint() {
+    armed = null
     table.replaceChildren(...rows.map(rowNode))
+    walls(table)
     mark()
     tally()
   }
@@ -187,6 +213,10 @@ export function openPackEditor(store, pack, { onDone } = {}) {
     ]
   })
   m.overlay.classList.add('pack-editor')
+  // a touch anywhere else takes the question back
+  m.overlay.addEventListener('pointerdown', e => {
+    if (!e.target.closest || !e.target.closest('.row-drop')) disarm()
+  }, true)
   paint()
   if (!pack) nameInput.focus()
   return m

@@ -412,6 +412,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .pack-row.head .cell-label { flex: 1; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); }
 .pack-row.head .cell-label:last-child { flex: 0 0 36px; }
 .pack-row.half .cell { border-color: var(--accent); }
+/* asked once: the minus becomes a red cross, and only that takes the row away */
+.row-drop { transition: background .15s ease, color .15s ease, border-color .15s ease; }
+.row-drop.sure { background: var(--danger); border-color: transparent; color: #fff; }
+.row-drop.sure .icon { width: 16px; height: 16px; }
 .pack-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pack-foot .muted { margin: 0; }
 .pack-foot .warn { color: var(--accent); }
@@ -826,12 +830,21 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   flex: 0 1 auto; min-height: 0;
   overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
 }
-/* A wall at each end, but only for a list that really scrolls: a face or a name
-   reaching the edge fades into it instead of being cut through the middle,
-   while a short list keeps its first and last row plain. */
-.list-scroll.walled {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 26px), transparent 100%);
+/* A wall where something is actually hidden: a face, a name or a row that is
+   sliding under the edge fades into it instead of being cut through the middle.
+   At the top of the list there's nothing above, so the first row stays plain —
+   which matters most where you're typing. */
+.list-scroll.wall-top {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 100%);
+}
+.list-scroll.wall-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 28px), transparent 100%);
+}
+.list-scroll.wall-top.wall-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 28px), transparent 100%);
 }
 .list-scroll::-webkit-scrollbar { display: none; }
 /* everything else on the page keeps its own size: by default a flex child
