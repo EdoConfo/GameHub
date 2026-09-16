@@ -1,5 +1,15 @@
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+// Which build this is, readable from inside the app (Impostazioni). Without it,
+// "is my phone on the new version?" can only be guessed at. In CI the commit is
+// handed to us; locally we ask git, and a checkout without git is just "dev".
+function buildId() {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7)
+  try { return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() }
+  catch { return 'dev' }
+}
 
 // IMPORTANT: base path must match the GitHub repo name for GitHub Pages.
 // Repo: https://github.com/EdoConfo/GameHub  ->  site served at /GameHub/
@@ -8,6 +18,7 @@ const BASE = '/GameHub/'
 
 export default defineConfig({
   base: BASE,
+  define: { __BUILD__: JSON.stringify(buildId()) },
   // Always the same address (bookmarked on the phone): if 5173 is taken,
   // fail loudly instead of quietly moving to 5174.
   server: { port: 5173, strictPort: true },

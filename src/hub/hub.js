@@ -205,7 +205,10 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
         // do and it becomes a plain statement of fact.
         installed
           ? { id: 'offline', title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
-          : { id: 'offline', title: t('settings.install'), sub: t('settings.installSub'), lead: badge('offline') }
+          : { id: 'offline', title: t('settings.install'), sub: t('settings.installSub'), lead: badge('offline') },
+        // the build this page is running: the only honest answer to "did the
+        // update arrive?", readable without guessing
+        { id: 'version', title: t('settings.version'), sub: typeof __BUILD__ === 'string' ? __BUILD__ : 'dev', lead: badge('tag') }
       ]
     }
     const items = ctx.players.all().map(p => ({ id: p.id, title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))

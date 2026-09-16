@@ -16,7 +16,7 @@
 const EVERY = 30 * 60 * 1000       // while the app stays open
 const GIVE_UP = 8000                // how long a handover may take on a tired phone
 let waiting = null                  // the update, ready and held back
-let reg = null                      // the registration, to talk to the worker waiting in it
+let skip = null                     // the plugin's own "step forward", from workbox-window
 const watchers = new Set()
 
 const announce = () => { for (const fn of watchers) fn(!!waiting) }
@@ -30,38 +30,46 @@ export function onUpdate(fn) {
 
 export const isReady = () => !!waiting
 
-// Take it: ask the worker waiting in the registration to step forward, and
-// reload once it has.
+// Take it: ask the waiting worker to step forward, and reload once it has.
 //
-// The order matters, and getting it wrong is what made the button loop. While a
-// worker is still waiting, the one in charge is the old one, and it answers a
-// reload out of its own cache — the same page comes back, the new worker is
-// still waiting, and the button reappears. Reloading before the handover doesn't
-// just fail to help: the navigation cancels the handover that was in flight. So
-// nothing reloads until the new worker is actually in charge.
+// Two things went wrong here before, and both are about not trusting a single
+// source. The worker that triggered the notice is known to workbox-window, which
+// is what raised it; asking only our own copy of the registration meant that,
+// on a phone where that copy said nobody was waiting, the tap fell into a plain
+// reload — the old worker answered it from its cache, the same page came back,
+// and so did the notice. Worse, that shortcut skipped the way out below
+// entirely. So now every source is asked, and there is no shortcut: once the
+// notice has been shown, a tap always runs the whole path, deadline included.
 //
-// Two signals say it is, because either can be missed: the controller changing,
-// and the waiting worker reaching 'activated'. Whichever comes first wins, and
-// it only happens once. If neither comes, the deadline checks whether the
-// handover quietly happened anyway; if the worker is still stuck, the button
-// comes back rather than pretending the job is done — at that point the only
-// cure is closing the app, and saying so beats looping.
-export function update() {
-  if (!reg || !reg.waiting) { location.reload(); return }
-  const pending = reg.waiting
+// Nothing reloads while a handover may still be in flight: the navigation would
+// cancel it, and a reload before the new worker is in charge only brings the
+// old page back. The signals that it is in charge are the controller changing
+// and the waiting worker reaching 'activated' — either can be missed, so both
+// are watched and the first one wins.
+export async function update() {
   waiting = false
   announce()
 
   let done = false
   const go = () => { if (!done) { done = true; location.reload() } }
   navigator.serviceWorker.addEventListener('controllerchange', go, { once: true })
-  pending.addEventListener('statechange', () => { if (pending.state === 'activated') go() })
-  pending.postMessage({ type: 'SKIP_WAITING' })
+
+  // workbox-window's idea of the waiting worker, then the browser's own
+  try { if (skip) skip() } catch { /* the next one may still work */ }
+  let reg = null
+  try { reg = await navigator.serviceWorker.getRegistration() } catch { /* offline, or no worker */ }
+  const pending = reg && reg.waiting
+  if (pending) {
+    pending.addEventListener('statechange', () => { if (pending.state === 'activated') go() })
+    pending.postMessage({ type: 'SKIP_WAITING' })
+  }
 
   setTimeout(async () => {
     if (done) return
-    if (!reg.waiting) { go(); return }   // handed over, we just never heard
-    await escape()                        // still stuck: take the worker out of the way
+    let still = null
+    try { still = (await navigator.serviceWorker.getRegistration())?.waiting } catch { /* see below */ }
+    if (!still && reg && reg.active && navigator.serviceWorker.controller === reg.active) { go(); return }
+    await escape()                        // nobody handed over: take the workers out of the way
     go()
   }, GIVE_UP)
 }
@@ -97,12 +105,11 @@ export async function startUpdates() {
     ;({ registerSW } = await import('virtual:pwa-register'))
   } catch { return }
 
-  registerSW({
+  skip = registerSW({
     immediate: true,
     onNeedRefresh() { waiting = true; announce() },
     onRegisteredSW(url, registration) {
       if (!registration) return
-      reg = registration
       const look = () => { if (navigator.onLine) registration.update().catch(() => {}) }
       setInterval(look, EVERY)
       // coming back to the app is the likeliest moment for it to have aged
