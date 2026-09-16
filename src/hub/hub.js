@@ -2,6 +2,7 @@ import { el, icon, button, modal } from '../shared/ui.js'
 import { t, langName, cycleLang } from '../shared/i18n.js'
 import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
+import * as pwa from '../shared/pwa.js'
 import { openProfileEditor, avatar } from './players.js'
 import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
 import { openPackEditor } from '../shared/packEditor.js'
@@ -194,10 +195,16 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       // whichever of the two the phone is showing at that moment
       const theme = getTheme()
       const themeGlyph = { system: 'system', light: 'sun', dark: 'moon' }
+      const installed = pwa.isInstalled()
       return [
         { id: 'theme', title: t('settings.theme'), sub: t('settings.theme.' + theme), lead: badge(themeGlyph[theme]) },
         { id: 'language', title: t('settings.language'), sub: langName(), lead: badge('globe') },
-        { id: 'offline', title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
+        // Named after the action while there is one to take, like the two above.
+        // Once the app is running from the Home screen there is nothing left to
+        // do and it becomes a plain statement of fact.
+        installed
+          ? { id: 'offline', title: t('settings.offline'), sub: t('settings.offlineSub'), lead: badge('offline') }
+          : { id: 'offline', title: t('settings.install'), sub: t('settings.installSub'), lead: badge('offline') }
       ]
     }
     const items = ctx.players.all().map(p => ({ id: p.id, title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))
@@ -231,6 +238,8 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           } else if (it.id === 'language') {
             cycleLang()
             repaint()
+          } else if (it.id === 'offline') {
+            openInstall()
           }
           return
         }
@@ -328,6 +337,31 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     if (kind === 'rules') return rulesItems()
     if (kind === 'stats') return statsItems()
     return wordsItems()
+  }
+
+  // Installing: the browser does it if it can, and if it can't we can only say
+  // where the button is. The steps are per platform because that is the one
+  // thing that genuinely differs — iOS hides it behind Share, Android behind the
+  // menu — and they're only ever reached when the browser has already told us
+  // it won't handle it itself.
+  function openInstall() {
+    if (pwa.isInstalled()) return            // nothing left to do, and it says so
+    if (pwa.canInstall()) { pwa.install(); return }
+    const steps = { ios: 3, android: 2, macos: 2, desktop: 2, none: 2 }
+    const how = pwa.howTo()
+    const lines = Array.from({ length: steps[how] }, (_, i) => t(`install.${how}.${i + 1}`))
+    // On a browser that can't install there is nothing to follow in order, so
+    // the same two lines are prose: numbering them would promise a procedure
+    // that doesn't exist.
+    const body = how === 'none'
+      ? lines.map(line => el('p', { class: 'muted' }, line))
+      : [el('p', { class: 'muted' }, t('install.why')),
+         el('ol', { class: 'steps' }, lines.map(line => el('li', {}, line)))]
+    const m = modal({
+      title: t(how === 'none' ? 'install.noneTitle' : 'install.title'),
+      content: body,
+      actions: [button(t('common.done'), { variant: 'ghost', onClick: () => m.close() })]
+    })
   }
 
   function openRules(section) {
@@ -470,6 +504,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
 
   const ro = new ResizeObserver(() => { if (!canvas.isConnected) { ro.disconnect(); return } layout(false) })
   ro.observe(canvas)
+
+  // The bead changes its mind twice: when the browser offers to install, and
+  // when the app is next opened from the Home screen. Both arrive as events, so
+  // it just relabels itself instead of being stale until the next visit.
+  const offPwa = pwa.onChange(() => {
+    if (!canvas.isConnected) { offPwa(); return }
+    if (sideWheel && sideKind === 'settings') repaint()
+  })
 
   if (startMenuId) {
     const i = games.findIndex(g => g.id === startMenuId)
