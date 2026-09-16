@@ -1,13 +1,15 @@
-// Generate the PWA icons with zero dependencies: the same GH monogram as
-// public/favicon.svg, rasterised by hand so the SVG stays the single source of
-// the shape and nobody has to open a design tool to rebuild a png.
-// Run: npm run icons  (output is committed; re-run only after changing the mark)
+// Draw every icon the app ships from the one description of the mark in
+// logo.mjs: the three PWA pngs, the iOS touch icon, and the svg favicon.
+// Zero dependencies — the png encoder is right here.
+// Run: npm run icons  (output is committed; re-run after changing logo.mjs)
 import { deflateSync } from 'node:zlib'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { GRID, params, geometry, distanceField, toSVG } from './logo.mjs'
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'icons')
+const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
+const OUT = join(PUBLIC, 'icons')
 mkdirSync(OUT, { recursive: true })
 
 // ---- CRC32 for PNG chunks ----
@@ -60,56 +62,12 @@ function encodePNG(width, height, rgba) {
   ])
 }
 
-// ---- the mark, in the favicon's own 64-unit grid ----
-// Keep these in step with public/favicon.svg, which is where the shape is
-// documented: one circle open in the top-right quadrant, the H's two stems on
-// the circle's centre line and right extreme, a crossbar from half a radius out
-// to the stem. Butt caps everywhere.
-const GRID = 64
-const STROKE = 5
-const CX = 32, CY = 32
-const R = 32 - 8 - STROKE / 2   // margin 8, measured to the outside of the stroke
-const REACH = STROKE / 2        // stems and bar reach the mark's own edge
-const TOP = CY - R - REACH, BOT = CY + R + REACH
-const RIGHT = CX + R
-const BAR = CX - R / 2
-const END = CX + R + REACH
-
-// The app's own two grounds — no colour of its own. A png can't follow the
-// phone's theme the way the svg favicon does, so the home screen gets the dark
-// one: it sits well on either wallpaper.
-const DARK = { bg: [0x0f, 0x11, 0x17], fg: [0xee, 0xf0, 0xf5] }
-
-// Distance to a butt-capped stroke: perpendicular distance inside the segment's
-// own span, nothing at all outside it.
-function distSegment(x, y, ax, ay, bx, by) {
-  const vx = bx - ax, vy = by - ay
-  const wx = x - ax, wy = y - ay
-  const len2 = vx * vx + vy * vy
-  const t = len2 ? (wx * vx + wy * vy) / len2 : 0
-  if (t < 0 || t > 1) return Infinity
-  const dx = wx - vx * t, dy = wy - vy * t
-  return Math.sqrt(dx * dx + dy * dy)
-}
-
-// The ring is drawn everywhere except the top-right quadrant: that missing
-// quarter is what makes the circle read as a G, and below the crossbar the
-// right-hand side is nothing but arc.
-function distArc(x, y) {
-  const dx = x - CX, dy = y - CY
-  const a = Math.atan2(dy, dx)                       // 0 = right, +pi/2 = down
-  if (a > -Math.PI / 2 && a < 0) return Infinity     // the open quadrant
-  return Math.abs(Math.sqrt(dx * dx + dy * dy) - R)
-}
-
-function distMark(x, y) {
-  return Math.min(
-    distArc(x, y),
-    distSegment(x, y, CX, TOP, CX, BOT),
-    distSegment(x, y, RIGHT, TOP, RIGHT, CY),   // only down to the crossbar
-    distSegment(x, y, BAR, CY, END, CY)
-  )
-}
+// The mark itself lives in logo.mjs; here we only need to know how far any
+// point is from its ink, and what the dark palette is in bytes.
+const distMark = distanceField()
+const HALF = params.stroke / 2
+const byte = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+const DARK = { bg: byte(params.dark.tile), fg: byte(params.dark.mark) }
 
 // Always square, always opaque, corner to corner. iOS and Android round the
 // icon with their own mask; an icon that ships with its corners already cut has
@@ -118,7 +76,7 @@ function distMark(x, y) {
 function makeIcon(size, { scale = 1, palette = DARK } = {}) {
   const buf = Buffer.alloc(size * size * 4)
   const unit = size / GRID           // one grid unit, in pixels
-  const half = (STROKE / 2) * unit
+  const half = HALF * unit
   const aa = 0.8                     // edge softening, in pixels
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -150,4 +108,7 @@ writeFileSync(join(OUT, 'apple-touch-icon.png'), makeIcon(180))
 // Android may mask a maskable icon down to a circle: keep the mark inside the
 // safe zone (the middle 80%) instead of letting the stems get clipped.
 writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { scale: 0.78 }))
-console.log('Icons written to', OUT)
+// ...and the favicon, from the same numbers, so the tab and the home screen can
+// never drift apart.
+writeFileSync(join(PUBLIC, 'favicon.svg'), toSVG())
+console.log('Icone e favicon riscritte da scripts/logo.mjs')
