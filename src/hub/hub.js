@@ -508,6 +508,15 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
 
   const ro = new ResizeObserver(() => { if (!canvas.isConnected) { ro.disconnect(); return } layout(false) })
   ro.observe(canvas)
+  // The scene is measured against the header, so it has to hear when the header
+  // changes height — and the canvas never does when it does. On an iPhone the
+  // top safe area can land after the first measurement: the header grows by the
+  // notch, the scene stayed placed against the shorter one, and the circle sat
+  // too high until a reload measured it again. That reload is what made it
+  // "drop" when the update button was tapped. A new language can do the same.
+  // The border box, because the safe area arrives as padding, and the default
+  // content box doesn't count padding: the header grew and nobody was told.
+  ro.observe(header, { box: 'border-box' })
 
   // The bead changes its mind twice: when the browser offers to install, and
   // when the app is next opened from the Home screen. Both arrive as events, so
