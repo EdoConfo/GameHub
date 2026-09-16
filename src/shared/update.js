@@ -14,7 +14,7 @@
 // small file — cheap enough to do often, rare enough not to matter.
 
 const EVERY = 30 * 60 * 1000       // while the app stays open
-const GIVE_UP = 2500                // how long we wait for the worker to hand over
+const GIVE_UP = 8000                // how long a handover may take on a tired phone
 let waiting = null                  // the update, ready and held back
 let reg = null                      // the registration, to talk to the worker waiting in it
 const watchers = new Set()
@@ -30,22 +30,40 @@ export function onUpdate(fn) {
 
 export const isReady = () => !!waiting
 
-// Take it. Either way this ends in a reload — that is the whole promise of the
-// button, and a button that sometimes does nothing is worse than no button.
+// Take it: ask the worker waiting in the registration to step forward, and
+// reload once it has.
 //
-// The worker waiting in the registration is asked to step forward, and the page
-// reloads when it takes over. It may not: if it had already been activated by
-// the time you tapped (the old build did that on its own), nothing hands over
-// and no event ever comes. So there's a deadline, and past it we reload anyway —
-// by then the new files are the ones being served regardless.
+// The order matters, and getting it wrong is what made the button loop. While a
+// worker is still waiting, the one in charge is the old one, and it answers a
+// reload out of its own cache — the same page comes back, the new worker is
+// still waiting, and the button reappears. Reloading before the handover doesn't
+// just fail to help: the navigation cancels the handover that was in flight. So
+// nothing reloads until the new worker is actually in charge.
+//
+// Two signals say it is, because either can be missed: the controller changing,
+// and the waiting worker reaching 'activated'. Whichever comes first wins, and
+// it only happens once. If neither comes, the deadline checks whether the
+// handover quietly happened anyway; if the worker is still stuck, the button
+// comes back rather than pretending the job is done — at that point the only
+// cure is closing the app, and saying so beats looping.
 export function update() {
+  if (!reg || !reg.waiting) { location.reload(); return }
+  const pending = reg.waiting
   waiting = false
   announce()
-  const pending = reg && reg.waiting
-  if (!pending) { location.reload(); return }
-  navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true })
+
+  let done = false
+  const go = () => { if (!done) { done = true; location.reload() } }
+  navigator.serviceWorker.addEventListener('controllerchange', go, { once: true })
+  pending.addEventListener('statechange', () => { if (pending.state === 'activated') go() })
   pending.postMessage({ type: 'SKIP_WAITING' })
-  setTimeout(() => location.reload(), GIVE_UP)
+
+  setTimeout(() => {
+    if (done) return
+    if (!reg.waiting) { go(); return }   // handed over, we just never heard
+    waiting = true                        // still stuck: give the button back
+    announce()
+  }, GIVE_UP)
 }
 
 export async function startUpdates() {
