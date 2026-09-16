@@ -6,7 +6,7 @@ import { deflateSync } from 'node:zlib'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { GRID, params, geometry, distanceField, toSVG } from './logo.mjs'
+import { GRID, params, rounded, distanceField, toSVG, toOutlineSVG } from './logo.mjs'
 
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const OUT = join(PUBLIC, 'icons')
@@ -64,19 +64,18 @@ function encodePNG(width, height, rgba) {
 
 // The mark itself lives in logo.mjs; here we only need to know how far any
 // point is from its ink, and what the dark palette is in bytes.
-const distMark = distanceField()
-const HALF = params.stroke / 2
 const byte = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
-const DARK = { bg: byte(params.dark.tile), fg: byte(params.dark.mark) }
+const paletteOf = p => ({ bg: byte(p.dark.tile), fg: byte(p.dark.mark) })
+const DARK = paletteOf(params)
 
 // Always square, always opaque, corner to corner. iOS and Android round the
 // icon with their own mask; an icon that ships with its corners already cut has
 // transparent ones, and they come back as white slivers wherever the platform's
 // curve does not match the one baked into the png.
-function makeIcon(size, { scale = 1, palette = DARK } = {}) {
+function makeIcon(size, { scale = 1, palette = DARK, field = distanceField(), half = params.stroke / 2 } = {}) {
   const buf = Buffer.alloc(size * size * 4)
   const unit = size / GRID           // one grid unit, in pixels
-  const half = HALF * unit
+  const halfPx = half * unit
   const aa = 0.8                     // edge softening, in pixels
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -86,7 +85,7 @@ function makeIcon(size, { scale = 1, palette = DARK } = {}) {
       // the white monogram over it
       const gx = ((x + 0.5) / unit - GRID / 2) / scale + GRID / 2
       const gy = ((y + 0.5) / unit - GRID / 2) / scale + GRID / 2
-      const d = distMark(gx, gy) * unit * scale - half * scale
+      const d = field(gx, gy) * unit * scale - halfPx * scale
       if (d < aa) {
         const k = d <= -aa ? 1 : (aa - d) / (2 * aa)
         r = Math.round(r + (palette.fg[0] - r) * k)
@@ -109,6 +108,13 @@ writeFileSync(join(OUT, 'apple-touch-icon.png'), makeIcon(180))
 // safe zone (the middle 80%) instead of letting the stems get clipped.
 writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { scale: 0.78 }))
 // ...and the favicon, from the same numbers, so the tab and the home screen can
-// never drift apart.
-writeFileSync(join(PUBLIC, 'favicon.svg'), toSVG())
+// never drift apart. Four strokes while the corners are sharp; a traced outline
+// once they are rounded, because a fillet belongs to no single stroke.
+const svg = p => (p.fillet > 0 ? toOutlineSVG(p) : toSVG(p))
+writeFileSync(join(PUBLIC, 'favicon.svg'), svg(params))
+
+// The variant nothing points at yet, for comparing on a real screen.
+writeFileSync(join(PUBLIC, 'favicon-rounded.svg'), svg(rounded))
+writeFileSync(join(OUT, 'rounded-512.png'), makeIcon(512, { palette: paletteOf(rounded), field: distanceField(rounded), half: rounded.stroke / 2 }))
+
 console.log('Icone e favicon riscritte da scripts/logo.mjs')

@@ -25,6 +25,7 @@ export const params = {
   openFrom: -90,    // the ring's gap starts here (-90 = noon)
   openTo: 0,        // ...and ends here (0 = 3 o'clock). Widen it and the G opens up
   rightStemTo: 0,   // how far the right stem runs below centre, in radii (0 = stops on the bar, 1 = full height)
+  fillet: 0,        // rounds the inside corners where two lines meet, roughly this radius. 0 = sharp
 
   // --- shape of the tile the mark sits on ---
   tileRadius: 14,   // corner rounding of the favicon's tile. The phone icons are square: iOS and Android round them themselves
@@ -82,6 +83,18 @@ export function paths(p = params) {
   ]
 }
 
+// Blend two distances instead of just taking the nearer one. Where they are
+// within k of each other — which is to say, near a corner where two lines meet —
+// the result dips below both, and the ink swells to fill the corner with a
+// radius of about k. Everywhere else it is plain min, so nothing else moves.
+// This is the only honest way to round an inside corner: a cap can't do it, it
+// is the meeting itself that has to be softened.
+function smin(a, b, k) {
+  if (!(k > 0)) return Math.min(a, b)
+  const h = Math.max(k - Math.abs(a - b), 0) / k
+  return Math.min(a, b) - h * h * k * 0.25
+}
+
 // The same four strokes as a distance field, for the png rasteriser: how far a
 // point is from the nearest bit of ink, before the line weight is taken off.
 // Round caps everywhere, so past the end of a stroke the distance is measured
@@ -113,13 +126,20 @@ export function distanceField(p = params) {
       ? Math.min(Math.hypot(x - ends[0][0], y - ends[0][1]),
                  Math.hypot(x - ends[1][0], y - ends[1][1]))
       : Math.abs(Math.sqrt(dx * dx + dy * dy) - g.r)
-    for (const s of segments) d = Math.min(d, seg(x, y, ...s))
+    for (const s of segments) d = smin(d, seg(x, y, ...s), p.fillet)
     return d
   }
 }
 
+// A second mark to look at, kept alongside the one in use: the same drawing with
+// its inside corners rounded off. Nothing points at it — it exists to be
+// compared. To adopt it, set `fillet` in params above and run `npm run icons`;
+// everything, favicon included, follows from that one number.
+export const rounded = { ...params, fillet: 2 }
+
 // The favicon: one tile, four strokes, and a media query so the mark follows the
-// reader's theme instead of carrying a colour of its own.
+// reader's theme instead of carrying a colour of its own. Valid only while the
+// corners are sharp — see toOutlineSVG for why a fillet can't be stroked.
 export function toSVG(p = params) {
   const d = paths(p).map(s => `    <path d="${s}"/>`).join('\n')
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${GRID} ${GRID}" role="img" aria-label="GameHub">
@@ -137,6 +157,127 @@ export function toSVG(p = params) {
   <g class="mark" fill="none" stroke-width="${p.stroke}" stroke-linecap="round">
 ${d}
   </g>
+</svg>
+`
+}
+
+// ---- tracing the outline ----------------------------------------------------
+// With fillet: 0 the mark is four strokes and the svg above says exactly that.
+// A fillet, though, is not a property of any one stroke — it lives in the way
+// two of them meet — so there is no stroke to write it on. The shape has to be
+// described as its own outline instead: walk the distance field, find where it
+// crosses zero, and emit that boundary as a filled path.
+//
+// Marching squares: sample the field on a grid, and in every cell where some
+// corners are inside the ink and some are outside, cut the cell with a segment
+// whose ends sit where the field crosses zero along the cell's edges.
+const CASES = [
+  [], [[3, 0]], [[0, 1]], [[3, 1]], [[1, 2]], [[3, 0], [1, 2]], [[0, 2]], [[3, 2]],
+  [[2, 3]], [[2, 0]], [[0, 1], [2, 3]], [[2, 1]], [[1, 3]], [[1, 0]], [[0, 3]], []
+]
+
+function contours(p, samples) {
+  const field = distanceField(p)
+  const half = p.stroke / 2
+  const step = GRID / samples
+  const n = samples + 1
+  const v = new Float64Array(n * n)
+  for (let j = 0; j < n; j++)
+    for (let i = 0; i < n; i++) v[j * n + i] = field(i * step, j * step) - half
+
+  // where along an edge the field hits zero, in grid coordinates
+  const cut = (ax, ay, bx, by) => {
+    const va = v[ay * n + ax], vb = v[by * n + bx]
+    const t = va / (va - vb)
+    return [(ax + (bx - ax) * t) * step, (ay + (by - ay) * t) * step]
+  }
+  // Name a crossing by the cell edge it sits on, not by its coordinates: two
+  // neighbouring cells then agree on it exactly, with nothing to round off.
+  const edgeKey = (i, j, e) =>
+    e === 0 ? `h${i},${j}` :
+    e === 1 ? `v${i + 1},${j}` :
+    e === 2 ? `h${i},${j + 1}` :
+              `v${i},${j}`
+
+  // one entry per segment, keyed by the edge it starts on, so they chain up
+  const next = new Map()
+  for (let j = 0; j < samples; j++) for (let i = 0; i < samples; i++) {
+    const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]
+    let idx = 0
+    for (let k = 0; k < 4; k++) if (v[c[k][1] * n + c[k][0]] < 0) idx |= 1 << k
+    for (const [a, b] of CASES[idx]) {
+      next.set(edgeKey(i, j, a), { from: cut(...c[a], ...c[(a + 1) % 4]), to: edgeKey(i, j, b) })
+    }
+  }
+
+  // follow each chain from edge to edge until it comes back on itself
+  const loops = []
+  const seen = new Set()
+  for (const [start, seg] of next) {
+    if (seen.has(start)) continue
+    const loop = []
+    let key = start, cur = seg, guard = next.size + 1
+    while (cur && !seen.has(key) && guard-- > 0) {
+      seen.add(key)
+      loop.push(cur.from)
+      key = cur.to
+      cur = next.get(key)
+    }
+    if (loop.length > 8) loops.push(loop)
+  }
+  return loops
+}
+
+// Douglas-Peucker: drop every point that sits closer than `tol` to the line
+// between the ones that survive around it.
+function simplify(points, tol) {
+  const keep = (lo, hi, out) => {
+    const [ax, ay] = points[lo], [bx, by] = points[hi]
+    let worst = -1, at = -1
+    const vx = bx - ax, vy = by - ay, len = Math.hypot(vx, vy) || 1
+    for (let i = lo + 1; i < hi; i++) {
+      const [x, y] = points[i]
+      const d = Math.abs((x - ax) * vy - (y - ay) * vx) / len
+      if (d > worst) { worst = d; at = i }
+    }
+    if (worst > tol) { keep(lo, at, out); keep(at, hi, out) }
+    else out.push(points[hi])
+  }
+  if (points.length < 3) return points
+  const out = [points[0]]
+  const mid = Math.floor(points.length / 2)
+  keep(0, mid, out)
+  keep(mid, points.length - 1, out)
+  return out
+}
+
+const r2 = v => Number(v.toFixed(2)).toString()
+
+// The outline as svg path data. evenodd so the counters come out as holes
+// without having to care which way round each loop was traced.
+export function outlinePath(p = params, { samples = 1024, tolerance = 0.035 } = {}) {
+  return contours(p, samples)
+    .map(loop => simplify(loop, tolerance))
+    .map(loop => 'M' + loop.map(([x, y]) => `${r2(x)} ${r2(y)}`).join('L') + 'Z')
+    .join('')
+}
+
+// The filleted mark as an svg: one filled outline instead of four strokes.
+export function toOutlineSVG(p = params) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${GRID} ${GRID}" role="img" aria-label="GameHub">
+  <!-- Generated by scripts/gen-icons.mjs from scripts/logo.mjs — don't edit by
+       hand. This one is traced rather than stroked, because its inside corners
+       are rounded and a rounded corner belongs to no single line. -->
+  <style>
+    .tile { fill: ${p.light.tile} }
+    .mark { fill: ${p.light.mark} }
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: ${p.dark.tile} }
+      .mark { fill: ${p.dark.mark} }
+    }
+  </style>
+  <rect class="tile" width="${GRID}" height="${GRID}" rx="${p.tileRadius}"/>
+  <path class="mark" fill-rule="evenodd" d="${outlinePath(p)}"/>
 </svg>
 `
 }
