@@ -300,7 +300,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    demand, and ignoring it has to stay comfortable. */
 .update-bar {
   position: absolute; z-index: 4;
-  left: 50%; transform: translateX(-50%);
+  left: 50%;
   /* On a phone the home indicator already owns the bottom strip, so its inset is
      the gap — adding our own on top parked the pill three times too high. On
      anything without an indicator the 14px is the gap. */
@@ -312,10 +312,22 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
   font-size: 14px; font-weight: 600; white-space: nowrap;
-  animation: update-in .32s cubic-bezier(.22,.61,.36,1) both;
+  /* Shown and hidden by the .on class, not by the hidden attribute: this rule
+     sets display, and an author display beats the browser's own [hidden] rule —
+     which is exactly how the pill stayed on screen from the first build, hidden
+     in the DOM and visible to everyone. Out of the way it sits a little lower,
+     faded, untouchable and invisible; visibility waits for the slide to finish
+     so it leaves by sliding down instead of blinking out. */
+  opacity: 0; transform: translate(-50%, 28px);
+  visibility: hidden; pointer-events: none;
+  transition: opacity .26s ease, transform .34s cubic-bezier(.22,.61,.36,1), visibility 0s linear .34s;
+}
+.update-bar.on {
+  opacity: 1; transform: translate(-50%, 0);
+  visibility: visible; pointer-events: auto;
+  transition: opacity .26s ease, transform .34s cubic-bezier(.22,.61,.36,1), visibility 0s;
 }
 .update-bar .btn { padding: 7px 16px; font-size: 13px; }
-@keyframes update-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
 
 
 /* ---- Sections ---- */

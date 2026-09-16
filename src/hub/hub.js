@@ -521,14 +521,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // only here: the hub is the one place where a reload costs nothing. Start a
   // match and this whole scene is torn down, button included — which is exactly
   // the guarantee we want, and it costs no check of its own.
-  const bar = el('div', { class: 'update-bar', hidden: true }, [
+  const bar = el('div', { class: 'update-bar' }, [
     el('span', {}, t('update.ready')),
     button(t('update.action'), { variant: 'primary', onClick: () => update() })
   ])
   canvas.append(bar)
   const offUpdate = onUpdate(ready => {
     if (!canvas.isConnected) { offUpdate(); return }
-    bar.hidden = !ready
+    bar.classList.toggle('on', ready)
   })
 
   if (startMenuId) {
