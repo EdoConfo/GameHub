@@ -37,19 +37,27 @@ export const params = {
 // Everything else follows from those. The radius is whatever is left once the
 // margin and half the line weight are taken off, so the mark's outer edge lands
 // exactly on the margin no matter what you set.
+//
+// Every line is round-capped, and the numbers below are the ends of the lines
+// themselves, not of their caps: each cap then reaches half a stroke further.
+// That is what makes the joins disappear. Where a stem meets the ring, its cap
+// is a small circle sitting entirely inside the ring's own stroke, touching the
+// outside edge at exactly one point — so the silhouette there is the ring's
+// curve and nothing else. A flat end would instead cut straight across it and
+// leave a step, which is precisely what it used to do.
 export function geometry(p = params) {
   const cx = GRID / 2, cy = GRID / 2
   const r = GRID / 2 - p.margin - p.stroke / 2
-  const reach = p.stroke / 2          // stems and bar run out to the mark's own edge
+  const reach = p.stroke / 2          // how far past its end a cap reaches
   return {
     cx, cy, r, reach,
     stroke: p.stroke,
-    top: cy - r - reach,
-    bottom: cy + r + reach,
+    top: cy - r,
+    bottom: cy + r,
     rightX: cx + r,
-    rightStemBottom: cy + p.rightStemTo * (r + reach),
-    barX: cx - p.barStart * r,
-    barEnd: cx + r + reach,
+    rightStemBottom: cy + p.rightStemTo * r,
+    barX: cx - p.barStart * r + reach,  // barStart is where the ink starts, cap included
+    barEnd: cx + r,
     openFrom: p.openFrom,
     openTo: p.openTo
   }
@@ -76,8 +84,8 @@ export function paths(p = params) {
 
 // The same four strokes as a distance field, for the png rasteriser: how far a
 // point is from the nearest bit of ink, before the line weight is taken off.
-// Butt caps everywhere — perpendicular distance inside a stroke's own span,
-// nothing at all outside it.
+// Round caps everywhere, so past the end of a stroke the distance is measured
+// to its endpoint — that rounded corner is the cap.
 export function distanceField(p = params) {
   const g = geometry(p)
   const segments = [
@@ -86,13 +94,13 @@ export function distanceField(p = params) {
     [g.barX, g.cy, g.barEnd, g.cy]
   ]
   const from = rad(g.openFrom), to = rad(g.openTo)
+  const ends = [at(g, g.openFrom), at(g, g.openTo)]
 
   const seg = (x, y, ax, ay, bx, by) => {
     const vx = bx - ax, vy = by - ay
     const wx = x - ax, wy = y - ay
     const len2 = vx * vx + vy * vy
-    const t = len2 ? (wx * vx + wy * vy) / len2 : 0
-    if (t < 0 || t > 1) return Infinity
+    const t = len2 ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / len2)) : 0
     const dx = wx - vx * t, dy = wy - vy * t
     return Math.sqrt(dx * dx + dy * dy)
   }
@@ -101,7 +109,9 @@ export function distanceField(p = params) {
     const dx = x - g.cx, dy = y - g.cy
     const a = Math.atan2(dy, dx)                    // 0 = right, +pi/2 = down
     let d = a > from && a < to
-      ? Infinity                                    // inside the gap: no ring here
+      // inside the gap there is no ring, only the round cap at either end of it
+      ? Math.min(Math.hypot(x - ends[0][0], y - ends[0][1]),
+                 Math.hypot(x - ends[1][0], y - ends[1][1]))
       : Math.abs(Math.sqrt(dx * dx + dy * dy) - g.r)
     for (const s of segments) d = Math.min(d, seg(x, y, ...s))
     return d
@@ -124,7 +134,7 @@ export function toSVG(p = params) {
     }
   </style>
   <rect class="tile" width="${GRID}" height="${GRID}" rx="${p.tileRadius}"/>
-  <g class="mark" fill="none" stroke-width="${p.stroke}">
+  <g class="mark" fill="none" stroke-width="${p.stroke}" stroke-linecap="round">
 ${d}
   </g>
 </svg>
