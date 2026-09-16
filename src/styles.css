@@ -412,10 +412,20 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .pack-row.head .cell-label { flex: 1; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); }
 .pack-row.head .cell-label:last-child { flex: 0 0 36px; }
 .pack-row.half .cell { border-color: var(--accent); }
-/* asked once: the minus becomes a red cross, and only that takes the row away */
-.row-drop { transition: background .15s ease, color .15s ease, border-color .15s ease; }
-.row-drop.sure { background: var(--danger); border-color: transparent; color: #fff; }
-.row-drop.sure .icon { width: 16px; height: 16px; }
+/* Asked once: the minus opens into a red cross, and only the cross takes the
+   row away. The two bars start lying on each other and swing apart — the same
+   mark all along, saying a different thing. */
+.row-drop {
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s var(--pan-ease);
+}
+.row-drop .drop-mark { width: 20px; height: 20px; }
+.row-drop .bar {
+  transform-box: fill-box; transform-origin: center;
+  transition: transform .34s cubic-bezier(.22, .9, .3, 1.35);
+}
+.row-drop.sure { background: var(--danger); border-color: transparent; color: #fff; transform: scale(1.06); }
+.row-drop.sure .bar.a { transform: rotate(45deg) scale(.78); }
+.row-drop.sure .bar.b { transform: rotate(-45deg) scale(.78); }
 .pack-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pack-foot .muted { margin: 0; }
 .pack-foot .warn { color: var(--accent); }

@@ -75,8 +75,12 @@ export function openPackEditor(store, pack, { onDone } = {}) {
       })
       node.append(cell)
     }
+    // Two bars lying on top of each other read as a minus; open them and they
+    // are a cross. Nothing is swapped, so the minus doesn't disappear and a
+    // cross appear in its place — it turns into one.
     const drop = el('button', {
       class: 'round-btn sm row-drop', 'aria-label': t('packs.dropRow'),
+      html: '<svg class="drop-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar a" d="M6 12h12"/><path class="bar b" d="M6 12h12"/></svg>',
       onclick: () => {
         if (armed !== drop) { arm(drop); return }
         disarm()
@@ -85,7 +89,7 @@ export function openPackEditor(store, pack, { onDone } = {}) {
         if (!rows.length) rows.push(store.blankRow())
         paint()
       }
-    }, '−')
+    })
     node.append(drop)
     return node
   }
@@ -94,14 +98,12 @@ export function openPackEditor(store, pack, { onDone } = {}) {
     disarm()
     armed = btn
     btn.classList.add('sure')
-    btn.replaceChildren(icon('close'))
     btn.setAttribute('aria-label', t('packs.dropRowSure'))
   }
 
   function disarm() {
     if (!armed) return
     armed.classList.remove('sure')
-    armed.replaceChildren('−')
     armed.setAttribute('aria-label', t('packs.dropRow'))
     armed = null
   }
