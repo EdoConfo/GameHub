@@ -101,13 +101,34 @@ function smin(a, b, k) {
 // to its endpoint — that rounded corner is the cap.
 export function distanceField(p = params) {
   const g = geometry(p)
+
+  // An end that dies inside another line is pulled back half a line, so its cap
+  // sits within that line instead of reaching its far edge. Touching edges are
+  // the whole problem: to the blend, two boundaries that meet read as a corner,
+  // and it rounds a corner that was never there.
+  //
+  // Only ends that are genuinely buried get tucked — the left stem's two ends,
+  // which die inside the ring; the ring's own end at noon, which dies inside
+  // that stem; and the crossbar's right end, which dies inside the right stem.
+  // Everything else is holding up the silhouette and has to stay put: the top of
+  // the right stem, the left end of the bar, the ring's end at 3 o'clock, and
+  // the foot of the right stem, which is the mark's own right edge. Pull one of
+  // those back and you don't remove a bump, you dig a dent.
+  //
+  // With sharp corners there is no blend to protect against, so nothing moves.
+  const tuck = p.fillet > 0 ? g.reach : 0
+
   const segments = [
-    [g.cx, g.top, g.cx, g.bottom],
+    [g.cx, g.top + tuck, g.cx, g.bottom - tuck],
     [g.rightX, g.top, g.rightX, g.rightStemBottom],
-    [g.barX, g.cy, g.barEnd, g.cy]
+    [g.barX, g.cy, g.barEnd - tuck, g.cy]
   ]
-  const from = rad(g.openFrom), to = rad(g.openTo)
-  const ends = [at(g, g.openFrom), at(g, g.openTo)]
+  // the ring is tucked the same way at noon, as an angle: half a line of arc
+  const from = rad(g.openFrom) - tuck / g.r, to = rad(g.openTo) + tuck / g.r
+  const ends = [
+    [g.cx + g.r * Math.cos(from), g.cy + g.r * Math.sin(from)],
+    [g.cx + g.r * Math.cos(to), g.cy + g.r * Math.sin(to)]
+  ]
 
   const seg = (x, y, ax, ay, bx, by) => {
     const vx = bx - ax, vy = by - ay
