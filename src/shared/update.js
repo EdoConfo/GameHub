@@ -58,12 +58,34 @@ export function update() {
   pending.addEventListener('statechange', () => { if (pending.state === 'activated') go() })
   pending.postMessage({ type: 'SKIP_WAITING' })
 
-  setTimeout(() => {
+  setTimeout(async () => {
     if (done) return
     if (!reg.waiting) { go(); return }   // handed over, we just never heard
-    waiting = true                        // still stuck: give the button back
-    announce()
+    await escape()                        // still stuck: take the worker out of the way
+    go()
   }, GIVE_UP)
+}
+
+// The way out of a worker that won't hand over.
+//
+// It happens, and when it does the app is properly trapped: the old worker keeps
+// answering every reload out of its own cache, so the page can never become the
+// one that would fix it. No amount of tapping, closing or reopening gets past
+// that — the only cures were deleting the app or clearing the site's data, and
+// neither is something to ask of someone on a Friday night.
+//
+// So the last resort is to remove the worker entirely. The next load has nobody
+// to intercept it, comes from the network, and registers a fresh one. A moment
+// without the offline cache is a small price for not being stuck forever.
+async function escape() {
+  try {
+    const all = await navigator.serviceWorker.getRegistrations()
+    await Promise.all(all.map(r => r.unregister()))
+    if (window.caches) {
+      const names = await caches.keys()
+      await Promise.all(names.map(n => caches.delete(n)))
+    }
+  } catch { /* nothing left to try; the reload happens anyway */ }
 }
 
 export async function startUpdates() {
