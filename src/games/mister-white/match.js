@@ -23,10 +23,16 @@ function loadExtras(ctx) {
   return out
 }
 
+// The numbers you chose are remembered; the ones the app suggested are not.
+// Without that difference, a 1-and-0 decided at a table of three came back at a
+// table of ten — nine civilians and a single impostor — because saved numbers
+// looked like a choice.
 function loadCounts(ctx, n) {
   const c = ctx.storage.get(COUNTS_KEY, null)
-  if (c && validateSetup(n, c).ok) return { mrwhite: c.mrwhite, undercover: c.undercover }
-  return suggestCounts(n)
+  if (c && c.touched && validateSetup(n, c).ok) {
+    return { mrwhite: c.mrwhite, undercover: c.undercover, touched: true }
+  }
+  return { ...suggestCounts(n), touched: false }
 }
 
 const page = (children, cls = '') => el('div', { class: 'drawer-page' + (cls ? ' ' + cls : '') }, children)
@@ -159,7 +165,7 @@ export function tableOptions(ctx, ui) {
         if (next < 0 || next + counts[other] < 1 || next + counts[other] > maxImpostors(n)) return
         counts[key] = next
         touched = true
-        ctx.storage.set(COUNTS_KEY, counts)
+        ctx.storage.set(COUNTS_KEY, { ...counts, touched: true })
         ui.changed()
       }
       const minus = el('button', { class: 'round-btn sm', 'aria-label': t('mw.opt.less', { label: name }), onclick: () => bump(-1) }, '−')
@@ -243,10 +249,13 @@ export function tableOptions(ctx, ui) {
     check(seatCount) {
       if (seatCount !== n) {
         n = seatCount
-        if (!counts) counts = loadCounts(ctx, n) // last used, if it still fits
-        else if (!touched) counts = suggestCounts(n)
-        else counts = fitCounts(n, counts)       // keep your choice, trimmed to the table
-        ctx.storage.set(COUNTS_KEY, counts)
+        if (!counts) {
+          const saved = loadCounts(ctx, n) // your last choice, if it still fits
+          touched = saved.touched
+          counts = { mrwhite: saved.mrwhite, undercover: saved.undercover }
+        } else if (!touched) counts = suggestCounts(n)
+        else counts = fitCounts(n, counts)  // keep your choice, trimmed to the table
+        ctx.storage.set(COUNTS_KEY, { ...counts, touched })
       }
       charactersDoor.set(charactersSummary())
       wordsDoor.set(wordsSummary())
