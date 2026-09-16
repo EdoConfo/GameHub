@@ -415,9 +415,11 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 /* Asked once: the minus opens into a red cross, and only the cross takes the
    row away. The two bars start lying on each other and swing apart — the same
    mark all along, saying a different thing. */
-.row-drop {
-  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s var(--pan-ease);
-}
+/* The button keeps its size when it arms: it sits at the right edge of the
+   panel, and anything that grows there gets shaved off by the edge of the
+   scrolling box. The change of state is already said by the colour and by the
+   bars opening. */
+.row-drop { transition: background .2s ease, color .2s ease, border-color .2s ease; }
 /* overflow visible and an origin in the drawing's own units: a bar is a line
    with no height at all, and asking a browser to turn it around the centre of
    its own box (transform-box: fill-box) is asking it to turn around nothing —
@@ -427,7 +429,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   transform-origin: 12px 12px;
   transition: transform .34s cubic-bezier(.22, .9, .3, 1.35);
 }
-.row-drop.sure { background: var(--danger); border-color: transparent; color: #fff; transform: scale(1.06); }
+.row-drop.sure { background: var(--danger); border-color: transparent; color: #fff; }
 .row-drop.sure .bar.a { transform: rotate(45deg) scale(.86); }
 .row-drop.sure .bar.b { transform: rotate(-45deg) scale(.86); }
 .pack-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
