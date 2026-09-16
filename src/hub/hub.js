@@ -3,6 +3,7 @@ import { t, langName, cycleLang } from '../shared/i18n.js'
 import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import * as pwa from '../shared/pwa.js'
+import { onUpdate, update } from '../shared/update.js'
 import { openProfileEditor, avatar } from './players.js'
 import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
 import { openPackEditor } from '../shared/packEditor.js'
@@ -511,6 +512,20 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   const offPwa = pwa.onChange(() => {
     if (!canvas.isConnected) { offPwa(); return }
     if (sideWheel && sideKind === 'settings') repaint()
+  })
+
+  // A new build is ready, and taking it means reloading. It's offered here and
+  // only here: the hub is the one place where a reload costs nothing. Start a
+  // match and this whole scene is torn down, button included — which is exactly
+  // the guarantee we want, and it costs no check of its own.
+  const bar = el('div', { class: 'update-bar', hidden: true }, [
+    el('span', {}, t('update.ready')),
+    button(t('update.action'), { variant: 'primary', onClick: () => update() })
+  ])
+  canvas.append(bar)
+  const offUpdate = onUpdate(ready => {
+    if (!canvas.isConnected) { offUpdate(); return }
+    bar.hidden = !ready
   })
 
   if (startMenuId) {

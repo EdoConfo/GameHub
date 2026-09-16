@@ -296,6 +296,24 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   font-weight: 650;
 }
 
+/* "New version", offered in the hub. Low and out of the way: it's news, not a
+   demand, and ignoring it has to stay comfortable. */
+.update-bar {
+  position: absolute; z-index: 4;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+  animation: update-in .32s cubic-bezier(.22,.61,.36,1) both;
+}
+.update-bar .btn { padding: 7px 16px; font-size: 13px; }
+@keyframes update-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+
 .offline-note {
   margin: 0 18px calc(14px + env(safe-area-inset-bottom));
   font-size: 12.5px;

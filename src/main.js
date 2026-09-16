@@ -9,6 +9,7 @@ import { openPlayerCard } from './hub/playerCard.js'
 import { getGame } from './games/registry.js'
 import { clear, el } from './shared/ui.js'
 import { applyTheme, getTheme, watchSystem } from './shared/theme.js'
+import { startUpdates } from './shared/update.js'
 
 const root = document.getElementById('app')
 
@@ -30,6 +31,10 @@ document.addEventListener('touchmove', e => {
 // following the system, so a fresh install matches the phone.
 applyTheme(getTheme())
 watchSystem()
+
+// Watch for a new build. Nothing happens on its own: it only lights the button
+// in the hub, and only the hub is ever a safe place to take it.
+startUpdates()
 
 // Shared services handed to every game. Word packs are NOT here: each game
 // owns and manages its own packs (see games/<id>/packs.js).

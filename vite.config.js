@@ -13,7 +13,11 @@ export default defineConfig({
   server: { port: 5173, strictPort: true },
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate',
+      // The new version waits instead of taking over: the app offers it with a
+      // button, outside a match, because a reload mid-round loses the roles that
+      // were dealt. src/shared/update.js does the asking.
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'],
       workbox: {
         // Precache everything the build emits, including bundled word-pack JSON.
