@@ -16,13 +16,27 @@ function buildId() {
 // If you rename the repo, change BASE here (keep the leading and trailing slash).
 const BASE = '/GameHub/'
 
+// Publishes version.json next to the app: the build this deploy is. The app
+// polls it (see src/shared/update.js) to notice a new deploy while it's open,
+// without waiting for the service worker's own, much lazier, check.
+const BUILD = buildId()
+function versionFile() {
+  return {
+    name: 'gamehub-version',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD }) })
+    }
+  }
+}
+
 export default defineConfig({
   base: BASE,
-  define: { __BUILD__: JSON.stringify(buildId()) },
+  define: { __BUILD__: JSON.stringify(BUILD) },
   // Always the same address (bookmarked on the phone): if 5173 is taken,
   // fail loudly instead of quietly moving to 5174.
   server: { port: 5173, strictPort: true },
   plugins: [
+    versionFile(),
     VitePWA({
       // The new version waits instead of taking over: the app offers it with a
       // button, outside a match, because a reload mid-round loses the roles that
@@ -33,6 +47,8 @@ export default defineConfig({
       workbox: {
         // Precache everything the build emits, including bundled word-pack JSON.
         globPatterns: ['**/*.{js,css,html,svg,png,json,woff2}'],
+        // never from the cache: it's the one file that has to say what's live
+        globIgnores: ['**/version.json'],
         navigateFallback: BASE + 'index.html'
       },
       manifest: {

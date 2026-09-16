@@ -8,12 +8,15 @@
 // throws away the roles that were dealt. So the new version waits, and the app
 // offers it where losing nothing is guaranteed.
 //
-// The browser only looks for a new worker when a page loads. An app left open on
-// a table never asks, so we ask for it: when it comes back to the foreground,
-// and on a slow timer while it stays there. It's a conditional request for one
-// small file — cheap enough to do often, rare enough not to matter.
+// Noticing has to happen while the app is open, not the next time it's opened.
+// The service worker's own check only runs when a page loads, so every deploy
+// also publishes version.json — the build it is — and the app reads it once a
+// minute while it's on screen, bypassing every cache. A different build there
+// means there's something newer, and the button shows at once; the worker is
+// told to go and get it at the same moment, so it's usually ready by the tap.
 
-const EVERY = 30 * 60 * 1000       // while the app stays open
+const EVERY = 60 * 1000            // while the app is on screen
+const HERE = typeof __BUILD__ === 'string' ? __BUILD__ : null
 const GIVE_UP = 8000                // how long a handover may take on a tired phone
 let waiting = null                  // the update, ready and held back
 let skip = null                     // the plugin's own "step forward", from workbox-window
@@ -30,48 +33,34 @@ export function onUpdate(fn) {
 
 export const isReady = () => !!waiting
 
-// Take it: ask the waiting worker to step forward, and reload once it has.
+// Take it, and reload now.
 //
-// Two things went wrong here before, and both are about not trusting a single
-// source. The worker that triggered the notice is known to workbox-window, which
-// is what raised it; asking only our own copy of the registration meant that,
-// on a phone where that copy said nobody was waiting, the tap fell into a plain
-// reload — the old worker answered it from its cache, the same page came back,
-// and so did the notice. Worse, that shortcut skipped the way out below
-// entirely. So now every source is asked, and there is no shortcut: once the
-// notice has been shown, a tap always runs the whole path, deadline included.
-//
-// Nothing reloads while a handover may still be in flight: the navigation would
-// cancel it, and a reload before the new worker is in charge only brings the
-// old page back. The signals that it is in charge are the controller changing
-// and the waiting worker reaching 'activated' — either can be missed, so both
-// are watched and the first one wins.
+// If the new worker is already installed it's asked to step forward, and the
+// page reloads the moment it's in charge — reloading before that would only get
+// the old page back from the old worker's cache, and would cancel the handover
+// on the way. If there's no new worker yet (the check is quicker than the
+// download) there is nothing to hand over: the workers are cleared and the page
+// comes straight from the network. Either way the tap ends in a reload, and
+// promptly — there's no waiting for a signal that isn't coming.
 export async function update() {
   waiting = false
   announce()
 
   let done = false
   const go = () => { if (!done) { done = true; location.reload() } }
+  if (!('serviceWorker' in navigator)) { go(); return }
   navigator.serviceWorker.addEventListener('controllerchange', go, { once: true })
 
-  // workbox-window's idea of the waiting worker, then the browser's own
-  try { if (skip) skip() } catch { /* the next one may still work */ }
+  try { if (skip) skip() } catch { /* the browser's own copy is asked next */ }
   let reg = null
-  try { reg = await navigator.serviceWorker.getRegistration() } catch { /* offline, or no worker */ }
+  try { reg = await navigator.serviceWorker.getRegistration() } catch { /* nothing registered */ }
   const pending = reg && reg.waiting
-  if (pending) {
-    pending.addEventListener('statechange', () => { if (pending.state === 'activated') go() })
-    pending.postMessage({ type: 'SKIP_WAITING' })
-  }
+  if (!pending) { await escape(); go(); return }
 
-  setTimeout(async () => {
-    if (done) return
-    let still = null
-    try { still = (await navigator.serviceWorker.getRegistration())?.waiting } catch { /* see below */ }
-    if (!still && reg && reg.active && navigator.serviceWorker.controller === reg.active) { go(); return }
-    await escape()                        // nobody handed over: take the workers out of the way
-    go()
-  }, GIVE_UP)
+  pending.addEventListener('statechange', () => { if (pending.state === 'activated') go() })
+  pending.postMessage({ type: 'SKIP_WAITING' })
+  // a handover that never lands is no reason to stay stuck
+  setTimeout(async () => { if (!done) { await escape(); go() } }, GIVE_UP)
 }
 
 // The way out of a worker that won't hand over.
@@ -105,17 +94,30 @@ export async function startUpdates() {
     ;({ registerSW } = await import('virtual:pwa-register'))
   } catch { return }
 
+  let registration = null
   skip = registerSW({
     immediate: true,
     onNeedRefresh() { waiting = true; announce() },
-    onRegisteredSW(url, registration) {
-      if (!registration) return
-      const look = () => { if (navigator.onLine) registration.update().catch(() => {}) }
-      setInterval(look, EVERY)
-      // coming back to the app is the likeliest moment for it to have aged
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') look()
-      })
-    }
+    onRegisteredSW(url, r) { registration = r || null }
   })
+
+  // Is the build on the server the one running here? no-store and a throwaway
+  // query keep every cache out of it, the browser's and the CDN's alike.
+  async function look() {
+    if (!HERE || document.visibilityState !== 'visible' || !navigator.onLine) return
+    let live = null
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}version.json?t=${Date.now()}`, { cache: 'no-store' })
+      if (res.ok) live = (await res.json()).build
+    } catch { return }
+    if (!live || live === HERE || waiting) return
+    waiting = true
+    announce()
+    if (registration) registration.update().catch(() => {})   // start fetching it now
+  }
+
+  setInterval(look, EVERY)
+  document.addEventListener('visibilitychange', look)
+  window.addEventListener('online', look)
+  look()
 }
