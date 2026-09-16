@@ -72,11 +72,31 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
       it.style.top = y + 'px'
       it.style.opacity = String(Math.max(0.10, 1 - dist * 0.42) * fade)
       it.style.transform = `translate(-50%, -50%) scale(${Math.max(0.62, 1 - dist * 0.14)})`
+      // How much of the front this item is holding, from 1 right on it to 0 a
+      // whole step away. The subtitle fades in on this and the title rides up
+      // on it, so both are tied to the wheel's own travel: turn slowly and they
+      // arrive slowly, turn back and they leave the same way. Showing them off
+      // a class instead made the title jump the moment the wheel settled, and
+      // the jump was as tall as the subtitle happened to be.
+      it.style.setProperty('--near', detail === 'always' ? '1' : Math.max(0, 1 - dist).toFixed(3))
       it.classList.toggle('on', Math.round(f) === i)
     }
   }
 
-  function layout() { measure(); placeItems(active) }
+  // The title rides up by half the subtitle's height, so the pair ends up
+  // centred on the bead the way it is today. That height is per item — one line
+  // or two, and it changes with the language and the width — so it's measured
+  // rather than assumed. The subtitle is out of flow, so this measure doesn't
+  // move anything.
+  function measureSubs() {
+    for (const n of nodes) {
+      const d = n.querySelector('.arc-desc')
+      if (!d) continue
+      n.style.setProperty('--desc-h', (d.textContent.trim() ? d.offsetHeight : 0) + 'px')
+    }
+  }
+
+  function layout() { measure(); measureSubs(); placeItems(active) }
 
   // How far left the column has to go to clear the screen: from the items' own
   // x out past the left edge, with room for the badge's half width. They leave
@@ -140,6 +160,7 @@ export function createArcWheel(host, { side = 'left', items, onActivate, step = 
       if (desc) desc.textContent = it.sub || ''
       if (lead && it.lead) lead.replaceChildren(it.lead)
     })
+    measureSubs()   // a new language is a new number of lines
     return true
   }
   function setDragTransition(on) { stage.classList.toggle('dragging', !on) }

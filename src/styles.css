@@ -188,6 +188,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .arc-host .arc-stage { flex: 1; }
 /* Mirror (right side): label hangs to the LEFT of the number. */
 .arc-stage.right .arc-info { left: auto; right: calc(100% + 18px); text-align: right; }
+.arc-stage.right .arc-desc { left: auto; right: 0; }
 .game-home-title { font-size: 15px; }
 
 .arc-item {
@@ -226,21 +227,41 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 /* Name (+ description) hangs to the right of each number, inside the item,
    so it fades together with the item when not highlighted. */
+/* The block is only ever as tall as the title: the subtitle hangs out of flow
+   underneath it, so nothing resizes when it shows. What moves is driven by
+   --near, which arcWheel sets from how close the item is to the front — 1 on
+   it, 0 a step away. So the title rides up and the subtitle fades in with the
+   turn of the wheel, at the speed you turn it, instead of snapping into place
+   once it lands. --desc-h is that subtitle's own measured height: the title
+   lifts by half of it, which is where the pair sits centred on the bead. */
 .arc-info {
   position: absolute;
   left: calc(100% + 18px);
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(calc(-50% - var(--desc-h, 0px) / 2 * var(--near, 0)));
   text-align: left;
   width: max-content;
   max-width: 46vw;
 }
 .arc-name { font-size: 20px; font-weight: 750; letter-spacing: -.3px; color: var(--text); white-space: nowrap; }
-.arc-desc { font-size: 14px; color: var(--text-dim); margin-top: 5px; line-height: 1.35; display: none; }
-.arc-item.on .arc-desc { display: block; }
-/* a wheel of numbers shows them all: they fade with distance like everything
-   else on the arc, so the centred one still reads first */
-.arc-stage.detailed .arc-desc { display: block; }
+.arc-desc {
+  /* Out of flow it would inherit the block's width, and the block is as wide as
+     the title — so a long subtitle under a short title wrapped to a ribbon.
+     It gets its own width instead, the one the block used to have. */
+  position: absolute; top: calc(100% + 5px); left: 0; right: auto; width: 46vw;
+  font-size: 14px; color: var(--text-dim); line-height: 1.35;
+  opacity: var(--near, 0);
+  transform: translateY(calc(3px * (1 - var(--near, 0))));
+  /* two lines is as far as it can hang before it reaches the next bead */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+/* Tapping a bead is not a drag: there the wheel jumps a whole step at once, so
+   the same two things glide instead of following a finger. Dragging turns them
+   off, as it does for the beads themselves. */
+.arc-stage:not(.dragging) .arc-info,
+.arc-stage:not(.dragging) .arc-desc {
+  transition: transform var(--pan) var(--pan-ease), opacity var(--pan) ease;
+}
 
 
 .offline-note {
