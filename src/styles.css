@@ -474,8 +474,15 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    Pinned to exactly the visible screen (on iOS 100vh is taller than the view
    while Safari's bars show): nothing to scroll, nothing hidden under the bars. */
 .canvas { position: fixed; inset: 0; overflow: hidden; }
+/* The scene lives below the header, not behind it: --hub-top is the header's
+   measured height (hub.js sets it), so the circles are tangent to the bottom of
+   that band and to the bottom of the screen. Centred on the whole viewport they
+   would sit a header higher, which reads as off-centre — the band eats the gap
+   above and leaves the one below untouched — and on the way in the circle would
+   climb over the wordmark. */
 .world {
-  position: absolute; top: 0; left: 0; height: 100%;
+  position: absolute; top: var(--hub-top, 0px); left: 0;
+  height: calc(100% - var(--hub-top, 0px));
   transition: transform var(--pan) var(--pan-ease);
   will-change: transform;
 }

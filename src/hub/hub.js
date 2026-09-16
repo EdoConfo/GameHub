@@ -44,7 +44,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   let menuWheel = null
   let gameWheel = null
   let gameKind = 'words' // what the right arc of the game's circle is showing
-  let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, cam: [0, 0, 0], width: 0 }
+  let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, top: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
   const scene = el('div', { class: 'world' })
@@ -75,13 +75,18 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   function measure() {
     const r = canvas.getBoundingClientRect()
     if (!r.width || !r.height) return false
-    const W = r.width, H = r.height
-    const R = H * 0.5                 // circles touch the top and bottom edges
+    // The header floats over the scene, so the scene starts under it: the band
+    // it leaves is what the circles are measured against. Told in CSS, so the
+    // wheels — which measure their own host — follow without being asked.
+    const top = header.getBoundingClientRect().height
+    canvas.style.setProperty('--hub-top', top + 'px')
+    const W = r.width, H = r.height - top
+    const R = H * 0.5                 // circles touch the band's top and bottom
     const xA = R + 0.76 * W           // puts the leftmost view at world 0
     const xB = xA + 2 * R + 0.9 * W   // close enough that an arc is always in sight
     // one camera spot per view: the two arcs of circle A, then the two of B
     world = {
-      W, H, R, xA, xB,
+      W, H, R, xA, xB, top,
       cam: [0, 2 * R + 0.52 * W, 2 * R + 0.9 * W, 4 * R + 1.42 * W],
       width: xB + R + W
     }
@@ -390,8 +395,10 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
 
   // ---- "Gioca": circle B becomes the table ----
   function circleBOnScreen() {
-    const { H, R, xB, cam } = world
-    return { cx: xB - cam[V_MENU], cy: H / 2, r: R }
+    const { H, R, xB, cam, top } = world
+    // in canvas coordinates, so the table can morph out of it: the scene's own
+    // centre plus however far down the scene starts
+    return { cx: xB - cam[V_MENU], cy: top + H / 2, r: R }
   }
 
   // "Gioca": the circle shrinks into the table and the menu beads leave with
