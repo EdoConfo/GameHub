@@ -23,7 +23,9 @@ const media = typeof window !== 'undefined' && window.matchMedia
   ? window.matchMedia('(prefers-color-scheme: dark)')
   : null
 
-const BAR = { light: '#eaecf7', dark: '#0a0b16' }
+// The browser bar takes the app's own ground. index.html states both, one per
+// system appearance; a deliberate choice pins both to that choice instead.
+const GROUND = { light: '#f6f7f9', dark: '#0f1117' }
 
 export function getTheme() {
   const value = storage.get(KEY, 'system')
@@ -43,8 +45,10 @@ export function applyTheme(pref) {
   const active = activeTheme(choice)
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = active
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', BAR[active])
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+      const scheme = /dark/.test(meta.getAttribute('media') || '') ? 'dark' : 'light'
+      meta.setAttribute('content', GROUND[choice === 'system' ? scheme : active])
+    }
   }
   storage.set(KEY, choice)
   return choice

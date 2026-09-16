@@ -122,3 +122,9 @@ router.on('/:game', ({ game }) => {
 router.setNotFound(() => router.go('/'))
 
 router.start()
+
+// The first layout is done; from here on things may move. Three frames, because
+// the hub measures once now and again on the next frame, and that second pass
+// must not animate either.
+requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() =>
+  document.documentElement.classList.remove('booting'))))

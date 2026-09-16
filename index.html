@@ -2,6 +2,30 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
+    <!-- The page is born already in place. Before any stylesheet or module runs,
+         the ground is the right colour and the theme is the stored one, so a
+         reload — the update button's, for one — doesn't flash white or pass
+         through the wrong theme. And nothing animates until the first layout
+         has settled: otherwise the beads' colour and border transitions play
+         from wherever the new page started, which is the brief flash on the
+         game icons. main.js lifts .booting a few frames in. -->
+    <style>
+      html { background: #f6f7f9; }
+      @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { background: #0f1117; } }
+      html[data-theme="dark"] { background: #0f1117; }
+      html.booting *, html.booting *::before, html.booting *::after { transition: none !important; animation: none !important; }
+    </style>
+    <script>
+      (function () {
+        var d = document.documentElement;
+        d.classList.add('booting');
+        try {
+          var p = JSON.parse(localStorage.getItem('gamehub:themePref') || '"system"');
+          var dark = p === 'dark' || (p !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          d.setAttribute('data-theme', dark ? 'dark' : 'light');
+        } catch (e) {}
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
     <!-- the browser chrome follows the app's own two grounds -->
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7f9" />
