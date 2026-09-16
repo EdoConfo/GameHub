@@ -1,6 +1,7 @@
-// Generate placeholder PWA icons with zero dependencies.
-// Draws an indigo gradient square with a 2x2 grid of white dots.
-// Run: npm run icons  (already committed output; re-run only to regenerate)
+// Generate the PWA icons with zero dependencies: the same GH monogram as
+// public/favicon.svg, rasterised by hand so the SVG stays the single source of
+// the shape and nobody has to open a design tool to rebuild a png.
+// Run: npm run icons  (output is committed; re-run only after changing the mark)
 import { deflateSync } from 'node:zlib'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -59,38 +60,77 @@ function encodePNG(width, height, rgba) {
   ])
 }
 
-function makeIcon(size, { rounded }) {
+// ---- the mark, in the favicon's own 64-unit grid ----
+// Keep these in step with public/favicon.svg, which is where the shape is
+// documented: one circle open in the top-right quadrant, the H's two stems on
+// the circle's centre line and right extreme, a crossbar from half a radius out
+// to the stem. Butt caps everywhere.
+const GRID = 64
+const STROKE = 5
+const CX = 32, CY = 32
+const R = 32 - 8 - STROKE / 2   // margin 8, measured to the outside of the stroke
+const REACH = STROKE / 2        // stems and bar reach the mark's own edge
+const TOP = CY - R - REACH, BOT = CY + R + REACH
+const RIGHT = CX + R
+const BAR = CX - R / 2
+const END = CX + R + REACH
+
+// The app's own two grounds — no colour of its own. A png can't follow the
+// phone's theme the way the svg favicon does, so the home screen gets the dark
+// one: it sits well on either wallpaper.
+const DARK = { bg: [0x0f, 0x11, 0x17], fg: [0xee, 0xf0, 0xf5] }
+
+// Distance to a butt-capped stroke: perpendicular distance inside the segment's
+// own span, nothing at all outside it.
+function distSegment(x, y, ax, ay, bx, by) {
+  const vx = bx - ax, vy = by - ay
+  const wx = x - ax, wy = y - ay
+  const len2 = vx * vx + vy * vy
+  const t = len2 ? (wx * vx + wy * vy) / len2 : 0
+  if (t < 0 || t > 1) return Infinity
+  const dx = wx - vx * t, dy = wy - vy * t
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+// The ring is drawn everywhere except the top-right quadrant: that missing
+// quarter is what makes the circle read as a G, and below the crossbar the
+// right-hand side is nothing but arc.
+function distArc(x, y) {
+  const dx = x - CX, dy = y - CY
+  const a = Math.atan2(dy, dx)                       // 0 = right, +pi/2 = down
+  if (a > -Math.PI / 2 && a < 0) return Infinity     // the open quadrant
+  return Math.abs(Math.sqrt(dx * dx + dy * dy) - R)
+}
+
+function distMark(x, y) {
+  return Math.min(
+    distArc(x, y),
+    distSegment(x, y, CX, TOP, CX, BOT),
+    distSegment(x, y, RIGHT, TOP, RIGHT, CY),   // only down to the crossbar
+    distSegment(x, y, BAR, CY, END, CY)
+  )
+}
+
+function makeIcon(size, { rounded, scale = 1, palette = DARK }) {
   const buf = Buffer.alloc(size * size * 4)
+  const unit = size / GRID           // one grid unit, in pixels
+  const half = (STROKE / 2) * unit
   const radius = size * 0.22
-  const dotR = size * 0.11
-  const centers = [0.34, 0.66]
-  const px = (x, y, r, g, b, a) => {
-    const i = (y * size + x) * 4
-    buf[i] = r; buf[i + 1] = g; buf[i + 2] = b; buf[i + 3] = a
-  }
+  const aa = 0.8                     // edge softening, in pixels
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      // vertical gradient #6d5efc -> #4b3fd6
-      const t = y / size
-      let r = Math.round(0x6d + (0x4b - 0x6d) * t)
-      let g = Math.round(0x5e + (0x3f - 0x5e) * t)
-      let b = Math.round(0xfc + (0xd6 - 0xfc) * t)
+      let [r, g, b] = palette.bg
       let a = 255
 
-      // white dots
-      for (const cx of centers) {
-        for (const cy of centers) {
-          const dx = x - cx * size
-          const dy = y - cy * size
-          const d = Math.sqrt(dx * dx + dy * dy)
-          if (d < dotR) { r = 255; g = 255; b = 255 }
-          else if (d < dotR + 1.5) {
-            const k = (dotR + 1.5 - d) / 1.5
-            r = Math.round(r + (255 - r) * k)
-            g = Math.round(g + (255 - g) * k)
-            b = Math.round(b + (255 - b) * k)
-          }
-        }
+      // the white monogram over it
+      const gx = ((x + 0.5) / unit - GRID / 2) / scale + GRID / 2
+      const gy = ((y + 0.5) / unit - GRID / 2) / scale + GRID / 2
+      const d = distMark(gx, gy) * unit * scale - half * scale
+      if (d < aa) {
+        const k = d <= -aa ? 1 : (aa - d) / (2 * aa)
+        r = Math.round(r + (palette.fg[0] - r) * k)
+        g = Math.round(g + (palette.fg[1] - g) * k)
+        b = Math.round(b + (palette.fg[2] - b) * k)
       }
 
       // rounded corners (alpha) for the "any" icons; maskable stays full-bleed
@@ -105,7 +145,8 @@ function makeIcon(size, { rounded }) {
           else if (dd > radius - 1.5) a = Math.round(255 * (radius - dd) / 1.5)
         }
       }
-      px(x, y, r, g, b, a)
+      const i = (y * size + x) * 4
+      buf[i] = r; buf[i + 1] = g; buf[i + 2] = b; buf[i + 3] = a
     }
   }
   return encodePNG(size, size, buf)
@@ -113,5 +154,7 @@ function makeIcon(size, { rounded }) {
 
 writeFileSync(join(OUT, 'icon-192.png'), makeIcon(192, { rounded: true }))
 writeFileSync(join(OUT, 'icon-512.png'), makeIcon(512, { rounded: true }))
-writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { rounded: false }))
+// Android may mask a maskable icon down to a circle: keep the mark inside the
+// safe zone (the middle 80%) instead of letting the stems get clipped.
+writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { rounded: false, scale: 0.78 }))
 console.log('Icons written to', OUT)

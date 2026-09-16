@@ -1,15 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#6d5efc"/>
-      <stop offset="1" stop-color="#4b3fd6"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <g fill="#fff">
-    <circle cx="22" cy="22" r="7"/>
-    <circle cx="42" cy="22" r="7"/>
-    <circle cx="22" cy="42" r="7"/>
-    <circle cx="42" cy="42" r="7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="GameHub">
+  <!-- A G and an H built out of one circle, after the Figma drawing.
+       The ring is open in the top-right quadrant exactly. The H's left stem is
+       the circle's vertical diameter; its right stem comes down from the top and
+       stops at the crossbar, so below the bar the right side is pure arc — that
+       is what keeps the G open instead of boxing it in. The crossbar starts half
+       a radius left of centre and runs out to the stem, doubling as the G's bar,
+       and the arc ends at 3 o'clock right where the two meet.
+       Stems and bar reach the mark's outer edge, so all four extremes sit on one
+       48-unit square centred in the tile; butt caps, so every terminal is either
+       flush with that square or buried under another stroke.
+       No colour of its own: the tile takes the app's --bg, the mark its --text.
+       Keep the numbers in step with scripts/gen-icons.mjs. -->
+  <style>
+    .tile { fill: #f6f7f9 }
+    .mark { stroke: #14161f }
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: #0f1117 }
+      .mark { stroke: #eef0f5 }
+    }
+  </style>
+  <rect class="tile" width="64" height="64" rx="14"/>
+  <g class="mark" fill="none" stroke-width="5">
+    <path d="M32 10.5A21.5 21.5 0 1 0 53.5 32"/>
+    <path d="M32 8V56"/>
+    <path d="M53.5 8V32"/>
+    <path d="M21.25 32H56"/>
   </g>
 </svg>
