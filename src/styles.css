@@ -418,14 +418,18 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .row-drop {
   transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s var(--pan-ease);
 }
-.row-drop .drop-mark { width: 20px; height: 20px; }
+/* overflow visible and an origin in the drawing's own units: a bar is a line
+   with no height at all, and asking a browser to turn it around the centre of
+   its own box (transform-box: fill-box) is asking it to turn around nothing —
+   Safari puts it somewhere else and the svg's edge cuts it off. */
+.row-drop .drop-mark { width: 20px; height: 20px; overflow: visible; }
 .row-drop .bar {
-  transform-box: fill-box; transform-origin: center;
+  transform-origin: 12px 12px;
   transition: transform .34s cubic-bezier(.22, .9, .3, 1.35);
 }
 .row-drop.sure { background: var(--danger); border-color: transparent; color: #fff; transform: scale(1.06); }
-.row-drop.sure .bar.a { transform: rotate(45deg) scale(.78); }
-.row-drop.sure .bar.b { transform: rotate(-45deg) scale(.78); }
+.row-drop.sure .bar.a { transform: rotate(45deg) scale(.86); }
+.row-drop.sure .bar.b { transform: rotate(-45deg) scale(.86); }
 .pack-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pack-foot .muted { margin: 0; }
 .pack-foot .warn { color: var(--accent); }
