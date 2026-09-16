@@ -111,11 +111,14 @@ function distMark(x, y) {
   )
 }
 
-function makeIcon(size, { rounded, scale = 1, palette = DARK }) {
+// Always square, always opaque, corner to corner. iOS and Android round the
+// icon with their own mask; an icon that ships with its corners already cut has
+// transparent ones, and they come back as white slivers wherever the platform's
+// curve does not match the one baked into the png.
+function makeIcon(size, { scale = 1, palette = DARK } = {}) {
   const buf = Buffer.alloc(size * size * 4)
   const unit = size / GRID           // one grid unit, in pixels
   const half = (STROKE / 2) * unit
-  const radius = size * 0.22
   const aa = 0.8                     // edge softening, in pixels
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -133,18 +136,6 @@ function makeIcon(size, { rounded, scale = 1, palette = DARK }) {
         b = Math.round(b + (palette.fg[2] - b) * k)
       }
 
-      // rounded corners (alpha) for the "any" icons; maskable stays full-bleed
-      if (rounded) {
-        const insetX = Math.min(x, size - 1 - x)
-        const insetY = Math.min(y, size - 1 - y)
-        if (insetX < radius && insetY < radius) {
-          const dcx = radius - insetX
-          const dcy = radius - insetY
-          const dd = Math.sqrt(dcx * dcx + dcy * dcy)
-          if (dd > radius) a = 0
-          else if (dd > radius - 1.5) a = Math.round(255 * (radius - dd) / 1.5)
-        }
-      }
       const i = (y * size + x) * 4
       buf[i] = r; buf[i + 1] = g; buf[i + 2] = b; buf[i + 3] = a
     }
@@ -152,9 +143,11 @@ function makeIcon(size, { rounded, scale = 1, palette = DARK }) {
   return encodePNG(size, size, buf)
 }
 
-writeFileSync(join(OUT, 'icon-192.png'), makeIcon(192, { rounded: true }))
-writeFileSync(join(OUT, 'icon-512.png'), makeIcon(512, { rounded: true }))
+writeFileSync(join(OUT, 'icon-192.png'), makeIcon(192))
+writeFileSync(join(OUT, 'icon-512.png'), makeIcon(512))
+// iOS asks for 180 and resamples anything else; give it that size exactly.
+writeFileSync(join(OUT, 'apple-touch-icon.png'), makeIcon(180))
 // Android may mask a maskable icon down to a circle: keep the mark inside the
 // safe zone (the middle 80%) instead of letting the stems get clipped.
-writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { rounded: false, scale: 0.78 }))
+writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { scale: 0.78 }))
 console.log('Icons written to', OUT)
