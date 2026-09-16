@@ -14,8 +14,9 @@
 // small file — cheap enough to do often, rare enough not to matter.
 
 const EVERY = 30 * 60 * 1000       // while the app stays open
+const GIVE_UP = 2500                // how long we wait for the worker to hand over
 let waiting = null                  // the update, ready and held back
-let apply = null                    // takes it, and reloads
+let reg = null                      // the registration, to talk to the worker waiting in it
 const watchers = new Set()
 
 const announce = () => { for (const fn of watchers) fn(!!waiting) }
@@ -29,11 +30,22 @@ export function onUpdate(fn) {
 
 export const isReady = () => !!waiting
 
-// Take it. The page reloads, so nothing after this runs.
+// Take it. Either way this ends in a reload — that is the whole promise of the
+// button, and a button that sometimes does nothing is worse than no button.
+//
+// The worker waiting in the registration is asked to step forward, and the page
+// reloads when it takes over. It may not: if it had already been activated by
+// the time you tapped (the old build did that on its own), nothing hands over
+// and no event ever comes. So there's a deadline, and past it we reload anyway —
+// by then the new files are the ones being served regardless.
 export function update() {
-  if (!waiting || !apply) return
   waiting = false
-  apply(true)
+  announce()
+  const pending = reg && reg.waiting
+  if (!pending) { location.reload(); return }
+  navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true })
+  pending.postMessage({ type: 'SKIP_WAITING' })
+  setTimeout(() => location.reload(), GIVE_UP)
 }
 
 export async function startUpdates() {
@@ -45,11 +57,12 @@ export async function startUpdates() {
     ;({ registerSW } = await import('virtual:pwa-register'))
   } catch { return }
 
-  apply = registerSW({
+  registerSW({
     immediate: true,
     onNeedRefresh() { waiting = true; announce() },
     onRegisteredSW(url, registration) {
       if (!registration) return
+      reg = registration
       const look = () => { if (navigator.onLine) registration.update().catch(() => {}) }
       setInterval(look, EVERY)
       // coming back to the app is the likeliest moment for it to have aged

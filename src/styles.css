@@ -301,7 +301,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .update-bar {
   position: absolute; z-index: 4;
   left: 50%; transform: translateX(-50%);
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  /* On a phone the home indicator already owns the bottom strip, so its inset is
+     the gap — adding our own on top parked the pill three times too high. On
+     anything without an indicator the 14px is the gap. */
+  bottom: max(14px, env(safe-area-inset-bottom));
   display: flex; align-items: center; gap: 12px;
   padding: 8px 8px 8px 16px;
   border-radius: 999px;
