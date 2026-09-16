@@ -6,7 +6,7 @@ import { deflateSync } from 'node:zlib'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { GRID, params, rounded, distanceField, toSVG, toOutlineSVG } from './logo.mjs'
+import { GRID, params, distanceField, toSVG, toOutlineSVG } from './logo.mjs'
 
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const OUT = join(PUBLIC, 'icons')
@@ -112,9 +112,5 @@ writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { scale: 0.78 }))
 // once they are rounded, because a fillet belongs to no single stroke.
 const svg = p => (p.fillet > 0 ? toOutlineSVG(p) : toSVG(p))
 writeFileSync(join(PUBLIC, 'favicon.svg'), svg(params))
-
-// The variant nothing points at yet, for comparing on a real screen.
-writeFileSync(join(PUBLIC, 'favicon-rounded.svg'), svg(rounded))
-writeFileSync(join(OUT, 'rounded-512.png'), makeIcon(512, { palette: paletteOf(rounded), field: distanceField(rounded), half: rounded.stroke / 2 }))
 
 console.log('Icone e favicon riscritte da scripts/logo.mjs')

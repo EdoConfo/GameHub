@@ -25,7 +25,12 @@ export const params = {
   openFrom: -90,    // the ring's gap starts here (-90 = noon)
   openTo: 0,        // ...and ends here (0 = 3 o'clock). Widen it and the G opens up
   rightStemTo: 0,   // how far the right stem runs below centre, in radii (0 = stops on the bar, 1 = full height)
-  fillet: 0,        // rounds the inside corners where two lines meet, roughly this radius. 0 = sharp
+  // Rounds the inside corners where two lines meet, roughly this radius; 0 keeps
+  // them sharp, which is what the mark ships with. Set it and run `npm run icons`
+  // and everything follows — the generator switches the favicon from four
+  // strokes to a traced outline on its own, because a fillet belongs to no
+  // single stroke. 2 is about the most the counters take before they close up.
+  fillet: 0,
 
   // --- shape of the tile the mark sits on ---
   tileRadius: 14,   // corner rounding of the favicon's tile. The phone icons are square: iOS and Android round them themselves
@@ -151,12 +156,6 @@ export function distanceField(p = params) {
     return d
   }
 }
-
-// A second mark to look at, kept alongside the one in use: the same drawing with
-// its inside corners rounded off. Nothing points at it — it exists to be
-// compared. To adopt it, set `fillet` in params above and run `npm run icons`;
-// everything, favicon included, follows from that one number.
-export const rounded = { ...params, fillet: 2 }
 
 // The favicon: one tile, four strokes, and a media query so the mark follows the
 // reader's theme instead of carrying a colour of its own. Valid only while the
