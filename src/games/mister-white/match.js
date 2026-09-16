@@ -280,8 +280,14 @@ export function start(api) {
   const pairs = packs.enabledItems()
   if (!validateSetup(people.length, counts).ok || !pairs.length) { api.toTable(); return }
   const pair = pairs[Math.floor(Math.random() * pairs.length)]
+  // The extras are a choice for this match, not a setting: they're spent when
+  // the roles go out, and the next table comes up with all three off the way it
+  // starts. Cleared after the checks above, so a start that couldn't happen
+  // doesn't quietly throw away what you picked.
+  const extras = loadExtras(ctx)
+  ctx.storage.set(EXTRAS_KEY, {})
   Object.assign(state, {
-    round: assignExtras(buildRound(people, pair, counts), loadExtras(ctx)),
+    round: assignExtras(buildRound(people, pair, counts), extras),
     dealIndex: 0, revealed: false, winner: null, mrWhiteGuess: null, recorded: false, lastOut: null, lastDead: null
   })
   api.goPhase('deal')
