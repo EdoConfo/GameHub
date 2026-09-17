@@ -298,8 +298,11 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 /* "New version", offered in the hub. Low and out of the way: it's news, not a
    demand, and ignoring it has to stay comfortable. */
+/* Above the drawer (4), under the scrim (6) and the sheet (7) that a panel
+   brings up: a panel asking something darkens the pill with everything else,
+   instead of leaving it lit on top of the question. Modal sheets (50) likewise. */
 .update-bar {
-  position: absolute; z-index: 4;
+  position: absolute; z-index: 5;
   left: 50%;
   /* On a phone the home indicator already owns the bottom strip, so its inset is
      the gap — adding our own on top parked the pill three times too high. On
@@ -328,6 +331,16 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   transition: opacity .26s ease, transform .34s cubic-bezier(.22,.61,.36,1), visibility 0s;
 }
 .update-bar .btn { padding: 7px 16px; font-size: 13px; }
+/* at the table: standing on the drawer's top edge */
+.canvas.docked .update-bar { bottom: calc(var(--dock) + 12px); }
+/* A panel open over the drawer asks something of its own. The table's scrim
+   is clear, so the pill would stay lit on top of it and not answer a tap —
+   it steps aside instead, the same way it leaves, and comes back after. */
+.canvas:has(.sheet-scrim.on) .update-bar.on {
+  opacity: 0; transform: translate(-50%, 28px);
+  visibility: hidden; pointer-events: none;
+  transition: opacity .26s ease, transform .34s cubic-bezier(.22,.61,.36,1), visibility 0s linear .34s;
+}
 
 
 /* ---- Sections ---- */
@@ -886,12 +899,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 /* Catches the touch that lands outside the sheet, so it closes instead of
    reaching the table. Invisible on purpose: the table below stays readable —
    it's the thing you came here to set up. */
-.sheet-scrim { position: absolute; inset: 0; z-index: 5; display: none; }
+.sheet-scrim { position: absolute; inset: 0; z-index: 6; display: none; }
 .sheet-scrim.on { display: block; }
 /* It covers the table rather than squeezing it, so it may grow well past the
    drawer's 66% — up to just under the header, which stays reachable. Past that
    the sheet's own body scrolls. */
-.drawer.sheet { z-index: 6; max-height: 88%; }
+.drawer.sheet { z-index: 7; max-height: 88%; }
 .drawer.sheet.open { transition: transform .38s var(--pan-ease), height .38s var(--pan-ease); }
 
 .drawer.sheet .drawer-page { flex: 1; }

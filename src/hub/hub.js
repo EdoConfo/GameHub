@@ -481,6 +481,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     canvas.classList.add('tabling')
     circleB.style.visibility = 'hidden' // the table's own circle takes over, same place
     table = openTableScene(canvas, header, ctx, game, { from: morph ? circleBOnScreen() : null })
+    dockAbove(canvas.querySelector('.drawer:not(.sheet)'))
     syncHash()
     renderHeader()
   }
@@ -493,6 +494,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     if (!table) return
     const t = table
     table = null
+    dockAbove(null)
     canvas.classList.remove('tabling')
     syncHash()
     renderHeader()
@@ -579,6 +581,29 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     })
   ])
   canvas.append(bar)
+  // At the table the bottom belongs to the drawer — Inizia sits exactly where
+  // the pill would. So there the pill stands on the drawer's top edge instead,
+  // and follows it as it opens, folds under a finger, or leaves. It covers the
+  // table, never the drawer's controls, and nothing underneath moves for it.
+  let dockWatch = null
+  function dockAbove(drawer) {
+    if (dockWatch) { dockWatch(); dockWatch = null }
+    if (!drawer) { canvas.classList.remove('docked'); canvas.style.removeProperty('--dock'); return }
+    const place = () => {
+      const covered = Math.max(0, canvas.getBoundingClientRect().bottom - drawer.getBoundingClientRect().top)
+      canvas.style.setProperty('--dock', covered + 'px')
+      canvas.classList.toggle('docked', covered > 0)
+    }
+    const ro = new ResizeObserver(place)
+    ro.observe(drawer, { box: 'border-box' })
+    // sliding in and out moves it without resizing it
+    drawer.addEventListener('transitionend', place)
+    let frames = 30
+    const settle = () => { place(); if (--frames > 0) requestAnimationFrame(settle) }
+    requestAnimationFrame(settle)
+    dockWatch = () => { ro.disconnect(); drawer.removeEventListener('transitionend', place) }
+  }
+
   function paintBar() {
     const kind = appReady ? 'app' : wordsReady && !taking ? 'words' : null
     if (kind) label.textContent = t(kind === 'app' ? 'update.ready' : 'update.words')
