@@ -1,18 +1,22 @@
--- GameHub · il Base con le lingue affiancate
+-- GameHub · the Base with languages side by side
 --
--- Prima: una riga per coppia e per lingua (mw_base_pairs), con liste
--- indipendenti — una lingua poteva avere più coppie di un'altra.
--- Ora: una riga per coppia, con tutte le sue traduzioni (mw_base). Ogni colonna
--- è obbligatoria, quindi una coppia esiste in tutte le lingue o non esiste: il
--- numero di coppie è lo stesso in ogni lingua per costruzione.
+-- Only for a database created before this change. A new database gets mw_base
+-- straight from schema.sql and never had the old table: skip this file.
 --
--- Da incollare nell'editor SQL, una volta. Non contiene parole: le copia dalla
--- tabella esistente, abbinando le due lingue per posizione (la prima coppia
--- italiana con la prima inglese, e così via). Una coppia che esiste in una sola
--- lingua resta fuori. Si può rieseguire: se mw_base ha già righe, non copia.
+-- Before: one row per pair and per language (mw_base_pairs), with independent
+-- lists — one language could have more pairs than another.
+-- Now: one row per pair, with all its translations (mw_base). Every column is
+-- required, so a pair exists in all languages or not at all: the number of
+-- pairs is the same in every language by construction.
 --
--- La tabella vecchia resta com'è finché l'app non è passata a quella nuova;
--- poi si toglie con: drop table public.mw_base_pairs;
+-- Paste into the SQL editor, once. It contains no words: it copies them from
+-- the existing table, matching the two languages by position (the first Italian
+-- pair with the first English one, and so on). A pair that exists in only one
+-- language is left out. Safe to run again: if mw_base already has rows, it
+-- doesn't copy.
+--
+-- The old table stays as it is until the app has moved to the new one; then
+-- remove it with: drop table public.mw_base_pairs;
 
 create table if not exists public.mw_base (
   id             bigint generated always as identity primary key,
@@ -25,8 +29,8 @@ create table if not exists public.mw_base (
   unique (civilian_en, undercover_en)
 );
 
--- Il contatore sale anche per questa tabella (la funzione è quella di
--- schema.sql). Creato prima della copia, così la copia stessa lo fa salire.
+-- The counter goes up for this table too (the function is the one in
+-- schema.sql). Created before the copy, so the copy itself bumps it.
 drop trigger if exists mw_base_revision on public.mw_base;
 create trigger mw_base_revision
 after insert or update or delete or truncate on public.mw_base
@@ -41,7 +45,7 @@ join (select civilian, undercover, row_number() over (order by id) as n
 where not exists (select 1 from public.mw_base)
 order by n;
 
--- Stesse regole della tabella vecchia: la chiave dell'app legge e basta.
+-- Same rules as the old table: the app's key can only read.
 alter table public.mw_base enable row level security;
 
 drop policy if exists "lettura libera" on public.mw_base;
@@ -51,10 +55,10 @@ create policy "lettura libera" on public.mw_base
 grant select on public.mw_base to anon, authenticated;
 revoke insert, update, delete, truncate on public.mw_base from anon, authenticated;
 
--- Quante ne sono passate, e quali sono rimaste fuori perché senza traduzione.
-select count(*) as coppie_nella_tabella_nuova from public.mw_base;
+-- How many made it across, and which were left out for lack of a translation.
+select count(*) as pairs_in_new_table from public.mw_base;
 
-select p.lang, p.civilian, p.undercover as rimaste_fuori
+select p.lang, p.civilian, p.undercover as left_out
 from public.mw_base_pairs p
 where not exists (
   select 1 from public.mw_base b

@@ -1,26 +1,35 @@
 -- GameHub · database
 --
--- Il pacchetto Base di Mister White vive qui invece che nel codice pubblico.
--- L'app lo legge soltanto: lo scarica, lo tiene sul telefono per giocare senza
--- rete, e si accorge da sola quando cambia. Lo modifica solo chi ha accesso al
--- pannello di Supabase.
+-- Mister White's Base pack lives here instead of in the public code.
+-- The app only reads it: it downloads it, keeps it on the phone to play without
+-- a network, and notices by itself when it changes. Only someone with access to
+-- the Supabase dashboard can edit it.
 --
--- Da incollare nell'editor SQL di Supabase. Si può rieseguire: non duplica
--- niente e non cancella dati.
+-- Paste into the Supabase SQL editor. Safe to run again: it doesn't duplicate
+-- anything and doesn't delete data.
+--
+-- A database created before the languages were side by side has the old
+-- mw_base_pairs table instead: 002-languages-side-by-side.sql moves it over.
 
--- Le coppie, una riga per coppia e per lingua.
-create table if not exists public.mw_base_pairs (
-  id          bigint generated always as identity primary key,
-  lang        text not null check (lang in ('it', 'en')),
-  civilian    text not null check (length(trim(civilian)) > 0),
-  undercover  text not null check (length(trim(undercover)) > 0),
-  created_at  timestamptz not null default now(),
-  unique (lang, civilian, undercover)
+-- The pairs: one row per pair, with every language in it. Every column is
+-- required, so a pair exists in all languages or not at all: every language
+-- has the same number of pairs by construction.
+-- Adding a language means two more columns here, and in LANGS in the app
+-- (src/shared/i18n.js).
+create table if not exists public.mw_base (
+  id             bigint generated always as identity primary key,
+  civilian_it    text not null check (length(trim(civilian_it)) > 0),
+  undercover_it  text not null check (length(trim(undercover_it)) > 0),
+  civilian_en    text not null check (length(trim(civilian_en)) > 0),
+  undercover_en  text not null check (length(trim(undercover_en)) > 0),
+  created_at     timestamptz not null default now(),
+  unique (civilian_it, undercover_it),
+  unique (civilian_en, undercover_en)
 );
 
--- Un contatore per pacchetto. L'app confronta il suo con quello salvato: se è
--- cambiato, c'è da riscaricare. Leggere un numero costa niente; riscaricare
--- centinaia di coppie ogni minuto no.
+-- One counter per pack. The app compares it with the one it saved: if it
+-- changed, there's something to download again. Reading a number costs
+-- nothing; downloading hundreds of pairs every minute doesn't.
 create table if not exists public.pack_revisions (
   pack        text primary key,
   revision    bigint not null default 0,
@@ -30,9 +39,9 @@ create table if not exists public.pack_revisions (
 insert into public.pack_revisions (pack) values ('mw-base')
 on conflict (pack) do nothing;
 
--- Qualunque modifica alle coppie — aggiunta, correzione, cancellazione, anche
--- svuotare la tabella — fa salire il contatore. Una volta per operazione, non
--- per riga: togliere cento coppie insieme è un solo aggiornamento.
+-- Any change to the pairs — adding, fixing, deleting, even emptying the table —
+-- raises the counter. Once per statement, not per row: removing a hundred pairs
+-- at once is a single bump.
 create or replace function public.bump_mw_base_revision()
 returns trigger
 language plpgsql
@@ -48,26 +57,28 @@ $$;
 
 revoke execute on function public.bump_mw_base_revision() from public, anon, authenticated;
 
-drop trigger if exists mw_base_pairs_revision on public.mw_base_pairs;
-create trigger mw_base_pairs_revision
-after insert or update or delete or truncate on public.mw_base_pairs
+drop trigger if exists mw_base_revision on public.mw_base;
+create trigger mw_base_revision
+after insert or update or delete or truncate on public.mw_base
 for each statement execute function public.bump_mw_base_revision();
 
--- Accesso. Le regole valgono per la chiave pubblica che sta nell'app: può solo
--- leggere. Scrivere si può soltanto dal pannello, che le regole le scavalca.
-alter table public.mw_base_pairs  enable row level security;
+-- Access. The rules apply to the public key shipped in the app: it can only
+-- read. Writing is only possible from the dashboard, which bypasses the rules.
+-- (Policy names are kept as they are in the live database, so reruns replace
+-- them instead of adding a second one.)
+alter table public.mw_base        enable row level security;
 alter table public.pack_revisions enable row level security;
 
-drop policy if exists "lettura libera" on public.mw_base_pairs;
-create policy "lettura libera" on public.mw_base_pairs
+drop policy if exists "lettura libera" on public.mw_base;
+create policy "lettura libera" on public.mw_base
   for select to anon, authenticated using (true);
 
 drop policy if exists "lettura libera" on public.pack_revisions;
 create policy "lettura libera" on public.pack_revisions
   for select to anon, authenticated using (true);
 
--- Il progetto non espone le tabelle da solo: si concede esplicitamente, e
--- soltanto la lettura.
+-- The project doesn't expose tables on its own: access is granted explicitly,
+-- and only for reading.
 grant usage on schema public to anon, authenticated;
-grant select on public.mw_base_pairs, public.pack_revisions to anon, authenticated;
-revoke insert, update, delete, truncate on public.mw_base_pairs, public.pack_revisions from anon, authenticated;
+grant select on public.mw_base, public.pack_revisions to anon, authenticated;
+revoke insert, update, delete, truncate on public.mw_base, public.pack_revisions from anon, authenticated;
