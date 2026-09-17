@@ -9,7 +9,14 @@
 //
 // A first download is never asked about: an app with no copy at all simply
 // fetches it. The question only makes sense once there's something to replace.
+//
+// The copy lives in IndexedDB, not localStorage. It used to be localStorage,
+// and on a phone whose storage was full the new copy failed to save without a
+// word: the pill went away, the count stayed where it was, and reopening the app
+// brought the old copy straight back. It's read into memory once at startup
+// (hydrateRemotePacks), so everything that asks for it stays synchronous.
 import * as storage from './storage.js'
+import { idbGet, idbSet } from './idb.js'
 import { rest } from './supabase.js'
 
 const EVERY = 60 * 1000             // while the app is on screen
@@ -32,9 +39,10 @@ export function onWordsUpdate(fn) {
 //   select: the columns to fetch
 //   build: rows -> the pack, in the shape packStore reads
 export function remotePack({ key, table, select, build }) {
-  const STORE = 'remote:' + key
+  const SHELF = 'remote:' + key         // the IndexedDB key, and the old localStorage one
   const changed = new Set()
-  let memo = null
+  let copy = null                       // { revision, pack }, as it is on the phone
+  let hydrated = false
 
   async function revision() {
     const rows = await rest(`pack_revisions?pack=eq.${encodeURIComponent(key)}&select=revision`)
@@ -55,13 +63,24 @@ export function remotePack({ key, table, select, build }) {
 
     // What's on the phone, in the shape the store wants. Null until the first
     // download has happened.
-    get() {
-      const saved = storage.get(STORE, null)
-      if (!saved || !saved.pack) return null
-      if (!memo || memo.revision !== saved.revision) memo = { revision: saved.revision, pack: saved.pack }
-      return memo.pack
+    get() { return copy ? copy.pack : null },
+    has() { return !!copy },
+
+    // Read the copy off the phone. A copy still sitting in localStorage from an
+    // older version is moved over, and its room given back.
+    async hydrate() {
+      let saved = null
+      try { saved = await idbGet(SHELF) } catch { /* no IndexedDB: fall back below */ }
+      if (!saved) {
+        const old = storage.get(SHELF, null)
+        if (old && old.pack) {
+          saved = old
+          try { await idbSet(SHELF, old); storage.remove(SHELF) } catch { /* keep it where it is */ }
+        }
+      }
+      if (saved && saved.pack) copy = saved
+      hydrated = true
     },
-    has() { return !!storage.get(STORE, null) },
 
     // Tell me when the copy on the phone has been replaced.
     onChange(fn) { changed.add(fn); return () => changed.delete(fn) },
@@ -69,24 +88,28 @@ export function remotePack({ key, table, select, build }) {
     // Is the database ahead of us? Offline, or the database unreachable: say
     // nothing and try again later.
     async check() {
+      if (!hydrated) return
       let live
       try { live = await revision() } catch { return }
       if (live == null) return
-      const saved = storage.get(STORE, null)
-      if (!saved) { await src.refresh().catch(() => {}); return }
+      if (!copy) { await src.refresh().catch(() => {}); return }
       const was = src.behind
-      src.behind = saved.revision !== live
+      src.behind = copy.revision !== live
       if (src.behind !== was) announce()
     },
 
     // Replace the copy on the phone with the database's. The revision is read
     // first: if the pack changes while we download, the number we save is the
     // older one, and the next check simply offers the update again.
+    //
+    // Saved first, then used: if the phone can't keep it, this throws and the
+    // pack stays behind, so the pill comes back instead of pretending.
     async refresh() {
       const live = await revision()
       const rows = await download()
-      storage.set(STORE, { revision: live, pack: build(rows) })
-      memo = null
+      const next = { revision: live, pack: build(rows) }
+      await idbSet(SHELF, next)
+      copy = next
       src.behind = false
       announce()
       for (const fn of changed) fn()
@@ -96,11 +119,20 @@ export function remotePack({ key, table, select, build }) {
   return src
 }
 
-// Catch up every pack that's behind. Resolves when they're all done; a pack
-// that fails stays behind, and the pill comes back to say so.
+// Catch up every pack that's behind. A pack that fails stays behind, and the
+// pill comes back; the reason is returned so it can be said out loud.
+//   -> null when everything caught up, otherwise the first error
 export async function refreshWords() {
-  await Promise.all(sources.filter(s => s.behind).map(s => s.refresh().catch(() => {})))
+  let failure = null
+  await Promise.all(sources.filter(s => s.behind).map(s => s.refresh().catch(e => { failure = failure || e })))
   announce()
+  return failure
+}
+
+// Load every copy off the phone. Done before the first screen is drawn, so the
+// packs are there from the start.
+export function hydrateRemotePacks() {
+  return Promise.all(sources.map(s => s.hydrate()))
 }
 
 export function startRemotePacks() {

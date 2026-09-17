@@ -1,4 +1,4 @@
-import { el, icon, button, modal } from '../shared/ui.js'
+import { el, icon, button, modal, toast } from '../shared/ui.js'
 import { t, langName, cycleLang } from '../shared/i18n.js'
 import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
@@ -559,9 +559,11 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
         if (appReady) { update(); return }
         taking = true
         paintBar()
-        await refreshWords()
+        const failure = await refreshWords()
         taking = false
         paintBar()
+        // stays behind, so the pill is back — and here's why
+        if (failure) toast(t('update.wordsFailed', { reason: failure.name === 'QuotaExceededError' ? t('storage.fullShort') : (failure.message || failure.name) }))
       }
     })
   ])

@@ -13,10 +13,18 @@ try {
   available = false
 }
 
+// Told once, when a write doesn't fit. Until then a full storage was silent:
+// the value went to memory and the next read went to localStorage, which still
+// held the old one — the write looked done and simply wasn't.
+const fullWatchers = new Set()
+let warned = false
+export function onStorageFull(fn) { fullWatchers.add(fn); return () => fullWatchers.delete(fn) }
+
 export function get(key, fallback = null) {
   const full = PREFIX + key
   try {
-    const raw = available ? localStorage.getItem(full) : memory.get(full)
+    // A value that couldn't be written out is still the newest one this session.
+    const raw = memory.has(full) ? memory.get(full) : available ? localStorage.getItem(full) : null
     if (raw == null) return fallback
     return JSON.parse(raw)
   } catch {
@@ -24,24 +32,26 @@ export function get(key, fallback = null) {
   }
 }
 
+// -> true when the value is actually stored, false when it only lives in memory
+// for this session (storage disabled, or full).
 export function set(key, value) {
-  const full = PREFIX + key
+  const name = PREFIX + key
   const raw = JSON.stringify(value)
+  if (!available) { memory.set(name, raw); return false }
   try {
-    if (available) localStorage.setItem(full, raw)
-    else memory.set(full, raw)
+    localStorage.setItem(name, raw)
+    memory.delete(name)
+    return true
   } catch {
-    // Quota or serialization issue: keep in memory so the session still works.
-    memory.set(full, raw)
+    // Most likely full. Keep it for this session, and say so once.
+    memory.set(name, raw)
+    if (!warned) { warned = true; for (const fn of fullWatchers) fn() }
+    return false
   }
 }
 
 export function remove(key) {
-  const full = PREFIX + key
-  try {
-    if (available) localStorage.removeItem(full)
-    else memory.delete(full)
-  } catch {
-    memory.delete(full)
-  }
+  const name = PREFIX + key
+  memory.delete(name)
+  try { if (available) localStorage.removeItem(name) } catch { /* nothing to free */ }
 }

@@ -7,10 +7,12 @@ import * as stats from './shared/stats.js'
 import { renderHub } from './hub/hub.js'
 import { openPlayerCard } from './hub/playerCard.js'
 import { getGame } from './games/registry.js'
-import { clear, el } from './shared/ui.js'
+import { clear, el, toast } from './shared/ui.js'
 import { applyTheme, getTheme, watchSystem } from './shared/theme.js'
+import { t } from './shared/i18n.js'
 import { startUpdates } from './shared/update.js'
-import { startRemotePacks } from './shared/remotePacks.js'
+import { startRemotePacks, hydrateRemotePacks } from './shared/remotePacks.js'
+import { onStorageFull } from './shared/storage.js'
 
 const root = document.getElementById('app')
 
@@ -36,9 +38,9 @@ watchSystem()
 // Watch for a new build. Nothing happens on its own: it only lights the button
 // in the hub, and only the hub is ever a safe place to take it.
 startUpdates()
-// And the word packs that live in the database: fetched the first time, then
-// only offered again when the database has moved on.
-startRemotePacks()
+
+// A save that doesn't fit used to vanish without a word. Now it's said, once.
+onStorageFull(() => toast(t('storage.full')))
 
 // Shared services handed to every game. Word packs are NOT here: each game
 // owns and manages its own packs (see games/<id>/packs.js).
@@ -125,10 +127,20 @@ router.on('/:game', ({ game }) => {
 
 router.setNotFound(() => router.go('/'))
 
-router.start()
+// The word packs that live in the database are read off the phone before the
+// first screen, so Base is there from the first frame. A slow or broken
+// IndexedDB mustn't hold the app hostage: past a moment it starts anyway, and
+// the packs show up when they arrive.
+const packsReady = hydrateRemotePacks().catch(() => {})
+Promise.race([packsReady, new Promise(r => setTimeout(r, 1200))]).then(() => {
+  router.start()
+  // then fetch them the first time, or offer them again when the database
+  // has moved on
+  packsReady.then(() => startRemotePacks())
 
-// The first layout is done; from here on things may move. Three frames, because
-// the hub measures once now and again on the next frame, and that second pass
-// must not animate either.
-requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() =>
-  document.documentElement.classList.remove('booting'))))
+  // The first layout is done; from here on things may move. Three frames,
+  // because the hub measures once now and again on the next frame, and that
+  // second pass must not animate either.
+  requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.documentElement.classList.remove('booting'))))
+})
