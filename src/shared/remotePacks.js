@@ -44,7 +44,9 @@ export function remotePack({ key, table, select, build }) {
   // wrong pairs under the right revision (the Safari download above), and a
   // matching revision would never be questioned — so they count as no copy, and
   // are fetched again without asking.
-  const FORMAT = 2
+  // 3: one row per pair, every language in it (the copies before were built
+  // from a table where the languages could drift apart)
+  const FORMAT = 3
   const changed = new Set()
   let copy = null                       // { revision, pack }, as it is on the phone
   let hydrated = false

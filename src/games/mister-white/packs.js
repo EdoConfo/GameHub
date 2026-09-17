@@ -2,17 +2,24 @@
 // Each pack file carries one list per language (see shared/packStore.js).
 import { createPackStore } from '../../shared/packStore.js'
 import { remotePack } from '../../shared/remotePacks.js'
+import { LANGS } from '../../shared/i18n.js'
 
 // Base comes from the database, not from the code: its words aren't in the
 // public repository, and they can be revised without shipping a new version.
+//
+// One row is one pair, in every language at once — civilian_it, undercover_it,
+// civilian_en, … — and the database won't take a row with a language missing.
+// So every language has the same pairs, the same count, and the same game.
 const base = remotePack({
   key: 'mw-base',
-  table: 'mw_base_pairs',
-  select: 'lang,civilian,undercover',
+  table: 'mw_base',
+  select: LANGS.flatMap(l => [`civilian_${l}`, `undercover_${l}`]).join(','),
   build(rows) {
-    const pairs = {}
-    for (const r of rows) (pairs[r.lang] = pairs[r.lang] || []).push({ civilian: r.civilian, undercover: r.undercover })
-    return { id: 'base', icon: 'words', name: { it: 'Base', en: 'Base' }, pairs }
+    const pairs = Object.fromEntries(LANGS.map(l => [l, []]))
+    for (const r of rows) {
+      for (const l of LANGS) pairs[l].push({ civilian: r[`civilian_${l}`], undercover: r[`undercover_${l}`] })
+    }
+    return { id: 'base', icon: 'words', name: Object.fromEntries(LANGS.map(l => [l, 'Base'])), pairs }
   }
 })
 
