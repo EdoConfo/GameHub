@@ -38,4 +38,13 @@ const codec = {
   }
 }
 
-export default createPackStore({ namespace: 'mister-white', bundledModules: modules, codec })
+// One built-in pack, Base, holding every pair the game ships with. It used to be
+// five themed ones — Animali, Cibo, Film… — and picking one told the whole table
+// what the word was about, which hands Mister White, the one player without a
+// word, most of the answer. A pool with no theme gives nothing away. Your own
+// packs still sit beside it, and can still be switched on for a match.
+export default createPackStore({
+  namespace: 'mister-white', bundledModules: modules, codec,
+  lockBundled: true,
+  legacyIds: { from: ['default', 'animali', 'cibo', 'film', 'sport'], to: 'base' }
+})

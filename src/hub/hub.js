@@ -294,7 +294,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       id: p.id,
       title: p.name,
       sub: `${p.items.length} ${store.unit}` +
-        (p.custom ? t('packs.tagCustom') : p.modified ? t('packs.tagModified') : ''),
+        (p.custom ? t('packs.tagCustom') : p.locked ? t('packs.tagLocked') : p.modified ? t('packs.tagModified') : ''),
       lead: badge(p.icon || 'words')
     }))
     items.push({ id: 'new', title: t('packs.newTitle'), sub: t('packs.newSub'), lead: badge('plus') })
@@ -368,6 +368,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     })
   }
 
+  function openLockedPack(pack, store) {
+    const m = modal({
+      title: pack.name,
+      content: [el('p', { class: 'muted' }, t('packs.locked', { n: pack.items.length, unit: store.unit }))],
+      actions: [button(t('common.done'), { variant: 'ghost', onClick: () => m.close() })]
+    })
+  }
+
   function openRules(section) {
     const m = modal({
       title: section.title,
@@ -405,7 +413,11 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
         const store = game.packs
         if (!store) return
         const again = () => { buildGameSide('words'); renderHeader() }
-        openPackEditor(store, it.id === 'new' ? null : store.getPack(it.id), { onDone: again })
+        const pack = it.id === 'new' ? null : store.getPack(it.id)
+        // A built-in pack is played, not read: its words stay hidden, and the
+        // tap says so rather than doing nothing.
+        if (pack && pack.locked) { openLockedPack(pack, store); return }
+        openPackEditor(store, pack, { onDone: again })
       }
     })
     renderHeader()

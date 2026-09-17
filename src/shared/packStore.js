@@ -21,7 +21,16 @@
 import * as storage from './storage.js'
 import { t, getLang, getLocale } from './i18n.js'
 
-export function createPackStore({ namespace, bundledModules, codec, enableAllByDefault = false, selectable = false }) {
+// lockBundled: the packs that ship with the game can be played but not opened —
+//   their words stay out of sight, so nobody at the table has read them first.
+// legacyIds: built-in pack ids that no longer exist, and the one that replaced
+//   them. A phone that had those switched on gets the replacement instead of an
+//   empty pool.
+export function createPackStore({
+  namespace, bundledModules, codec,
+  enableAllByDefault = false, selectable = false,
+  lockBundled = false, legacyIds = null
+}) {
   const CUSTOM_KEY = `packs:${namespace}:custom`
   const ENABLED_KEY = `packs:${namespace}:enabled`
   const OVERRIDE_KEY = `packs:${namespace}:overrides`
@@ -96,6 +105,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
       langs: Object.keys(pack.byLang),
       items,
       custom: pack.custom,
+      locked: !pack.custom && lockBundled,
       ...extra
     }
   }
@@ -131,7 +141,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
     const over = loadOverrides()
     const out = []
     for (const pack of bundled) {
-      const edit = over[pack.id] && over[pack.id][lang]
+      const edit = !lockBundled && over[pack.id] && over[pack.id][lang]
       if (!edit) { const r = resolve(pack, lang); if (r) out.push(r); continue }
       const items = normalizeItems(edit.items)
       const r = resolve(
@@ -157,7 +167,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
   function defaultEnabled() {
     if (enableAllByDefault) return allPacks().map(p => p.id)
     const list = allPacks()
-    const preferred = list.find(p => p.id === 'default') || list[0]
+    const preferred = list.find(p => p.id === 'default') || list.find(p => !p.custom) || list[0]
     return preferred ? [preferred.id] : []
   }
 
@@ -165,7 +175,16 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
   // that way: switching language and back must not wipe your choices.
   function storedEnabled() {
     const stored = storage.get(ENABLED_KEY, null)
-    return Array.isArray(stored) ? stored : null
+    if (!Array.isArray(stored)) return null
+    if (!legacyIds) return stored
+    // Retired built-in packs are swapped for their replacement, once, and the
+    // swap is written back so it doesn't have to be worked out again.
+    const retired = new Set(legacyIds.from)
+    if (!stored.some(id => retired.has(id))) return stored
+    const kept = stored.filter(id => !retired.has(id))
+    const next = [...new Set([legacyIds.to, ...kept])]
+    storage.set(ENABLED_KEY, next)
+    return next
   }
 
   function enabledIds() {
@@ -302,6 +321,7 @@ export function createPackStore({ namespace, bundledModules, codec, enableAllByD
       return resolve(list[i], lang)
     }
     if (!bundled.some(p => p.id === id)) throw new Error(t('packs.notFound'))
+    if (lockBundled) throw new Error(t('packs.lockedEdit'))
     const over = loadOverrides()
     over[id] = { ...(over[id] || {}), [lang]: { name: clean, items, icon } }
     saveOverrides(over)
