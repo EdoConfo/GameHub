@@ -188,6 +188,17 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     }
   }
 
+  // The build, and the revision of every downloaded word pack: "is this phone
+  // up to date?" answered by reading, for the app and for the words alike.
+  function versionLine() {
+    const parts = [typeof __BUILD__ === 'string' ? __BUILD__ : 'dev']
+    for (const g of games) {
+      const r = g.packs && g.packs.remote
+      if (r) parts.push(t('settings.wordsRev', { n: r.revision() ?? '—' }))
+    }
+    return parts.join(' · ')
+  }
+
   // ---- circle A, left arc: Giocatori / Impostazioni ----
   // The beads of the arc, as data. Read fresh every time: the theme bead shows
   // the theme it will switch AWAY from, the language bead the current language.
@@ -209,7 +220,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           : { id: 'offline', title: t('settings.install'), sub: t('settings.installSub'), lead: badge('offline') },
         // the build this page is running: the only honest answer to "did the
         // update arrive?", readable without guessing
-        { id: 'version', title: t('settings.version'), sub: typeof __BUILD__ === 'string' ? __BUILD__ : 'dev', lead: badge('tag') }
+        { id: 'version', title: t('settings.version'), sub: versionLine(), lead: badge('tag') }
       ]
     }
     const items = ctx.players.all().map(p => ({ id: p.id, title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))
@@ -589,6 +600,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     if (!canvas.isConnected) { offBase.forEach(f => f && f()); return }
     if (index === V_GAME && gameKind === 'words') buildGameSide('words')
     else if (menuWheel) menuWheel.setItems(menuItems())
+    if (sideWheel && sideKind === 'settings') sideWheel.setItems(sideItems('settings'))
   }))
 
   if (startMenuId) {

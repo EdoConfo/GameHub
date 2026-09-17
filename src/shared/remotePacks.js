@@ -40,6 +40,11 @@ export function onWordsUpdate(fn) {
 //   build: rows -> the pack, in the shape packStore reads
 export function remotePack({ key, table, select, build }) {
   const SHELF = 'remote:' + key         // the IndexedDB key, and the old localStorage one
+  // The shape of a saved copy. Copies saved before it existed may hold the
+  // wrong pairs under the right revision (the Safari download above), and a
+  // matching revision would never be questioned — so they count as no copy, and
+  // are fetched again without asking.
+  const FORMAT = 2
   const changed = new Set()
   let copy = null                       // { revision, pack }, as it is on the phone
   let hydrated = false
@@ -49,10 +54,13 @@ export function remotePack({ key, table, select, build }) {
     return rows && rows[0] ? rows[0].revision : null
   }
 
-  async function download() {
+  // Every revision gets its own address: the filter id > -revision matches
+  // every row (ids start at 1) and only exists to make the URL different, so no
+  // cache anywhere can hand back the rows of a revision we're past.
+  async function download(live) {
     const all = []
     for (let from = 0; ; from += PAGE) {
-      const page = await rest(`${table}?select=${select}&order=id`, { range: [from, from + PAGE - 1] })
+      const page = await rest(`${table}?select=${select}&order=id&limit=${PAGE}&offset=${from}&id=gt.-${Number(live) || 0}`)
       all.push(...page)
       if (page.length < PAGE) return all
     }
@@ -65,6 +73,7 @@ export function remotePack({ key, table, select, build }) {
     // download has happened.
     get() { return copy ? copy.pack : null },
     has() { return !!copy },
+    revision() { return copy ? copy.revision : null },
 
     // Read the copy off the phone. A copy still sitting in localStorage from an
     // older version is moved over, and its room given back.
@@ -78,7 +87,7 @@ export function remotePack({ key, table, select, build }) {
           try { await idbSet(SHELF, old); storage.remove(SHELF) } catch { /* keep it where it is */ }
         }
       }
-      if (saved && saved.pack) copy = saved
+      if (saved && saved.pack && saved.format === FORMAT) copy = saved
       hydrated = true
     },
 
@@ -106,8 +115,8 @@ export function remotePack({ key, table, select, build }) {
     // pack stays behind, so the pill comes back instead of pretending.
     async refresh() {
       const live = await revision()
-      const rows = await download()
-      const next = { revision: live, pack: build(rows) }
+      const rows = await download(live)
+      const next = { format: FORMAT, revision: live, pack: build(rows) }
       await idbSet(SHELF, next)
       copy = next
       src.behind = false
