@@ -112,6 +112,9 @@ export function tableOptions(ctx, ui) {
 
   function wordsSummary() {
     const on = packs.enabledPacks()
+    // Base arrives with the first network the app sees. Until then the pool is
+    // empty through nobody's choice, and "choose some" would be the wrong advice.
+    if (!on.length && packs.remote && !packs.remote.has()) return t('mw.opt.baseMissing')
     return !on.length ? t('mw.opt.choose') : on.length === 1 ? on[0].name : t('mw.opt.nPacks', { n: on.length })
   }
 

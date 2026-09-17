@@ -10,6 +10,7 @@ import { getGame } from './games/registry.js'
 import { clear, el } from './shared/ui.js'
 import { applyTheme, getTheme, watchSystem } from './shared/theme.js'
 import { startUpdates } from './shared/update.js'
+import { startRemotePacks } from './shared/remotePacks.js'
 
 const root = document.getElementById('app')
 
@@ -35,6 +36,9 @@ watchSystem()
 // Watch for a new build. Nothing happens on its own: it only lights the button
 // in the hub, and only the hub is ever a safe place to take it.
 startUpdates()
+// And the word packs that live in the database: fetched the first time, then
+// only offered again when the database has moved on.
+startRemotePacks()
 
 // Shared services handed to every game. Word packs are NOT here: each game
 // owns and manages its own packs (see games/<id>/packs.js).

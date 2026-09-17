@@ -4,6 +4,7 @@ import { getTheme, cycleTheme } from '../shared/theme.js'
 import { createArcWheel } from '../shared/arcWheel.js'
 import * as pwa from '../shared/pwa.js'
 import { onUpdate, update } from '../shared/update.js'
+import { onWordsUpdate, refreshWords } from '../shared/remotePacks.js'
 import { openProfileEditor, avatar } from './players.js'
 import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
 import { openPackEditor } from '../shared/packEditor.js'
@@ -542,15 +543,51 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // only here: the hub is the one place where a reload costs nothing. Start a
   // match and this whole scene is torn down, button included — which is exactly
   // the guarantee we want, and it costs no check of its own.
+  //
+  // The same pill says one of two things. A new version of the app wins — it
+  // reloads, and the words are checked again on the way back up — and otherwise
+  // it's the words: the database's Base is ahead of the copy on the phone.
+  // Catching up with those is only data, so the pill slides away at the tap and
+  // nothing reloads; if it fails (no network) it simply comes back.
+  let appReady = false, wordsReady = false, taking = false
+  const label = el('span')
   const bar = el('div', { class: 'update-bar' }, [
-    el('span', {}, t('update.ready')),
-    button(t('update.action'), { variant: 'primary', onClick: () => update() })
+    label,
+    button(t('update.action'), {
+      variant: 'primary',
+      onClick: async () => {
+        if (appReady) { update(); return }
+        taking = true
+        paintBar()
+        await refreshWords()
+        taking = false
+        paintBar()
+      }
+    })
   ])
   canvas.append(bar)
+  function paintBar() {
+    const kind = appReady ? 'app' : wordsReady && !taking ? 'words' : null
+    if (kind) label.textContent = t(kind === 'app' ? 'update.ready' : 'update.words')
+    bar.classList.toggle('on', !!kind)
+  }
   const offUpdate = onUpdate(ready => {
     if (!canvas.isConnected) { offUpdate(); return }
-    bar.classList.toggle('on', ready)
+    appReady = ready
+    paintBar()
   })
+  const offWords = onWordsUpdate(ready => {
+    if (!canvas.isConnected) { offWords(); return }
+    wordsReady = ready
+    paintBar()
+  })
+  // A new copy of a pack changes what the Parole arc shows — how many pairs,
+  // whether Base is there at all.
+  const offBase = games.map(g => g.packs && g.packs.remote && g.packs.remote.onChange(() => {
+    if (!canvas.isConnected) { offBase.forEach(f => f && f()); return }
+    if (index === V_GAME && gameKind === 'words') buildGameSide('words')
+    else if (menuWheel) menuWheel.setItems(menuItems())
+  }))
 
   if (startMenuId) {
     const i = games.findIndex(g => g.id === startMenuId)

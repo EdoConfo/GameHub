@@ -26,19 +26,34 @@ import { t, getLang, getLocale } from './i18n.js'
 // legacyIds: built-in pack ids that no longer exist, and the one that replaced
 //   them. A phone that had those switched on gets the replacement instead of an
 //   empty pool.
+// remote: a built-in pack that comes from the database (see remotePacks.js)
+//   instead of the code. It counts as built-in in every way; it's just absent
+//   until the first download.
 export function createPackStore({
-  namespace, bundledModules, codec,
+  namespace, bundledModules = {}, codec,
   enableAllByDefault = false, selectable = false,
-  lockBundled = false, legacyIds = null
+  lockBundled = false, legacyIds = null, remote = null
 }) {
   const CUSTOM_KEY = `packs:${namespace}:custom`
   const ENABLED_KEY = `packs:${namespace}:enabled`
   const OVERRIDE_KEY = `packs:${namespace}:overrides`
 
-  const bundled = Object.values(bundledModules)
+  const shipped = Object.values(bundledModules)
     .map(m => m.default)
     .map(normalizePack)
     .filter(Boolean)
+
+  // The shipped packs plus the downloaded one, if it's there yet. The download
+  // is normalized once per copy, not on every read: the store is asked for its
+  // packs often, and the Base alone is hundreds of pairs.
+  let remoteRaw = null
+  let remoteNorm = null
+  function bundledPacks() {
+    if (!remote) return shipped
+    const raw = remote.get()
+    if (raw !== remoteRaw) { remoteRaw = raw; remoteNorm = raw ? normalizePack(raw) : null }
+    return remoteNorm ? [...shipped, remoteNorm] : shipped
+  }
 
   // ---- internal shape: { id, names: {lang: str}, byLang: {lang: [items]} } ----
   function normalizePack(raw) {
@@ -140,7 +155,7 @@ export function createPackStore({
     const lang = getLang()
     const over = loadOverrides()
     const out = []
-    for (const pack of bundled) {
+    for (const pack of bundledPacks()) {
       const edit = !lockBundled && over[pack.id] && over[pack.id][lang]
       if (!edit) { const r = resolve(pack, lang); if (r) out.push(r); continue }
       const items = normalizeItems(edit.items)
@@ -320,7 +335,7 @@ export function createPackStore({
       saveCustom(list)
       return resolve(list[i], lang)
     }
-    if (!bundled.some(p => p.id === id)) throw new Error(t('packs.notFound'))
+    if (!bundledPacks().some(p => p.id === id)) throw new Error(t('packs.notFound'))
     if (lockBundled) throw new Error(t('packs.lockedEdit'))
     const over = loadOverrides()
     over[id] = { ...(over[id] || {}), [lang]: { name: clean, items, icon } }
@@ -346,6 +361,7 @@ export function createPackStore({
 
   return {
     namespace,
+    remote,
     selectable, // are packs switched on and off (Heads Up), or picked at the table (Mister White)?
     // live: these follow the interface language
     get unit() { return t(codec.unitKey || 'packs.unit.items') },
