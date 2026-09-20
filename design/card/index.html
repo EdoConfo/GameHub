@@ -203,17 +203,31 @@
     --c-sheen: rgba(255, 255, 255, .85);
   }
 
-  /* --- fronte: solo il marchio e la persona --- */
+  /* --- fronte: il marchio e nient'altro --- */
   .front-grid {
     display: grid;
-    align-content: center;
-    justify-items: start;
-    gap: 4.4cqi;
-    padding: 8cqi 8.5cqi;
+    place-content: center;
+    padding: 8cqi;
   }
-  .wordmark { width: 62cqi; height: auto; display: block; overflow: visible; }
+  .wordmark { width: 100%; height: auto; display: block; overflow: visible; }
   .wordmark .borrowed { color: var(--c-ink); }
   .wordmark .added { color: var(--c-accent); }
+
+  /* Il marchio e le sue ripetizioni che si spengono. */
+  .mark-stack { position: relative; display: block; width: 54cqi; }
+  .mark-stack .ghost {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity .45s ease, transform .45s ease;
+  }
+  .mark-stack .ghost .added { color: var(--c-ink); }  /* l'eco non porta l'accento */
+  /* Le ripetizioni scappano a destra, quindi il blocco si sposta a
+     sinistra di metà corsa per restare otticamente al centro. */
+  .mark-stack { transition: transform .45s ease; }
+  body.echoing .mark-stack { transform: translateX(-7cqi); }
+  body.echoing .mark-stack .g1 { opacity: .20; transform: translateX(7cqi); }
+  body.echoing .mark-stack .g2 { opacity: .08; transform: translateX(14cqi); }
 
   /* «Edoardo Conforti» con in evidenza le lettere che formano il marchio */
   .legal {
@@ -228,14 +242,15 @@
   }
   .legal b { color: var(--c-ink); font-weight: 500; }
 
-  /* --- retro stampato: solo il codice --- */
+  /* --- retro stampato: la persona e il codice --- */
   .back-print {
     display: grid;
-    align-content: center;
+    grid-template-rows: auto 1fr auto;
     justify-items: center;
-    gap: 3.4cqi;
+    gap: 3cqi;
     padding: 7cqi;
   }
+  .back-print .qr-tile { align-self: center; }
   .qr-tile {
     background: var(--c-paper);
     color: #14161f;                 /* i moduli restano scuri su chiaro: */
@@ -260,15 +275,7 @@
     gap: 3cqi;
     padding: 7cqi 8cqi;
   }
-  .back-head { display: flex; align-items: center; justify-content: space-between; gap: 3cqi; }
-  .back-head .wordmark { width: 24cqi; }
-  .back-head .who {
-    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
-    font-size: 2.6cqi;
-    letter-spacing: .18em;
-    text-transform: uppercase;
-    color: var(--c-dim);
-  }
+  .back-head { display: flex; align-items: baseline; justify-content: space-between; gap: 3cqi; }
   .links { display: grid; align-content: center; gap: 2.6cqi; margin: 0; padding: 0; list-style: none; }
   .links li { display: grid; grid-template-columns: 5cqi 1fr; align-items: center; gap: 3.4cqi; }
   .links a {
@@ -432,14 +439,15 @@
 
   <header class="masthead noprint">
     <div>
-      <p class="eyebrow">Identità · v2</p>
+      <p class="eyebrow">Identità · v3</p>
       <h1>Echo</h1>
     </div>
-    <p>Il marchio è già dentro il nome: <b>E</b>doardo <b>CO</b>nforti. Un solo disegno in due materie — inchiostro su carta, luce su vetro.</p>
+    <p>Il fronte porta solo il marchio. Il retro scopre da dove viene: <b>E</b>doardo <b>CO</b>nforti. Un disegno, due materie — inchiostro su carta, luce su vetro.</p>
   </header>
 
   <div class="controls noprint">
     <button class="ctl" id="flipAll" type="button">Gira tutte</button>
+    <button class="ctl" id="echoBtn" type="button" aria-pressed="false">Eco visivo: spento</button>
     <button class="ctl" id="themeBtn" type="button">Tema pagina: auto</button>
     <button class="ctl" id="printBtn" type="button">Stampa gli esecutivi</button>
   </div>
@@ -469,7 +477,7 @@
   <div class="etym noprint">
     <p class="etym-line"><b>E</b>doardo&nbsp;&nbsp;<b>CO</b>nforti</p>
     <p class="etym-line"><b>E</b><b>C</b><i>H</i><b>O</b></p>
-    <p>Tre lettere su quattro sono prese dal nome. La <b style="color:var(--page-accent)">H</b> è l'unica che il nome non contiene: è l'aggiunta, quindi è l'unica colorata. Sul fronte lo stesso codice si ripete — nella riga «EDOARDO CONFORTI» sono in nero solo le lettere prestate al marchio. Chi lo nota lo nota; chi non lo nota vede comunque un biglietto pulito.</p>
+    <p>Tre lettere su quattro sono prese dal nome. La <b style="color:var(--page-accent)">H</b> è l'unica che il nome non contiene: è l'aggiunta, quindi è l'unica colorata. Sul retro lo stesso codice torna al contrario — nella riga «EDOARDO CONFORTI» sono in nero solo le lettere prestate al marchio. Il fronte pone la domanda, il retro la scioglie: chi gira la carta capisce, chi non la gira vede comunque un marchio pulito.</p>
   </div>
 
   <dl class="specs noprint">
@@ -504,6 +512,8 @@
   <h2 class="section noprint">Note di lavorazione</h2>
   <div class="notes noprint">
     <div class="note"><b>Marchio</b><span>ECHO è disegnato a tratto, non composto con un carattere: stesso alfabeto geometrico dell'icona GameHub — tratto 5 su griglia 64, estremità tonde, nessun riempimento. La E e la C sono le stesse forme del monogramma.</span></div>
+    <div class="note"><b>Fronte muto</b><span>Solo il marchio, largo poco più di metà carta. La forza di una facciata sola sta nel silenzio intorno: ingrandire il marchio la indebolisce, non la rafforza. Tutto il resto — nome, codice, indirizzo — sta dietro.</span></div>
+    <div class="note"><b>Eco visivo</b><span>Il bottone accende due ripetizioni che si spengono a destra, come fa un'eco. In stampa non è un secondo colore: sono retini dello stesso inchiostro al 20% e all'8%, quindi non costa una lastra in più. Da valutare a freddo — su carta il rischio è che sembri un errore di registro.</span></div>
     <div class="note"><b>QR su pastiglia</b><span>Sul biglietto nero il codice sta dentro una pastiglia avorio. Un QR invertito (moduli chiari su fondo scuro) manda in crisi parecchi lettori Android: la pastiglia costa 3 mm di spazio e toglie il problema.</span></div>
     <div class="note"><b>Indirizzo sotto il QR</b><span>Hai chiesto nessun contatto in chiaro, e infatti non ci sono né mail né telefono. L'indirizzo sotto il codice non è un contatto, è la scialuppa del QR: se la fotocamera non legge, la carta resta utile. Si toglie mettendo <code>urlSottoQr: false</code>.</span></div>
     <div class="note"><b>Carta vs vetro</b><span>In digitale il QR sparisce — chi ha già lo schermo in mano non inquadra niente — e il retro diventa quattro link cliccabili. Il fronte resta identico nelle due materie.</span></div>
@@ -580,21 +590,27 @@
        aria-label="Codice QR verso ${text}" shape-rendering="crispEdges">${mods}</svg>`;
   }
 
+  /* Il marchio più le sue due ripetizioni che si spengono:
+     restano nel documento e si accendono con «Eco visivo». */
+  const MARK_STACK = `<span class="mark-stack">
+      <span class="ghost g2" aria-hidden="true">${WORDMARK}</span>
+      <span class="ghost g1" aria-hidden="true">${WORDMARK}</span>
+      ${WORDMARK}
+    </span>`;
+
   const FACES = {
-    front: () => `<div class="front-grid">${WORDMARK}${LEGAL}</div>`,
+    front: () => `<div class="front-grid">${MARK_STACK}</div>`,
 
     print: () => `
       <div class="back-print">
+        ${LEGAL}
         <div class="qr-tile">${qrSvg(CARD.siteUrl)}</div>
         ${CARD.urlSottoQr ? `<span class="qr-url">${CARD.site}</span>` : ""}
       </div>`,
 
     digital: () => `
       <div class="back-grid">
-        <div class="back-head">
-          ${WORDMARK}
-          <span class="who">Edoardo Conforti</span>
-        </div>
+        <div class="back-head">${LEGAL}</div>
         <ul class="links">
           ${CARD.links.map(l => `<li>${icon(l.icon)}<a href="${l.href}" target="_blank" rel="noopener noreferrer">${l.label}</a></li>`).join("")}
         </ul>
@@ -645,6 +661,14 @@
     document.querySelectorAll(".tilt").forEach(t => t.flip());
   });
   document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+  /* Eco visivo: il marchio si ripete due volte e si spegne. */
+  const echoBtn = document.getElementById("echoBtn");
+  echoBtn.addEventListener("click", () => {
+    const on = document.body.classList.toggle("echoing");
+    echoBtn.setAttribute("aria-pressed", String(on));
+    echoBtn.textContent = `Eco visivo: ${on ? "acceso" : "spento"}`;
+  });
 
   /* Tema della pagina: auto → chiaro → scuro. Le carte restano
      una chiara e una scura, per confronto. */
