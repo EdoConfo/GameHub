@@ -2,17 +2,16 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=JetBrains+Mono:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=JetBrains+Mono:wght@400..700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.js"></script>
 
 <style>
   /* ============================================================
-     Biglietto da visita — ECHO / Edoardo Conforti
+     Biglietto da visita — echo / Edoardo Conforti
      Il marchio è la sintesi del nome: E(doardo) CO(nforti).
-     La H è l'unica lettera che il nome non contiene: per questo
+     La h è l'unica lettera che il nome non contiene: per questo
      è l'unica colorata.
-     Grammatica grafica ereditata dall'icona GameHub: tratto 5 su
-     griglia 64, estremità tonde, nessun riempimento.
+     Fronte muto: solo il marchio. Tutto il resto sta sul retro.
      ============================================================ */
 
   :root {
@@ -209,19 +208,31 @@
     place-content: center;
     padding: 8cqi;
   }
-  .wordmark { width: 100%; height: auto; display: block; overflow: visible; }
-  .wordmark .borrowed { color: var(--c-ink); }
-  .wordmark .added { color: var(--c-accent); }
+  /* Il marchio è composto, non più disegnato a tratto: a questa misura
+     un'asta di 5/64 diventa fragile e le estremità tonde invecchiano.
+     Bricolage Grotesque, nero, incassato. La h resta l'unica colorata. */
+  .wm {
+    display: block;
+    font-family: "Bricolage Grotesque", "Archivo", -apple-system, system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 15cqi;
+    font-variation-settings: "opsz" 96;
+    line-height: 1;
+    letter-spacing: -.05em;
+    white-space: nowrap;
+    color: var(--c-ink);
+  }
+  .wm i { color: var(--c-accent); font-style: normal; }
 
   /* Il marchio e le sue ripetizioni che si spengono. */
-  .mark-stack { position: relative; display: block; width: 54cqi; }
+  .mark-stack { position: relative; display: inline-block; }
   .mark-stack .ghost {
     position: absolute;
     inset: 0;
     opacity: 0;
     transition: opacity .45s ease, transform .45s ease;
   }
-  .mark-stack .ghost .added { color: var(--c-ink); }  /* l'eco non porta l'accento */
+  .mark-stack .ghost i { color: var(--c-ink); }  /* l'eco non porta l'accento */
   /* Le ripetizioni scappano a destra, quindi il blocco si sposta a
      sinistra di metà corsa per restare otticamente al centro. */
   .mark-stack { transition: transform .45s ease; }
@@ -290,6 +301,30 @@
   .links a:hover { color: var(--c-accent); border-bottom-color: var(--c-accent); }
   .links a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
   .ico { width: 5cqi; height: 5cqi; color: var(--c-dim); }
+
+  /* --- grana: la fibra che sul cartaceo dà la carta, qui va disegnata ---
+     Due strati di feTurbulence incollati come data URI: uno fine (la
+     fibra) e uno larghissimo (la disomogeneità dell'impasto). La
+     matrice porta il rumore nel canale alfa, così il colore resta
+     quello scelto qui sotto e non serve alcun mix-blend-mode. */
+  .grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: var(--grain-strength);
+    background-image: var(--grain-fiber), var(--grain-mottle);
+    background-size: 160px 160px, 620px 620px;
+  }
+  .v-light {
+    --grain-strength: .34;
+    --grain-fiber: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.09 0 0 0 0 0.12 0.6 0 0 0 -0.22'/></filter><rect width='160' height='160' filter='url(%23f)'/></svg>");
+    --grain-mottle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='620'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.30 0 0 0 0 0.22 0.22 0 0 0 -0.08'/></filter><rect width='620' height='620' filter='url(%23m)'/></svg>");
+  }
+  .v-dark {
+    --grain-strength: .46;
+    --grain-fiber: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.5 0 0 0 -0.2'/></filter><rect width='160' height='160' filter='url(%23f)'/></svg>");
+    --grain-mottle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='620'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.14 0 0 0 -0.05'/></filter><rect width='620' height='620' filter='url(%23m)'/></svg>");
+  }
 
   /* --- lamina: il riflesso segue il puntatore --- */
   .sheen {
@@ -365,6 +400,13 @@
     white-space: nowrap;
   }
   .etym-line b { color: var(--page-ink); font-weight: 700; }
+  .etym-line.brand {
+    font-family: "Bricolage Grotesque", "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 7vw, 46px);
+    letter-spacing: -.05em;
+    text-transform: none;
+  }
   .etym-line i { color: var(--page-accent); font-style: normal; font-weight: 700; }
   .etym p { margin: 0; font-size: 14px; color: var(--page-dim); max-width: 58ch; }
 
@@ -429,7 +471,9 @@
     body { background: #fff; padding: 0; }
     .sheet { display: block; gap: 0; }
     .plate-wrap { break-after: page; }
-    .plate-cap, .guides { display: none; }
+    /* La grana serve a simulare la carta su uno schermo. Sul cartaceo
+       la carta c'è già: stamparla la sporcherebbe e basta. */
+    .plate-cap, .guides, .grain { display: none; }
     .plate { width: 91mm; height: 61mm; max-width: none; }
     .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
@@ -439,7 +483,7 @@
 
   <header class="masthead noprint">
     <div>
-      <p class="eyebrow">Identità · v3</p>
+      <p class="eyebrow">Identità · v4</p>
       <h1>Echo</h1>
     </div>
     <p>Il fronte porta solo il marchio. Il retro scopre da dove viene: <b>E</b>doardo <b>CO</b>nforti. Un disegno, due materie — inchiostro su carta, luce su vetro.</p>
@@ -476,7 +520,7 @@
   <h2 class="section noprint">Da dove viene il nome</h2>
   <div class="etym noprint">
     <p class="etym-line"><b>E</b>doardo&nbsp;&nbsp;<b>CO</b>nforti</p>
-    <p class="etym-line"><b>E</b><b>C</b><i>H</i><b>O</b></p>
+    <p class="etym-line brand"><b>e</b><b>c</b><i>h</i><b>o</b></p>
     <p>Tre lettere su quattro sono prese dal nome. La <b style="color:var(--page-accent)">H</b> è l'unica che il nome non contiene: è l'aggiunta, quindi è l'unica colorata. Sul retro lo stesso codice torna al contrario — nella riga «EDOARDO CONFORTI» sono in nero solo le lettere prestate al marchio. Il fronte pone la domanda, il retro la scioglie: chi gira la carta capisce, chi non la gira vede comunque un marchio pulito.</p>
   </div>
 
@@ -511,8 +555,9 @@
 
   <h2 class="section noprint">Note di lavorazione</h2>
   <div class="notes noprint">
-    <div class="note"><b>Marchio</b><span>ECHO è disegnato a tratto, non composto con un carattere: stesso alfabeto geometrico dell'icona GameHub — tratto 5 su griglia 64, estremità tonde, nessun riempimento. La E e la C sono le stesse forme del monogramma.</span></div>
-    <div class="note"><b>Fronte muto</b><span>Solo il marchio, largo poco più di metà carta. La forza di una facciata sola sta nel silenzio intorno: ingrandire il marchio la indebolisce, non la rafforza. Tutto il resto — nome, codice, indirizzo — sta dietro.</span></div>
+    <div class="note"><b>Marchio</b><span>Bricolage Grotesque nero, minuscolo, incassato a −5%. Il disegno a tratto precedente è caduto: a un terzo di carta un'asta sottile diventa fragile e le estremità tonde datano. Resta in <code>git</code>, al commit del fronte muto.</span></div>
+    <div class="note"><b>Fronte muto</b><span>Solo il marchio, largo circa un terzo di carta. La forza di una facciata sola sta nel silenzio intorno: ingrandire il marchio la indebolisce, non la rafforza. Tutto il resto — nome, codice, indirizzo — sta dietro.</span></div>
+    <div class="note"><b>Grana</b><span>Due strati di <code>feTurbulence</code> incollati come data URI: uno fine per la fibra, uno larghissimo per la disomogeneità dell'impasto. Il rumore sta nel canale alfa, quindi non serve <code>mix-blend-mode</code> e non sporca i colori. Sparisce in stampa: lì la carta è vera.</span></div>
     <div class="note"><b>Eco visivo</b><span>Il bottone accende due ripetizioni che si spengono a destra, come fa un'eco. In stampa non è un secondo colore: sono retini dello stesso inchiostro al 20% e all'8%, quindi non costa una lastra in più. Da valutare a freddo — su carta il rischio è che sembri un errore di registro.</span></div>
     <div class="note"><b>QR su pastiglia</b><span>Sul biglietto nero il codice sta dentro una pastiglia avorio. Un QR invertito (moduli chiari su fondo scuro) manda in crisi parecchi lettori Android: la pastiglia costa 3 mm di spazio e toglie il problema.</span></div>
     <div class="note"><b>Indirizzo sotto il QR</b><span>Hai chiesto nessun contatto in chiaro, e infatti non ci sono né mail né telefono. L'indirizzo sotto il codice non è un contatto, è la scialuppa del QR: se la fotocamera non legge, la carta resta utile. Si toglie mettendo <code>urlSottoQr: false</code>.</span></div>
@@ -545,20 +590,9 @@
     ]
   };
 
-  /* Marchio ECHO disegnato a tratto sulla griglia 64 di GameHub.
-     E, C, O sono "prestate" dal nome; la H è l'aggiunta, e prende
-     l'accento. Larghezze: E 0..28 · C 42..82 · H 97..125 · O 140..180 */
-  const WORDMARK = `<svg class="wordmark" viewBox="-2 8 186 48" fill="none"
-      stroke-width="5" stroke-linecap="round" role="img" aria-label="Echo">
-      <g class="borrowed" stroke="currentColor">
-        <path d="M2 12h26"/><path d="M2 12v40"/><path d="M2 32h20"/><path d="M2 52h26"/>
-        <path d="M73.5 15.6a20 20 0 1 0 0 32.8"/>
-        <circle cx="160" cy="32" r="20"/>
-      </g>
-      <g class="added" stroke="currentColor">
-        <path d="M97 12v40"/><path d="M125 12v40"/><path d="M97 32h28"/>
-      </g>
-    </svg>`;
+  /* Marchio: e, c, o prestate dal nome; la h è l'aggiunta, e prende
+     l'accento. Minuscolo — «ECHO» in maiuscolo squadra troppo. */
+  const WORDMARK = `<span class="wm">ec<i>h</i>o</span>`;
 
   /* Icone dei contatti: stessa griglia, stesso tratto. */
   const ICONS = {
@@ -618,7 +652,9 @@
   };
 
   document.querySelectorAll(".card[data-face]").forEach(el => {
-    el.innerHTML = FACES[el.dataset.face]() + '<div class="sheen" aria-hidden="true"></div>';
+    el.innerHTML = FACES[el.dataset.face]()
+      + '<div class="grain" aria-hidden="true"></div>'
+      + '<div class="sheen" aria-hidden="true"></div>';
   });
 
   /* ------------------------------------------------------------
