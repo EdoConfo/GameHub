@@ -1,0 +1,701 @@
+<title>Conforti Card</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=JetBrains+Mono:wght@400..700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.js"></script>
+
+<style>
+  /* ============================================================
+     Biglietto da visita — Edoardo Conforti
+     Linguaggio grafico ereditato da GameHub: tratti geometrici
+     stroke 5 su griglia 64, cap tondi, superfici piatte.
+     ============================================================ */
+
+  :root {
+    /* --- pagina (tema chiaro) --- */
+    --page-bg: #f2f2f4;
+    --page-panel: #ffffff;
+    --page-ink: #14161f;
+    --page-dim: #5c6270;
+    --page-line: rgba(20, 22, 32, .12);
+    --page-accent: #6d5efc;
+    --page-rule: rgba(20, 22, 32, .07);
+    --stage: #e7e7ea;
+
+    /* --- token condivisi dalle due varianti di biglietto --- */
+    --viola: #6d5efc;
+    --oro-scuro: #e6b23a;
+    --oro-chiaro: #a97400;
+
+    --trim-w: 85mm;
+    --trim-h: 55mm;
+    --bleed: 3mm;
+    --safe: 4mm;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: #0b0c11;
+      --page-panel: #14161d;
+      --page-ink: #eef0f5;
+      --page-dim: #98a0ae;
+      --page-line: rgba(255, 255, 255, .12);
+      --page-accent: #8d80ff;
+      --page-rule: rgba(255, 255, 255, .07);
+      --stage: #101219;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #0b0c11;
+    --page-panel: #14161d;
+    --page-ink: #eef0f5;
+    --page-dim: #98a0ae;
+    --page-line: rgba(255, 255, 255, .12);
+    --page-accent: #8d80ff;
+    --page-rule: rgba(255, 255, 255, .07);
+    --stage: #101219;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-block: 0 64px;
+    padding-inline: 20px;
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: "Archivo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  /* ---------- intestazione pagina ---------- */
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 40px 28px;
+    border-bottom: 1px solid var(--page-line);
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    margin: 0 0 6px;
+  }
+  .masthead h1 {
+    margin: 0;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 800;
+    font-variation-settings: "wdth" 108;
+    letter-spacing: -.025em;
+    text-wrap: balance;
+  }
+  .masthead p { margin: 0; max-width: 34ch; color: var(--page-dim); font-size: 14px; }
+
+  /* ---------- controlli ---------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-block: 18px;
+  }
+  .ctl {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    color: var(--page-ink);
+    background: var(--page-panel);
+    border: 1px solid var(--page-line);
+    border-radius: 999px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .ctl:hover { border-color: var(--page-accent); color: var(--page-accent); }
+  .ctl:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 2px; }
+
+  /* ---------- palco delle carte live ---------- */
+  .stage {
+    background: var(--stage);
+    border: 1px solid var(--page-line);
+    border-radius: 18px;
+    padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 40px);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: clamp(28px, 5vw, 56px);
+    justify-items: center;
+  }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+  .slot-label {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+  }
+
+  /* ============================================================
+     IL BIGLIETTO
+     Un solo foglio di stile per schermo e stampa: tutto ciò che
+     sta dentro la carta è misurato in cqi (% della larghezza
+     della carta), così 360 px e 85 mm rendono identici.
+     ============================================================ */
+
+  .tilt {
+    width: 100%;
+    max-width: 380px;
+    aspect-ratio: 85 / 55;
+    perspective: 1400px;
+    cursor: pointer;
+    background: none;
+    border: 0;
+    padding: 0;
+    display: block;
+    text-align: left;   /* il <button> centrerebbe il testo delle facciate */
+    font: inherit;
+    color: inherit;
+  }
+  .tilt:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 10px; border-radius: 4px; }
+
+  .deck {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transform:
+      rotateX(var(--rx, 0deg))
+      rotateY(calc(var(--ry, 0deg) + var(--flip, 0deg)));
+    transition: transform .7s cubic-bezier(.2, .8, .2, 1);
+  }
+  .tilt.dragging .deck { transition: transform .08s linear; }
+
+  .card {
+    container-type: inline-size;
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: grid;
+    background: var(--c-bg);
+    color: var(--c-ink);
+    border-radius: 3.2cqi;
+    box-shadow: var(--c-shadow);
+  }
+  .card.back { transform: rotateY(180deg); }
+
+  /* varianti: token locali, indipendenti dal tema della pagina */
+  .v-dark {
+    --c-bg: #0f1117;
+    --c-ink: #eef0f5;
+    --c-dim: #98a0ae;
+    --c-accent: #6d5efc;
+    --c-metal: var(--oro-scuro);
+    --c-hair: rgba(255, 255, 255, .14);
+    --c-shadow: 0 24px 50px -18px rgba(0, 0, 0, .7), 0 2px 0 rgba(255, 255, 255, .05) inset;
+    --c-sheen: rgba(255, 255, 255, .5);
+  }
+  .v-light {
+    --c-bg: #faf9f7;
+    --c-ink: #14161f;
+    --c-dim: #6b7080;
+    --c-accent: #6d5efc;
+    --c-metal: var(--oro-chiaro);
+    --c-hair: rgba(20, 22, 32, .16);
+    --c-shadow: 0 24px 46px -20px rgba(20, 22, 40, .45), 0 0 0 1px rgba(20, 22, 32, .07);
+    --c-sheen: rgba(255, 255, 255, .85);
+  }
+
+  /* --- fronte --- */
+  .front-grid {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 7cqi 7.5cqi;
+  }
+  .mark { width: 13cqi; height: auto; display: block; color: var(--c-metal); }
+  .mark-lg { width: 22cqi; }
+
+  .name {
+    align-self: center;
+    margin: 0;
+    font-weight: 800;
+    font-variation-settings: "wdth" 112;
+    font-size: 15.4cqi;
+    line-height: .92;
+    letter-spacing: -.035em;
+    text-transform: uppercase;
+  }
+  .name span { display: block; }
+  .name .second { color: var(--c-dim); }
+
+  .rule {
+    width: 12cqi;
+    height: .9cqi;
+    background: var(--c-accent);
+    border-radius: 999px;
+    margin-block: 2.6cqi 0;
+  }
+
+  .foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 4cqi;
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 2.9cqi;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--c-dim);
+  }
+
+  /* --- retro: elenco contatti --- */
+  .back-grid {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 3cqi;
+    padding: 7cqi 7.5cqi;
+  }
+  .back-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3cqi;
+  }
+  .back-head .who {
+    font-weight: 700;
+    font-variation-settings: "wdth" 108;
+    font-size: 4.6cqi;
+    letter-spacing: -.01em;
+    text-transform: uppercase;
+  }
+  .links {
+    display: grid;
+    align-content: center;
+    gap: 2.6cqi;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .links li { display: grid; grid-template-columns: 5cqi 1fr; align-items: center; gap: 3cqi; }
+  .links a, .links span.val {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 3.5cqi;
+    letter-spacing: .01em;
+    color: var(--c-ink);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+    overflow-wrap: anywhere;
+  }
+  .links a:hover { color: var(--c-accent); border-bottom-color: var(--c-accent); }
+  .links a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .ico { width: 5cqi; height: 5cqi; color: var(--c-metal); }
+
+  /* --- lamina: riflesso che segue il puntatore --- */
+  .sheen {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .35s ease;
+    background: radial-gradient(
+      36cqi 36cqi at var(--mx, 50%) var(--my, 50%),
+      var(--c-sheen), transparent 70%);
+    mix-blend-mode: soft-light;
+  }
+  .tilt:hover .sheen, .tilt.dragging .sheen { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deck { transition: transform .001s; }
+    .sheen { display: none; }
+  }
+
+  /* ---------- specifiche di stampa ---------- */
+  .specs {
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--page-line);
+    border: 1px solid var(--page-line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .spec { background: var(--page-panel); padding: 16px 18px; }
+  .spec dt {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    margin-bottom: 4px;
+  }
+  .spec dd {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    font-variation-settings: "wdth" 104;
+    font-variant-numeric: tabular-nums;
+  }
+
+  h2.section {
+    margin: 52px 0 6px;
+    font-size: 22px;
+    font-weight: 800;
+    font-variation-settings: "wdth" 106;
+    letter-spacing: -.02em;
+  }
+  .lede { margin: 0 0 22px; color: var(--page-dim); max-width: 62ch; font-size: 14px; }
+
+  /* ---------- esecutivi di stampa a misura vera ---------- */
+  .sheet {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+  }
+  .plate {
+    position: relative;
+    width: calc(var(--trim-w) + 2 * var(--bleed));
+    height: calc(var(--trim-h) + 2 * var(--bleed));
+    max-width: 100%;
+    padding: var(--bleed);
+    background: var(--c-bg);
+    color: var(--c-ink);
+  }
+  .plate .card {
+    position: absolute;
+    inset: var(--bleed);
+    border-radius: 0;
+    box-shadow: none;
+    backface-visibility: visible;
+  }
+  .guides {
+    position: absolute;
+    inset: var(--bleed);
+    pointer-events: none;
+    outline: .2mm dashed var(--c-accent);
+    z-index: 2;
+  }
+  .guides::after {
+    content: "";
+    position: absolute;
+    inset: var(--safe);
+    outline: .2mm dashed var(--c-dim);
+  }
+  .plate-cap {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    margin-bottom: 8px;
+  }
+  .plate-wrap { max-width: 100%; }
+
+  /* QR: quadrato vero, minimo 20 mm perché resti leggibile */
+  .qr-block { align-self: center; display: grid; grid-template-columns: auto 1fr; gap: 5cqi; align-items: center; }
+  .qr { width: 24cqi; height: 24cqi; display: block; }
+  .qr rect.mod { fill: currentColor; }
+  .qr-side { display: grid; gap: 1.6cqi; }
+  .qr-side .u {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 3.4cqi;
+    color: var(--c-ink);
+    overflow-wrap: anywhere;
+  }
+  .qr-side .t {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 2.7cqi;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--c-dim);
+  }
+
+  .notes { margin-top: 28px; display: grid; gap: 10px; }
+  .note {
+    display: grid;
+    grid-template-columns: 112px 1fr;
+    gap: 14px;
+    align-items: baseline;
+    padding: 14px 16px;
+    background: var(--page-panel);
+    border-left: 2px solid var(--page-accent);
+    border-radius: 0 10px 10px 0;
+    font-size: 14px;
+  }
+  .note b {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--page-accent);
+    font-weight: 500;
+  }
+
+  /* ---------- stampa reale ---------- */
+  @page { size: 91mm 61mm; margin: 0; }
+  @media print {
+    .noprint { display: none !important; }
+    body { background: #fff; padding: 0; }
+    .sheet { display: block; gap: 0; }
+    .plate-wrap { break-after: page; }
+    .plate-cap, .guides { display: none; }
+    .plate { width: 91mm; height: 61mm; max-width: none; }
+    .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead noprint">
+    <div>
+      <p class="eyebrow">Identità · v1</p>
+      <h1>Il biglietto da visita</h1>
+    </div>
+    <p>Un solo disegno in due materie: inchiostro su carta e luce su vetro. Nessun ruolo stampato — il nome basta.</p>
+  </header>
+
+  <div class="controls noprint">
+    <button class="ctl" id="flipAll" type="button">Gira tutte</button>
+    <button class="ctl" id="themeBtn" type="button">Tema pagina: auto</button>
+    <button class="ctl" id="printBtn" type="button">Stampa gli esecutivi</button>
+  </div>
+
+  <!-- ====== carte vive ====== -->
+  <section class="stage noprint" aria-label="Biglietti interattivi">
+    <div class="slot">
+      <span class="slot-label">Notte · carta nera, oro a caldo</span>
+      <button class="tilt" type="button" aria-label="Biglietto scuro — gira per vedere i contatti">
+        <div class="deck">
+          <article class="card v-dark front" data-face="front"></article>
+          <article class="card v-dark back" data-face="back-digital"></article>
+        </div>
+      </button>
+    </div>
+    <div class="slot">
+      <span class="slot-label">Giorno · carta avorio, stampa a un colore</span>
+      <button class="tilt" type="button" aria-label="Biglietto chiaro — gira per vedere i contatti">
+        <div class="deck">
+          <article class="card v-light front" data-face="front"></article>
+          <article class="card v-light back" data-face="back-digital"></article>
+        </div>
+      </button>
+    </div>
+  </section>
+
+  <dl class="specs noprint">
+    <div class="spec"><dt>Formato di taglio</dt><dd>85 × 55 mm</dd></div>
+    <div class="spec"><dt>Abbondanza</dt><dd>3 mm</dd></div>
+    <div class="spec"><dt>Margine di sicurezza</dt><dd>4 mm</dd></div>
+    <div class="spec"><dt>QR stampato</dt><dd>21 mm</dd></div>
+  </dl>
+
+  <!-- ====== esecutivi ====== -->
+  <h2 class="section noprint">Esecutivi per la tipografia</h2>
+  <p class="lede noprint">A misura vera sullo schermo. Il tratteggio viola è la linea di taglio, quello grigio il margine di sicurezza: nessun testo lo supera. Il QR punta al portfolio ed è scansionabile davvero — «Stampa» esporta le quattro facciate, una per pagina, senza guide.</p>
+
+  <div class="sheet">
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Notte · fronte</p>
+      <div class="plate v-dark"><div class="guides noprint"></div><article class="card v-dark" data-face="front"></article></div>
+    </div>
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Notte · retro</p>
+      <div class="plate v-dark"><div class="guides noprint"></div><article class="card v-dark" data-face="back-print"></article></div>
+    </div>
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Giorno · fronte</p>
+      <div class="plate v-light"><div class="guides noprint"></div><article class="card v-light" data-face="front"></article></div>
+    </div>
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Giorno · retro</p>
+      <div class="plate v-light"><div class="guides noprint"></div><article class="card v-light" data-face="back-print"></article></div>
+    </div>
+  </div>
+
+  <h2 class="section noprint">Perché così</h2>
+  <div class="notes noprint">
+    <div class="note"><b>Marchio</b><span>Il monogramma EC è disegnato con la stessa grammatica dell'icona di GameHub: tratto 5 su griglia 64, estremità tonde, nessun riempimento. Le due cose si riconoscono come parenti senza ripetersi.</span></div>
+    <div class="note"><b>Nessun ruolo</b><span>Il cognome occupa la riga in grigio: dichiara la persona, non il mestiere. Se un giorno serve una qualifica, la riga sotto il filetto viola è già lì, vuota e pronta.</span></div>
+    <div class="note"><b>Carta vs vetro</b><span>Sul cartaceo il retro è QR più indirizzo: un solo gesto. In digitale il QR sparisce e diventano quattro link cliccabili, perché chi ha già lo schermo in mano non inquadra niente.</span></div>
+    <div class="note"><b>Terza dimensione</b><span>L'inclinazione segue il puntatore e la lamina scorre sopra: in digitale simula l'oro a caldo che sul cartaceo si vede solo girando la carta verso la luce.</span></div>
+    <div class="note"><b>NFC</b><span>Un tag NTAG213 incollato nel retro va programmato con lo stesso indirizzo del QR. Sulla carta non si vede nulla: nessun segno da prevedere nel disegno.</span></div>
+  </div>
+
+</div>
+
+<script>
+  /* ------------------------------------------------------------
+     I dati del biglietto: cambia qui, cambiano tutte le facciate.
+     ------------------------------------------------------------ */
+  const CARD = {
+    first: "Edoardo",
+    last: "Conforti",
+    site: "edoconfo.github.io",
+    siteUrl: "https://edoconfo.github.io",
+    links: [
+      { icon: "site",   label: "edoconfo.github.io",       href: "https://edoconfo.github.io" },
+      { icon: "code",   label: "github.com/EdoConfo",      href: "https://github.com/EdoConfo" },
+      { icon: "person", label: "in/edoardo-conforti",      href: "https://www.linkedin.com/in/edoardo-conforti" },
+      { icon: "mail",   label: "xpjokey@gmail.com",        href: "mailto:xpjokey@gmail.com" }
+    ]
+  };
+
+  /* Monogramma EC — stessa grammatica dell'icona GameHub:
+     tratto 5 su griglia 64, cap tondi, niente riempimento. */
+  const MARK = `<svg class="mark" viewBox="0 0 100 64" fill="none" stroke="currentColor"
+      stroke-width="5" stroke-linecap="round" role="img" aria-label="EC">
+      <path d="M13 12h25"/><path d="M13 12v40"/><path d="M13 32h20"/><path d="M13 52h25"/>
+      <path d="M77.5 15.6a20 20 0 1 0 0 32.8"/>
+    </svg>`;
+
+  /* Icone dei contatti, stessa griglia 64 e stesso tratto. */
+  const ICONS = {
+    site:   '<circle cx="32" cy="32" r="22"/><path d="M10 32h44"/><path d="M32 10c9 8 9 36 0 44c-9-8-9-36 0-44"/>',
+    code:   '<path d="M22 20 8 32l14 12"/><path d="M42 20l14 12-14 12"/><path d="M36 14 28 50"/>',
+    person: '<circle cx="32" cy="22" r="11"/><path d="M12 54c2-11 10-16 20-16s18 5 20 16"/>',
+    mail:   '<rect x="8" y="14" width="48" height="36" rx="5"/><path d="M10 19l22 16 22-16"/>'
+  };
+  const icon = (n) => `<svg class="ico" viewBox="0 0 64 64" fill="none" stroke="currentColor"
+      stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+  /* --- QR vero, disegnato a mano in SVG per controllarne il colore --- */
+  function qrSvg(text) {
+    if (typeof qrcode !== "function") {
+      return `<div class="qr" style="border:.4cqi solid currentColor"></div>`;
+    }
+    const qr = qrcode(0, "M");
+    qr.addData(text);
+    qr.make();
+    const n = qr.getModuleCount();
+    let mods = "";
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (qr.isDark(r, c)) mods += `<rect class="mod" x="${c}" y="${r}" width="1.02" height="1.02"/>`;
+      }
+    }
+    return `<svg class="qr" viewBox="0 0 ${n} ${n}" role="img"
+       aria-label="Codice QR verso ${text}" shape-rendering="crispEdges">${mods}</svg>`;
+  }
+
+  const FACES = {
+    front: () => `
+      <div class="front-grid">
+        ${MARK}
+        <h2 class="name">
+          <span>${CARD.first}</span>
+          <span class="second">${CARD.last}</span>
+        </h2>
+        <div>
+          <div class="rule"></div>
+          <div class="foot" style="margin-top:2.6cqi">
+            <span>${CARD.site}</span>
+          </div>
+        </div>
+      </div>`,
+
+    "back-digital": () => `
+      <div class="back-grid">
+        <div class="back-head">
+          <span class="who">${CARD.first} ${CARD.last}</span>
+          ${MARK.replace('class="mark"', 'class="mark" style="width:9cqi"')}
+        </div>
+        <ul class="links">
+          ${CARD.links.map(l => `<li>${icon(l.icon)}<a href="${l.href}" target="_blank" rel="noopener noreferrer">${l.label}</a></li>`).join("")}
+        </ul>
+      </div>`,
+
+    "back-print": () => `
+      <div class="back-grid">
+        <div class="back-head">
+          <span class="who">${CARD.first} ${CARD.last}</span>
+          ${MARK.replace('class="mark"', 'class="mark" style="width:9cqi"')}
+        </div>
+        <div class="qr-block">
+          ${qrSvg(CARD.siteUrl)}
+          <div class="qr-side">
+            <span class="t">Tutto il lavoro</span>
+            <span class="u">${CARD.site}</span>
+            <span class="u">${CARD.links[3].label}</span>
+          </div>
+        </div>
+      </div>`
+  };
+
+  document.querySelectorAll(".card[data-face]").forEach(el => {
+    el.innerHTML = FACES[el.dataset.face]() + '<div class="sheen" aria-hidden="true"></div>';
+  });
+
+  /* ------------------------------------------------------------
+     Inclinazione, lamina e ribaltamento.
+     ------------------------------------------------------------ */
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+
+  document.querySelectorAll(".tilt").forEach(tilt => {
+    const deck = tilt.querySelector(".deck");
+    let flipped = false;
+
+    function point(e) {
+      if (reduce.matches) return;
+      const r = tilt.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+      deck.style.setProperty("--ry", `${(px - .5) * 22}deg`);
+      deck.style.setProperty("--rx", `${(.5 - py) * 16}deg`);
+      tilt.querySelectorAll(".sheen").forEach(s => {
+        s.style.setProperty("--mx", `${px * 100}%`);
+        s.style.setProperty("--my", `${py * 100}%`);
+      });
+    }
+
+    tilt.addEventListener("pointerenter", () => tilt.classList.add("dragging"));
+    tilt.addEventListener("pointermove", point);
+    tilt.addEventListener("pointerleave", () => {
+      tilt.classList.remove("dragging");
+      deck.style.setProperty("--ry", "0deg");
+      deck.style.setProperty("--rx", "0deg");
+    });
+
+    // Un link sul retro deve restare cliccabile: non gira la carta.
+    tilt.addEventListener("click", e => {
+      if (e.target.closest("a")) return;
+      flipped = !flipped;
+      deck.style.setProperty("--flip", flipped ? "180deg" : "0deg");
+    });
+
+    tilt.flip = () => {
+      flipped = !flipped;
+      deck.style.setProperty("--flip", flipped ? "180deg" : "0deg");
+    };
+  });
+
+  document.getElementById("flipAll").addEventListener("click", () => {
+    document.querySelectorAll(".tilt").forEach(t => t.flip());
+  });
+
+  document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+  /* Tema della pagina: auto → chiaro → scuro. Non tocca le carte,
+     che restano una chiara e una scura per confronto. */
+  const themeBtn = document.getElementById("themeBtn");
+  const cycle = ["auto", "light", "dark"];
+  const names = { auto: "auto", light: "chiaro", dark: "scuro" };
+  let ti = 0;
+  themeBtn.addEventListener("click", () => {
+    ti = (ti + 1) % cycle.length;
+    const t = cycle[ti];
+    if (t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    themeBtn.textContent = `Tema pagina: ${names[t]}`;
+  });
+</script>
