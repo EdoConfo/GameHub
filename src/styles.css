@@ -1138,6 +1138,10 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   column-gap: 10px; row-gap: 2px;
   padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
 }
-.score-name { font-weight: 700; color: var(--team); }
-.score-value { grid-row: 1 / span 2; font-size: 24px; }
-.score-sub { grid-column: 2; font-size: 12px; }
+/* Every cell placed by hand. The score spans both rows and has a definite row,
+   and an item with a definite row is placed BEFORE the auto ones — so left to
+   itself it took column 1 and the number landed ahead of the team's own dot. */
+.score-row .team-dot { grid-column: 1; grid-row: 1; }
+.score-name { grid-column: 2; grid-row: 1; font-weight: 700; color: var(--team); }
+.score-sub { grid-column: 2; grid-row: 2; font-size: 12px; }
+.score-value { grid-column: 3; grid-row: 1 / span 2; font-size: 24px; }
