@@ -10,6 +10,12 @@
 --
 -- A database created before the languages were side by side has the old
 -- mw_base_pairs table instead: 002-languages-side-by-side.sql moves it over.
+--
+-- Heads Up's categories live here too, in their own two tables: run this file
+-- first, then 003-heads-up-words.sql. That one also moves the counter below
+-- onto a single function shared by every pack, so after it there is no
+-- bump_mw_base_revision() any more — which is why this file creates it: run
+-- alone, on a fresh database, it still has to work.
 
 -- The pairs: one row per pair, with every language in it. Every column is
 -- required, so a pair exists in all languages or not at all: every language

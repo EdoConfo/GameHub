@@ -45,7 +45,9 @@ export default defineConfig({
       injectRegister: null,
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'],
       workbox: {
-        // Precache everything the build emits, including bundled word-pack JSON.
+        // Precache everything the build emits. No words among it any more —
+        // both games download theirs — but the pattern stays as it is: it
+        // describes the build, not what happens to be in it this week.
         globPatterns: ['**/*.{js,css,html,svg,png,json,woff2}'],
         // never from the cache: it's the one file that has to say what's live
         globIgnores: ['**/version.json'],

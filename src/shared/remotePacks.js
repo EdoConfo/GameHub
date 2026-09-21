@@ -37,8 +37,13 @@ export function onWordsUpdate(fn) {
 //   key:   the pack's name in pack_revisions
 //   table: where its rows are
 //   select: the columns to fetch
-//   build: rows -> the pack, in the shape packStore reads
-export function remotePack({ key, table, select, build }) {
+//   meta:  { table, select } for a second, small table fetched alongside the
+//          first — Heads Up keeps its categories in one and their words in the
+//          other, and a category is nothing without its name. One counter
+//          covers both: renaming a category is a change like any other.
+//   build: (rows, metaRows) -> the pack, or a list of them, in the shape
+//          packStore reads
+export function remotePack({ key, table, select, bustOn = 'id', meta = null, build }) {
   const SHELF = 'remote:' + key         // the IndexedDB key, and the old localStorage one
   // The shape of a saved copy. Copies saved before it existed may hold the
   // wrong pairs under the right revision (the Safari download above), and a
@@ -59,13 +64,25 @@ export function remotePack({ key, table, select, build }) {
   // Every revision gets its own address: the filter id > -revision matches
   // every row (ids start at 1) and only exists to make the URL different, so no
   // cache anywhere can hand back the rows of a revision we're past.
+  // The filter that gives every revision its own address. It has to match every
+  // row and only exists to make the URL different, so it needs a column of
+  // numbers that are never negative: ids (they start at 1) or, where the id is
+  // text like hu_packs', whatever the caller names instead.
+  const bust = (col, live) => `${col}=gt.-${Number(live) || 0}`
+
   async function download(live) {
     const all = []
     for (let from = 0; ; from += PAGE) {
-      const page = await rest(`${table}?select=${select}&order=id&limit=${PAGE}&offset=${from}&id=gt.-${Number(live) || 0}`)
+      const page = await rest(`${table}?select=${select}&order=id&limit=${PAGE}&offset=${from}&${bust(bustOn, live)}`)
       all.push(...page)
-      if (page.length < PAGE) return all
+      if (page.length < PAGE) break
     }
+    // The meta table is the short one — a handful of categories — so it comes
+    // in one request, with the same guard against a stale answer.
+    const metaRows = meta
+      ? await rest(`${meta.table}?select=${meta.select}&limit=${PAGE}&${bust(meta.bustOn || 'id', live)}`)
+      : null
+    return { rows: all, meta: metaRows }
   }
 
   const src = {
@@ -117,8 +134,8 @@ export function remotePack({ key, table, select, build }) {
     // pack stays behind, so the pill comes back instead of pretending.
     async refresh() {
       const live = await revision()
-      const rows = await download(live)
-      const next = { format: FORMAT, revision: live, pack: build(rows) }
+      const { rows, meta: metaRows } = await download(live)
+      const next = { format: FORMAT, revision: live, pack: build(rows, metaRows) }
       await idbSet(SHELF, next)
       copy = next
       src.behind = false

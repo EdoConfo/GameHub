@@ -25,7 +25,11 @@ export function renderSetup(api) {
   function refreshPacks() {
     chips.replaceChildren()
     if (!packs.length) {
-      chips.append(el('p', { class: 'muted' }, t('hu.setup.noCategory')))
+      // The categories arrive with the first network the app sees. Until then
+      // the list is empty through nobody's choice, and "switch one on" would be
+      // the wrong advice.
+      const waiting = api.packs.remote && !api.packs.remote.has()
+      chips.append(el('p', { class: 'muted' }, t(waiting ? 'hu.setup.wordsMissing' : 'hu.setup.noCategory')))
     }
     for (const p of packs) {
       chips.append(el('button', {

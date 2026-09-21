@@ -44,7 +44,7 @@ const DICT = {
     'settings.offline': 'Offline',
     'settings.offlineSub': 'Installata · funziona senza rete',
     'settings.version': 'Versione',
-    'settings.wordsRev': 'parole r{n}',
+    'settings.wordsRev': '{game} r{n}',
     'update.ready': 'Nuova versione',
     'update.words': 'Parole aggiornate',
     'update.wordsFailed': 'Parole non aggiornate: {reason}',
@@ -336,6 +336,7 @@ const DICT = {
 
     'hu.setup.category': 'Categoria',
     'hu.setup.noCategory': 'Nessuna categoria attiva. Aggiungine o attivane una in “Gestisci parole”.',
+    'hu.setup.wordsMissing': 'Categorie da scaricare: serve la rete una volta.',
     'hu.setup.manage': 'Gestisci parole',
     'hu.setup.duration': 'Durata',
     'hu.setup.controls': 'Comandi',
@@ -393,7 +394,7 @@ const DICT = {
     'settings.offline': 'Offline',
     'settings.offlineSub': 'Installed · works with no network',
     'settings.version': 'Version',
-    'settings.wordsRev': 'words r{n}',
+    'settings.wordsRev': '{game} r{n}',
     'update.ready': 'New version',
     'update.words': 'Words updated',
     'update.wordsFailed': 'Words not updated: {reason}',
@@ -685,6 +686,7 @@ const DICT = {
 
     'hu.setup.category': 'Category',
     'hu.setup.noCategory': 'No category is active. Add one or switch one on in “Manage words”.',
+    'hu.setup.wordsMissing': 'Categories not downloaded yet: needs a network once.',
     'hu.setup.manage': 'Manage words',
     'hu.setup.duration': 'Duration',
     'hu.setup.controls': 'Controls',

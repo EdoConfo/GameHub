@@ -43,16 +43,21 @@ export function createPackStore({
     .map(normalizePack)
     .filter(Boolean)
 
-  // The shipped packs plus the downloaded one, if it's there yet. The download
-  // is normalized once per copy, not on every read: the store is asked for its
-  // packs often, and the Base alone is hundreds of pairs.
+  // The shipped packs plus the downloaded ones, if they're there yet. A
+  // download is one pack (Mister White's Base) or several (Heads Up's
+  // categories), so it's read as a list either way. Normalized once per copy,
+  // not on every read: the store is asked for its packs often, and the Base
+  // alone is hundreds of pairs.
   let remoteRaw = null
-  let remoteNorm = null
+  let remoteNorm = []
   function bundledPacks() {
     if (!remote) return shipped
     const raw = remote.get()
-    if (raw !== remoteRaw) { remoteRaw = raw; remoteNorm = raw ? normalizePack(raw) : null }
-    return remoteNorm ? [...shipped, remoteNorm] : shipped
+    if (raw !== remoteRaw) {
+      remoteRaw = raw
+      remoteNorm = (raw ? (Array.isArray(raw) ? raw : [raw]) : []).map(normalizePack).filter(Boolean)
+    }
+    return remoteNorm.length ? [...shipped, ...remoteNorm] : shipped
   }
 
   // ---- internal shape: { id, names: {lang: str}, byLang: {lang: [items]} } ----

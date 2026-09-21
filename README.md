@@ -66,7 +66,7 @@ If you **rename the repository**, change `BASE` to `/<new-name>/` (keep the lead
 
 1. Open the site in your phone's browser.
 2. Browser menu → **Add to Home screen** (Android/Chrome), or **Share → Add to Home Screen** (iOS/Safari).
-3. After the first visit it works without a network: the service worker caches the app and its word packs.
+3. After the first visit it works without a network: the service worker caches the app, and the words are kept on the phone once downloaded.
 
 When a new version is deployed, the app notices and offers to update.
 
@@ -81,31 +81,42 @@ create your own (saved in the browser's `localStorage`) and edit or delete them.
 A pack holds one list per language, side by side. A pack without the current
 language is hidden.
 
+Neither game ships its words. Both live in a Supabase database (schema in
+[`supabase/`](supabase/)): the app only reads them, downloads them the first time
+it sees a network, keeps them on the phone in IndexedDB so they play offline, and
+offers to update them when the database copy changes. The public key in
+[`src/shared/supabase.js`](src/shared/supabase.js) is read-only by design — the
+database's own rules allow it nothing else.
+
+Until that first download there is nothing to play with, and the game says so
+instead of showing an empty list.
+
+The built-in packs are played but not opened: their words stay out of sight, so
+nobody at the table has read them first. Packs you write yourself are yours to
+edit, and sit beside them.
+
 ### Mister White: pairs
 
-Each item is a **pair**: the Civilians' word and a similar word for the Undercovers.
+Each item is a **pair**: the Civilians' word and a similar word for the
+Undercovers. There is one built-in pack, **Base**, in the `mw_base` table.
 
-The **Base** pack is not in the repository: it lives in a Supabase database
-(schema in [`supabase/`](supabase/)). The app only reads it, downloads it once,
-keeps it on the phone in IndexedDB so it plays offline, and offers to update it when
-the database copy changes. The public key in
-[`src/shared/supabase.js`](src/shared/supabase.js) is read-only by design.
+It used to be five themed packs. Picking one told the table what the word was
+about, which hands Mister White — the one player without a word — most of the
+answer. A pool with no theme gives nothing away.
 
 ### Heads Up: single words
 
-Each item is **one word (or name, or phrase)**. The built-in packs are in
-[`src/games/heads-up/packs/`](src/games/heads-up/packs/), one JSON file per pack:
+Each item is **one word (or name, or phrase)**, and the built-in packs are the
+categories: Animali, Cibo & Bevande, Film & Serie, VIP & Personaggi, Da mimare.
+They live in two tables, `hu_packs` (the categories and their names) and
+`hu_words` (the words in them).
 
-```json
-{
-  "id": "cibo",
-  "icon": "food",
-  "name":  { "it": "Cibo & Bevande", "en": "Food & Drink" },
-  "words": { "it": ["Pizza", "Sushi"], "en": ["Pizza", "Sushi"] }
-}
-```
+The categories stay, where Mister White's themes went away, because here the
+category *is* the game: you pick "Animali" and everyone knows it.
 
-A new `.json` file in that folder is picked up at build time.
+In both tables one row carries every language at once, and no column may be
+empty — so a pair or a word exists in all languages or in none, and every
+language plays the same list, with the same count.
 
 ### How it works
 
@@ -161,7 +172,7 @@ src/
   games/
     registry.js        list of games
     mister-white/      engine + match + packs.js (Base from Supabase)
-    heads-up/          screens + motion + packs.js + packs/*.json
+    heads-up/          screens + motion + packs.js (categories from Supabase)
 supabase/              database schema for the remote packs
 ```
 

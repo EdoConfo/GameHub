@@ -85,8 +85,22 @@ function mount(container, ctx, initialPhase) {
 
   render()
 
+  // The categories arrive from the database, and the first download lands a
+  // second or two after this screen is already up. Nothing else would tell it:
+  // the hub watches the same signal to keep the Parole arc honest, but that arc
+  // isn't this page. Without this, setup went on saying "download them" with
+  // them already on the phone, and Continua stayed dead.
+  //
+  // Only while choosing: a match already holds its own shuffled list, and
+  // swapping the words out from under a round in progress would be worse than
+  // finishing it with the list it started from.
+  const offPacks = packs.remote && packs.remote.onChange(() => {
+    if (!container.isConnected) { offPacks(); return }
+    if (state.phase === 'setup') render()
+  })
+
   // Cleanup when the router unmounts the game.
-  return () => stopRuntime()
+  return () => { stopRuntime(); if (offPacks) offPacks() }
 }
 
 export default {

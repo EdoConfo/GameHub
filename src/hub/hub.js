@@ -192,9 +192,11 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // up to date?" answered by reading, for the app and for the words alike.
   function versionLine() {
     const parts = [typeof __BUILD__ === 'string' ? __BUILD__ : 'dev']
+    // Named by game, because more than one downloads its words now: two bare
+    // numbers side by side say nothing about which pack is behind.
     for (const g of games) {
       const r = g.packs && g.packs.remote
-      if (r) parts.push(t('settings.wordsRev', { n: r.revision() ?? '—' }))
+      if (r) parts.push(t('settings.wordsRev', { game: g.name, n: r.revision() ?? '—' }))
     }
     return parts.join(' · ')
   }
