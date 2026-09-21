@@ -16,6 +16,12 @@
 -- anything and doesn't delete data. It contains no prompts — those are loaded
 -- separately, so the public repository still doesn't carry them.
 
+-- Nothing here is needed for the rooms Quiplash plays in. Those go over
+-- Supabase Realtime in broadcast mode: the phones talk to each other through
+-- it and nothing is ever written down, so there is no table for a match, no
+-- rows to clean up, and the key shipped in the app still only reads. The one
+-- thing the project must allow is a public channel, which is the default.
+
 -- The prompts: one row per prompt, with every language in it. Every column is
 -- required, so a prompt exists in all languages or not at all, and every
 -- language plays the same number of them by construction.

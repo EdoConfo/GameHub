@@ -1,20 +1,19 @@
-// The one screen a Quiplash match is not played at the table: writing.
+// Writing, wherever it happens.
 //
-// It takes the whole screen on purpose. The phone is in one person's hands,
-// the prompt is theirs alone, and what they type must not be readable by the
-// person sitting next to them — a drawer with the table above it is exactly
-// the wrong shape for that.
+// One phone or five, writing is the same screen: a prompt, a field, a button —
+// and nothing else, because the prompt belongs to one person for that minute
+// and what they type must not be readable over their shoulder. Passing one
+// phone round, that is the point of the screen; on your own phone it simply
+// gets out of the way of the keyboard.
 import { el, button } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { jobsFor } from './round.js'
-import * as match from './match.js'
 
 const MAX = 90 // long enough for a joke, short enough to read out loud
 
-// The keyboard takes half the screen and the page can't scroll (it's an app,
+// The keyboard takes half the screen and the page cannot scroll (it is an app,
 // not a document). So the screen becomes what the keyboard leaves of it, and
 // the prompt, the field and the button stay together above it.
-function keepAbove(node) {
+export function keepAbove(node) {
   const vv = window.visualViewport
   if (!vv) return () => {}
   const place = () => {
@@ -30,10 +29,15 @@ function keepAbove(node) {
   }
 }
 
-export function renderWrite(api) {
-  const { state, runtime } = api
-  const me = state.players[state.writeIndex]
-  const jobs = jobsFor(state.duels, state.writeIndex)
+// The writing screen.
+//   title:  who is writing (the name, when the phone is being passed around)
+//   jobs:   [{ prompt, text }] — one or more, walked in order
+//   onSave(i, text):  keep answer i. Return false and the screen stays put.
+//   onDone():         the last one is in
+//   -> the node, with node.ready() to be called once it is on the page and
+//      node.stop() when it leaves
+export function writeScreen({ title = '', jobs = [], onSave = () => true, onDone = () => {} } = {}) {
+  let step = 0
 
   const kicker = el('p', { class: 'drawer-kicker' })
   const promptEl = el('div', { class: 'write-prompt' })
@@ -43,52 +47,58 @@ export function renderWrite(api) {
     autocapitalize: 'sentences', spellcheck: 'false'
   })
   const left = el('span', { class: 'write-left' })
-  const go = button(t('common.forward'), { variant: 'primary', full: true, onClick: () => next() })
+  const go = button(t('ql.write.next'), { variant: 'primary', full: true, onClick: () => next() })
 
   const wrap = el('div', { class: 'fullscreen write-area' }, [
-    el('div', { class: 'write-head' }, [kicker, promptEl]),
-    el('div', { class: 'write-box' }, [field, left]),
+    // The prompt and the field travel together in the middle of whatever the
+    // keyboard leaves of the screen; the button stays under them, which with
+    // the keyboard up means right on top of it.
+    el('div', { class: 'write-main' }, [
+      el('div', { class: 'write-head' }, [kicker, promptEl]),
+      el('div', { class: 'write-box' }, [field, left])
+    ]),
     go
   ])
 
   function paint() {
-    const job = jobs[state.writeStep]
+    const job = jobs[step]
+    if (!job) return
     kicker.textContent = jobs.length > 1
-      ? t('ql.write.step', { name: me.name, n: state.writeStep + 1, of: jobs.length })
-      : me.name
-    promptEl.textContent = state.duels[job.duel].prompt
-    field.value = state.duels[job.duel].answers[job.slot].text || ''
-    go.textContent = state.writeStep + 1 < jobs.length ? t('ql.write.next') : t('ql.write.done')
+      ? (title ? t('ql.write.step', { name: title, n: step + 1, of: jobs.length }) : t('ql.write.stepPlain', { n: step + 1, of: jobs.length }))
+      : title
+    promptEl.textContent = job.prompt
+    field.value = job.text || ''
+    go.textContent = step + 1 < jobs.length ? t('ql.write.next') : t('ql.write.done')
     room()
     // Focus while the tap that brought us here is still the current gesture:
-    // that's the only way iOS opens the keyboard without a second tap. The
+    // that is the only way iOS opens the keyboard without a second tap. The
     // first paint happens before the screen is on the page, so that one is
     // asked for by whoever puts it there (`ready`), still inside the same tap.
     if (wrap.isConnected) field.focus()
   }
 
   function room() {
-    const n = field.value.trim().length
     left.textContent = t('ql.write.left', { n: MAX - field.value.length })
-    go.disabled = !n
+    go.disabled = !field.value.trim()
   }
 
   function next() {
-    const job = jobs[state.writeStep]
     const text = field.value.trim().slice(0, MAX)
     if (!text) return
-    state.duels[job.duel].answers[job.slot].text = text
-    if (state.writeStep + 1 < jobs.length) { state.writeStep++; paint(); return }
+    if (onSave(step, text) === false) return
+    jobs[step].text = text
+    if (step + 1 < jobs.length) { step++; paint(); return }
     field.blur()
-    match.written(api)
+    onDone()
   }
 
   field.addEventListener('input', room)
   // Enter is "done with this one", not a newline: an answer is one line.
   field.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); next() } })
 
-  runtime.viewport = keepAbove(wrap)
+  const stopViewport = keepAbove(wrap)
   paint()
   wrap.ready = () => field.focus()
+  wrap.stop = stopViewport
   return wrap
 }

@@ -55,6 +55,8 @@ const ICON_PATHS = {
   // language: a globe — one meridian, two parallels
   globe: '<circle cx="12" cy="12" r="9"/><path d="M12 3c2.5 2.4 3.8 5.4 3.8 9s-1.3 6.6-3.8 9c-2.5-2.4-3.8-5.4-3.8-9S9.5 5.4 12 3z"/><path d="M3.5 9h17M3.5 15h17"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  // a door you walk into: the room somebody else opened
+  enter: '<path d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14"/><path d="M4 12h10"/><path d="M10.5 8.5L14 12l-3.5 3.5"/>',
   minus: '<path d="M5 12h14"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',

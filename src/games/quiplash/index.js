@@ -4,13 +4,20 @@ import { el, clear, icon } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { createTableStage } from '../../shared/tableStage.js'
 import * as match from './match.js'
-import * as screens from './screens.js'
+import { mountRoom } from './room.js'
+import { mountGuest } from './guest.js'
 import { MIN_PLAYERS } from './round.js'
 import packs from './packs.js'
 
 // Built on read so the labels follow the interface language.
+// Quiplash is the one game here played on several phones at once: writing is
+// private and simultaneous, which one phone passed around can only imitate by
+// taking turns. So the room comes first, joining one second, and the single
+// phone stays underneath for when there is no network — or no second phone.
 const menu = () => [
-  { title: t('ql.menu.play'), sub: t('ql.menu.playSub'), phase: 'setup', glyph: 'play' },
+  { title: t('ql.menu.play'), sub: t('ql.menu.playSub'), phase: 'room', glyph: 'play' },
+  { title: t('ql.menu.join'), sub: t('ql.menu.joinSub'), phase: 'join', glyph: 'enter' },
+  { title: t('ql.menu.alone'), sub: t('ql.menu.aloneSub'), phase: 'setup', glyph: 'phone' },
   { title: t('ql.menu.words'), sub: t('ql.menu.wordsSub'), phase: 'words', glyph: 'bubbles' },
   { title: t('ql.menu.rules'), sub: t('ql.menu.rulesSub'), phase: 'rules', glyph: 'help' },
   { title: t('ql.menu.stats'), sub: t('ql.menu.statsSub'), phase: 'stats', glyph: 'stats' }
@@ -48,6 +55,10 @@ const rules = () => [
 // that minute, and the table would be reading over their shoulder.
 const TABLE_PHASES = ['pass', 'duel', 'tally', 'standings']
 const FULL_PHASES = ['write']
+// The two screens of a match played across phones: the room and the way in.
+// They own everything they draw, this file only puts them up and takes them
+// down (room.js, guest.js).
+const NET_PHASES = ['room', 'join']
 
 function mount(container, ctx, initialPhase) {
   const state = { phase: initialPhase || 'start' }
@@ -55,10 +66,13 @@ function mount(container, ctx, initialPhase) {
   const runtime = { viewport: null }
   let stage = null
   let ro = null
+  let net = null // the room's own cleanup, while a room is up
 
   function stopRuntime() {
     if (runtime.viewport) { runtime.viewport(); runtime.viewport = null }
   }
+
+  function stopNet() { if (net) { net(); net = null } }
 
   const api = {
     ctx,
@@ -100,6 +114,14 @@ function mount(container, ctx, initialPhase) {
 
   function render() {
     api.onSeat = null
+    stopNet()
+    if (NET_PHASES.includes(state.phase)) {
+      teardown()
+      clear(container)
+      const mountNet = state.phase === 'room' ? mountRoom : mountGuest
+      net = mountNet(container, ctx, { exit: () => api.toMenu() })
+      return
+    }
     if (state.phase === 'start') { match.start(api); return }
     // A reload lands on an address with no match behind it (the answers lived
     // in memory, as they should). The table is where that address starts again.
@@ -111,7 +133,8 @@ function mount(container, ctx, initialPhase) {
       stopRuntime()
       teardown()
       clear(container)
-      const node = screens.renderWrite(api)
+      const node = match.write(api)
+      runtime.viewport = node.stop
       container.append(node)
       // Still inside the tap that asked for this screen: the keyboard comes up
       // with it instead of costing a second tap.
@@ -135,7 +158,7 @@ function mount(container, ctx, initialPhase) {
     if (TABLE_PHASES.includes(state.phase)) render()
   })
 
-  return () => { stopRuntime(); teardown(); if (offPacks) offPacks() }
+  return () => { stopRuntime(); stopNet(); teardown(); if (offPacks) offPacks() }
 }
 
 export default {

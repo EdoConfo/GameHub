@@ -1,12 +1,16 @@
 # GameHub
 
-Party games you play together on **a single phone**, passing it around (pass-and-play).
-No accounts, runs entirely in the browser, and **works offline** as an installable PWA.
+Party games for people sitting at the same table. Most of them are played on
+**a single phone**, passed around (pass-and-play); Quiplash is played on
+**everybody's phone at once**, in a room they join with a four-letter code.
+No accounts, runs entirely in the browser, and **works offline** as an
+installable PWA (Quiplash's rooms are the one thing that needs a network).
 
 Games included:
 
 - **Mister White**: find the impostors among you before they blend in.
 - **Heads Up**: in teams. Hold the phone to your forehead and guess the word from your team's clues.
+- **Quiplash**: two people answer the same prompt, everybody else votes for the funnier one.
 
 The interface is available in Italian and English.
 
@@ -81,7 +85,7 @@ create your own (saved in the browser's `localStorage`) and edit or delete them.
 A pack holds one list per language, side by side. A pack without the current
 language is hidden.
 
-Neither game ships its words. Both live in a Supabase database (schema in
+No game ships its words. They all live in a Supabase database (schema in
 [`supabase/`](supabase/)): the app only reads them, downloads them the first time
 it sees a network, keeps them on the phone in IndexedDB so they play offline, and
 offers to update them when the database copy changes. The public key in
@@ -117,6 +121,13 @@ category *is* the game: you pick "Animali" and everyone knows it.
 In both tables one row carries every language at once, and no column may be
 empty — so a pair or a word exists in all languages or in none, and every
 language plays the same list, with the same count.
+
+### Quiplash: prompts
+
+Each item is **one prompt** — "The worst name for a cat" — and there is one
+built-in pack, **Base**, in the `ql_prompts` table. Like Mister White's Base it
+is played but not opened: a prompt read beforehand is a prompt somebody has
+already written the answer to.
 
 ### How it works
 
@@ -173,8 +184,40 @@ src/
     registry.js        list of games
     mister-white/      engine + match + packs.js (Base from Supabase)
     heads-up/          match (teams, turns) + screens + motion + teams.js + packs.js
+    quiplash/          round.js (the arithmetic) + game.js (a match, as the room
+                       holds it) + room.js / guest.js (several phones) +
+                       match.js (one phone) + screens.js + packs.js
 supabase/              database schema for the remote packs
 ```
+
+## Quiplash across several phones
+
+Quiplash is the one game here that is better on more than one device: writing
+is private and simultaneous, which a single phone can only imitate by taking
+turns. So it has a **room**.
+
+- One phone opens it (**Gioca**) and gets a four-letter code. That phone holds
+  the match: it decides what is going on and tells the others. It is also the
+  screen — the table, the prompt, the two answers — so a tablet in the middle
+  of the table plays like Quiplash always has.
+- The others open GameHub → Quiplash → **Entra**, type the code and pick their
+  profile. They write and vote on their own phone, and they see the whole match
+  as well, so a room with no screen in the middle works just as well. The phone
+  that opened the room can hold a player of its own (**Gioco anch'io**).
+- With no network, or with one phone only, **Un telefono solo** plays the same
+  game pass-and-play: the phone goes round for the answers, and the table votes
+  by tapping the seats.
+
+The wire is [`src/shared/realtime.js`](src/shared/realtime.js): Supabase
+Realtime in **broadcast** mode. Messages go phone → Supabase → phones and are
+never written down — no table, no rows to clean up, and the public key still
+cannot read or change a single row of the database. Broadcast and not the
+database's own change feed, because a party game is judged on how fast it
+answers.
+
+The room is as private as its code: anybody who knows it can join, and
+everything the room says is readable by anyone in it who opens a browser
+console. It is a game among friends, not a bank.
 
 ## How to play Heads Up
 
@@ -189,6 +232,19 @@ supabase/              database schema for the remote packs
   a longer game.
 - The phone rotates inside the team from turn to turn, so it is never always the
   same person holding it.
+
+## How to play Quiplash
+
+- Everybody gets **two prompts**, and every prompt goes to **two people**: in a
+  room they write at the same time on their own phone, on a single phone it goes
+  round.
+- Then the two answers come up **side by side, with no names on them**, and
+  everybody else votes for the funnier one. The two who wrote don't vote — in a
+  room nobody even knows who they are until the vote is in.
+- Every vote is worth **100 points**. An answer that takes *every* vote is a
+  **Quiplash** and is worth double.
+- A round is one prompt per player. The second round is worth double and the
+  third triple, so it can all turn around on the last prompt.
 
 ## How to play Mister White
 

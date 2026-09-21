@@ -7,8 +7,9 @@
 import { el, button, icon, modal, walls, shuffle } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import {
-  MIN_PLAYERS, ROUNDS, buildRound, votersFor, castVotes, tallyDuel, ranking, outcome
+  MIN_PLAYERS, ROUNDS, buildRound, drawPrompts, jobsFor, votersFor, castVotes, tallyDuel, ranking, outcome
 } from './round.js'
+import { writeScreen } from './screens.js'
 import packs from './packs.js'
 
 const OPTS_KEY = 'quiplash:options'
@@ -63,8 +64,13 @@ function playerAt(api, i) {
   return k < 0 ? null : k
 }
 
-// ---------- before the match: this game's knobs in the table drawer ----------
-export function tableOptions(ctx, ui) {
+// ---------- before the match: this game's knobs, in a drawer ----------
+// The same two doors serve the table (one phone) and the room (several): what
+// the match draws from, and how long it runs. Only the counting of players
+// differs, and that arrives from outside.
+//   ui.changed(): something moved, look again
+//   ui.open(title, content): a page of this game's own, over the drawer
+export function matchOptions(ctx, ui) {
   let paintPage = null
 
   function door(label, onClick) {
@@ -139,20 +145,34 @@ export function tableOptions(ctx, ui) {
 
   return {
     node,
-    // -> '' when a match can start, else why not
-    check() {
+    // The doors say what they hold; an open page repaints itself.
+    paint() {
       promptsDoor.set(promptsSummary())
       roundDoor.set(roundSummary())
       if (paintPage) paintPage()
-      const people = seated(ctx)
-      if (people.length < MIN_PLAYERS) return t('ql.setup.needPlayers', { n: MIN_PLAYERS })
+    },
+    // -> '' when a match with `n` players can start, else why not
+    problem(n) {
+      if (n < MIN_PLAYERS) return t('ql.setup.needPlayers', { n: MIN_PLAYERS })
       if (!packs.allPacks().length && packs.remote && !packs.remote.has()) return t('ql.setup.promptsMissing')
       const pool = packs.enabledItems().length
       if (!pool) return t('ql.setup.pickPack')
       // One round without repeats: a prompt coming round twice in the same
       // round is the same duel played twice.
-      if (pool < people.length) return t('ql.setup.morePrompts', { n: people.length })
+      if (pool < n) return t('ql.setup.morePrompts', { n })
       return ''
+    }
+  }
+}
+
+// The table's own version: the players are whoever is sitting down.
+export function tableOptions(ctx, ui) {
+  const opts = matchOptions(ctx, ui)
+  return {
+    node: opts.node,
+    check() {
+      opts.paint()
+      return opts.problem(seated(ctx).length)
     }
   }
 }
@@ -179,19 +199,8 @@ export function start(api) {
   api.goPhase('pass')
 }
 
-// The next `n` prompts. Only if the pool runs out does it shuffle and come
-// round again — better a repeat than a duel with nothing to answer.
-function take(state, n) {
-  const out = []
-  for (let i = 0; i < n; i++) {
-    if (state.cursor >= state.pool.length) { state.pool = shuffle(state.pool); state.cursor = 0 }
-    out.push(state.pool[state.cursor++])
-  }
-  return out
-}
-
 function beginRound(state) {
-  state.duels = buildRound(state.players.length, take(state, state.players.length), state.round)
+  state.duels = buildRound(state.players.length, drawPrompts(state, state.players.length), state.round)
   state.writeIndex = 0
   state.writeStep = 0
   state.duelIndex = 0
@@ -218,6 +227,28 @@ export function pass(api, stage) {
       onClick: () => { state.writeStep = 0; api.goPhase('write') }
     })
   ], 'steady'))
+}
+
+// One phone: whoever is holding it writes their two answers, then hides them
+// and passes it on. The screen is the same one a player gets on their own
+// phone in a room — there it is theirs for the whole round, here for a minute.
+export function write(api) {
+  const { state } = api
+  const me = state.players[state.writeIndex]
+  const jobs = jobsFor(state.duels, state.writeIndex).map(j => ({
+    at: j,
+    prompt: state.duels[j.duel].prompt,
+    text: state.duels[j.duel].answers[j.slot].text
+  }))
+  return writeScreen({
+    title: me.name,
+    jobs,
+    onSave: (i, text) => {
+      const { duel, slot } = jobs[i].at
+      state.duels[duel].answers[slot].text = text
+    },
+    onDone: () => written(api)
+  })
 }
 
 // Called by the writing screen when somebody has finished their two answers.

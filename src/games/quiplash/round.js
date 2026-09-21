@@ -32,6 +32,30 @@ export function buildRound(playerCount, prompts, round = 0) {
   }))
 }
 
+// The next `n` prompts out of a pool being walked through in order. `holder`
+// is whatever keeps it: { pool, cursor }.
+//
+// Only when the pool runs out does it come round again — better a prompt twice
+// in an evening than a duel with nothing to answer. What this round has
+// already taken goes to the back when it does, so the repeat is as far away as
+// the pool allows, and never inside the same round unless there is genuinely
+// nothing else left.
+export function drawPrompts(holder, n) {
+  const out = []
+  while (out.length < n && holder.pool.length) {
+    if (holder.cursor >= holder.pool.length) {
+      const used = new Set(out)
+      holder.pool = [
+        ...shuffle(holder.pool.filter(p => !used.has(p))),
+        ...shuffle(holder.pool.filter(p => used.has(p)))
+      ]
+      holder.cursor = 0
+    }
+    out.push(holder.pool[holder.cursor++])
+  }
+  return out
+}
+
 // What one player has to write this round, in the order the duels come up.
 //   -> [{ duel, slot }], two of them
 export function jobsFor(duels, player) {
