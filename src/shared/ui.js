@@ -38,6 +38,8 @@ const ICON_PATHS = {
   // games
   incognito: '<path d="M3 11h18"/><path d="M6 11l1.5-5h9L18 11"/><circle cx="8" cy="16" r="2.5"/><circle cx="16" cy="16" r="2.5"/><path d="M10.5 16h3"/>',
   phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+  // two answers to the same question, talking past each other
+  bubbles: '<path d="M4.5 3.5h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H8l-3.5 2.8V11.5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z"/><path d="M12.5 12.5h7a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2v2.6L15.5 19.5h-3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"/>',
   // menu voices
   play: '<path d="M8 5.5v13l10.5-6.5z"/>',
   words: '<path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>',

@@ -1145,3 +1145,64 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .score-name { grid-column: 2; grid-row: 1; font-weight: 700; color: var(--team); }
 .score-sub { grid-column: 2; grid-row: 2; font-size: 12px; }
 .score-value { grid-column: 3; grid-row: 1 / span 2; font-size: 24px; }
+
+/* ============================================================
+   Quiplash: writing, the two answers, the standings
+   ============================================================ */
+/* Writing takes the whole screen: the prompt belongs to one person for that
+   minute, and a drawer with the table above it is the wrong shape for a
+   secret. The height is set in JS to what the keyboard leaves of the screen
+   (screens.js), so the prompt, the field and the button stay together above it. */
+.write-area {
+  padding: calc(16px + env(safe-area-inset-top)) 18px calc(16px + env(safe-area-inset-bottom));
+  gap: 14px;
+}
+.write-head { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.write-prompt {
+  font-size: clamp(21px, 6.2vw, 32px); font-weight: 800; letter-spacing: -.5px;
+  line-height: 1.15; text-align: center; overflow-wrap: anywhere;
+}
+.write-box { display: flex; flex-direction: column; gap: 6px; }
+.write-field { min-height: 88px; font-size: 18px; resize: none; }
+.write-left { align-self: flex-end; font-size: 12px; color: var(--text-dim); }
+/* whatever room is left goes above the button, so it sits on the keyboard */
+.write-area > .btn { margin-top: auto; }
+
+/* The prompt while the table reads it out loud. */
+.drawer-prompt {
+  font-size: clamp(20px, 5.6vw, 28px); font-weight: 800; letter-spacing: -.4px;
+  line-height: 1.2; text-align: center; padding: 2px 0; overflow-wrap: anywhere;
+}
+
+/* The two answers, one under the other and no names on them. The colour is the
+   one their voters wear on the table (the team palette, reused: here it says
+   "first answer" and "second answer"). */
+.answer-list { display: flex; flex-direction: column; gap: 8px; }
+.answer-row {
+  display: grid; grid-template-columns: 12px 1fr auto; align-items: center;
+  column-gap: 10px; row-gap: 2px;
+  padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+}
+.answer-row .team-dot { grid-column: 1; grid-row: 1; }
+.answer-text { grid-column: 2; grid-row: 1; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.answer-by {
+  grid-column: 2; grid-row: 2; display: flex; align-items: baseline; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--team);
+}
+.answer-sweep { font-size: 11px; letter-spacing: 1.2px; color: var(--primary); }
+.answer-votes { grid-column: 3; grid-row: 1 / span 2; font-size: 20px; }
+.answer-row.won { border-color: color-mix(in srgb, var(--team) 55%, transparent); }
+
+/* The standings: a place, a name, a score. */
+.rank-list { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 4px; }
+.rank-row {
+  display: grid; grid-template-columns: 22px 1fr auto; align-items: center; column-gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface);
+}
+.rank-num { font-size: 13px; font-weight: 800; color: var(--text-dim); text-align: center; }
+.rank-name { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-value { font-size: 20px; }
+.rank-row.lead { border-color: color-mix(in srgb, var(--primary) 55%, transparent); }
+.rank-row.lead .rank-name { color: var(--primary); }
