@@ -15,8 +15,11 @@
 //     menu:        [{ title, sub, phase, glyph }]  the game's own menu wheel
 //                  each phase is an address of its own: #/<id>/<phase>
 //     table:       optional — "Gioca" opens the shared table in the hub:
-//                  { min, options(ctx, { changed, open }) -> { node, check(n) }, start(ctx) }
+//                  { min, options(ctx, { changed, open }) -> { node, check(n) },
+//                    seat?(ctx, seat, i) -> { cls?, note? }, start(ctx) }
 //                  open(title, content) shows a page of the game's own in the drawer
+//                  seat dresses a chair before the match starts — Heads Up
+//                  colours it by team; leave it out and chairs stay plain
 //     mount(container, ctx, phase) -> optional cleanup function
 //       container: HTMLElement to render into (already emptied)
 //       ctx: { storage, players, table, stats, router, root, applyTheme }

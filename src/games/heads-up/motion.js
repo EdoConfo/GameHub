@@ -19,7 +19,10 @@
 const TRIGGER = 5.2   // m/s^2 of gravity on Z to fire (~32° tilt)
 const RESET = 3.0     // must fall back under this before firing again
 
-export function motionSupported() {
+// Internal now: the setup screen used to ask, to warn up front that the phone
+// had no sensor. The turn screen says it instead, and only if no reading
+// actually arrives — which is the honest moment to say it.
+function motionSupported() {
   return typeof window !== 'undefined' &&
     ('DeviceMotionEvent' in window || 'ondevicemotion' in window)
 }

@@ -6,7 +6,7 @@ No accounts, runs entirely in the browser, and **works offline** as an installab
 Games included:
 
 - **Mister White**: find the impostors among you before they blend in.
-- **Heads Up**: hold the phone to your forehead and guess the word from your friends' clues.
+- **Heads Up**: in teams. Hold the phone to your forehead and guess the word from your team's clues.
 
 The interface is available in Italian and English.
 
@@ -172,9 +172,23 @@ src/
   games/
     registry.js        list of games
     mister-white/      engine + match + packs.js (Base from Supabase)
-    heads-up/          screens + motion + packs.js (categories from Supabase)
+    heads-up/          match (teams, turns) + screens + motion + teams.js + packs.js
 supabase/              database schema for the remote packs
 ```
+
+## How to play Heads Up
+
+- Sit everyone at the table and **split them into teams** — the seat colour says
+  who plays with whom. A team needs at least two players: one holds the phone,
+  the others give the clues.
+- A **turn** is one team's: the phone goes to one of them, on the forehead with
+  the screen facing out, and the rest shout clues until the time runs out.
+  Tilt down for a right answer, up to pass — or tap the screen, right and left.
+- When every team has had its turn the **standings** come up, with Play again
+  right there. One turn each by default; two or three in the drawer if you want
+  a longer game.
+- The phone rotates inside the team from turn to turn, so it is never always the
+  same person holding it.
 
 ## How to play Mister White
 

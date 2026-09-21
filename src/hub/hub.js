@@ -168,7 +168,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       header.replaceChildren(
         el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => goto(V_MENU) }, icon('back')),
         el('span', { class: 'wordmark game-home-title' },
-          (gameKind === 'rules' ? t('mw.rules.title')
+          (gameKind === 'rules' ? t('rules.title')
             : gameKind === 'stats' ? t('stats.title')
               : t('packs.title')).toUpperCase())
       )
@@ -628,6 +628,9 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     if (index === V_GAME && gameKind === 'words') buildGameSide('words')
     else if (menuWheel) menuWheel.setItems(menuItems())
     if (sideWheel && sideKind === 'settings') sideWheel.setItems(sideItems('settings'))
+    // …and the table, if it's up: its drawer names the pack the match will
+    // draw from, and until the first download there is no pack to name.
+    if (table) table.refresh()
   }))
 
   if (startMenuId) {

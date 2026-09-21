@@ -64,7 +64,17 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
     const roster = new Map(ctx.players.all().map(p => [p.id, p]))
     stage.view.set(seats.map((s, i) => {
       const p = s.pid ? roster.get(s.pid) || null : null
-      return { key: s.id, p, name: p ? p.name : t('table.free'), cls: picking === i ? 'on' : '' }
+      // A game may have something to say about a chair before the match starts:
+      // Heads Up colours it by team, which is the whole reason it has a table.
+      // Whoever you're seating right now still wins the highlight.
+      const look = (cfg.seat && cfg.seat(ctx, s, i)) || {}
+      return {
+        key: s.id,
+        p,
+        name: p ? p.name : t('table.free'),
+        note: look.note || '',
+        cls: (look.cls || '') + (picking === i ? ' on' : '')
+      }
     }))
     stage.view.setCenter(el('div', { class: 'table-count' }, [
       el('b', {}, String(seats.length)),
@@ -186,5 +196,9 @@ export function openTableScene(canvas, header, ctx, game, { from } = {}) {
   // out of the menu: the big circle shrinks into the table, seats appear late
   stage.glide(stage.room(h), from ? { ms: TABLE_MORPH_MS, span: [0.3, 1] } : { ms: 460 })
 
-  return { refit: stage.refit, close: stage.close }
+  // refresh: the drawer and the seats read things that can change while you sit
+  // here looking at them — the word packs land from the database a moment after
+  // the app starts. Without a way in, the drawer went on saying "download them"
+  // with them already on the phone.
+  return { refit: stage.refit, close: stage.close, refresh }
 }

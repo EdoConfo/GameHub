@@ -1,111 +1,10 @@
-import { el, screen, button, shuffle } from '../../shared/ui.js'
+// The two screens a turn is actually played on. Everything else — teams, the
+// category, whose turn, the standings — lives at the table (match.js).
+//
+// These two take the whole screen on purpose: the phone is on somebody's
+// forehead, and the table behind it is nobody's business for the next minute.
+import { el, shuffle } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { ensurePermission, motionSupported } from './motion.js'
-
-// Build the word list from the chosen pack (single words). Falls back to
-// all enabled words if the pack is gone.
-function buildWords(store, packId) {
-  const pack = store.getPack(packId)
-  const words = pack ? pack.items : store.enabledItems()
-  return shuffle(words.slice())
-}
-
-// ---------- SETUP ----------
-export function renderSetup(api) {
-  const { ctx, state } = api
-  const view = screen({ title: t('hu.name'), onBack: () => api.toMenu() })
-  const packs = api.packs.enabledPacks()
-
-  // Keep the selection valid against the currently enabled packs.
-  if (!packs.some(p => p.id === state.packId)) state.packId = packs[0]?.id || null
-
-  // Pack picker
-  const sec1 = section(t('hu.setup.category'))
-  const chips = el('div', { class: 'chip-list' })
-  function refreshPacks() {
-    chips.replaceChildren()
-    if (!packs.length) {
-      // The categories arrive with the first network the app sees. Until then
-      // the list is empty through nobody's choice, and "switch one on" would be
-      // the wrong advice.
-      const waiting = api.packs.remote && !api.packs.remote.has()
-      chips.append(el('p', { class: 'muted' }, t(waiting ? 'hu.setup.wordsMissing' : 'hu.setup.noCategory')))
-    }
-    for (const p of packs) {
-      chips.append(el('button', {
-        class: 'chip selectable' + (state.packId === p.id ? ' on' : ''),
-        onclick: () => { state.packId = p.id; refreshPacks() }
-      }, `${p.name} (${p.items.length})`))
-    }
-  }
-  refreshPacks()
-  sec1.append(chips)
-  // the packs live on the hub's arc now, not inside the game
-  sec1.append(el('button', { class: 'link-btn', onclick: () => api.ctx.router.go('/heads-up/words') }, t('hu.setup.manage')))
-
-  // Duration
-  const sec2 = section(t('hu.setup.duration'))
-  const durRow = el('div', { class: 'chip-list' })
-  function refreshDur() {
-    durRow.replaceChildren()
-    for (const d of api.DURATIONS) {
-      durRow.append(el('button', {
-        class: 'chip selectable' + (state.duration === d ? ' on' : ''),
-        onclick: () => { state.duration = d; refreshDur() }
-      }, `${d}s`))
-    }
-  }
-  refreshDur()
-  sec2.append(durRow)
-
-  // Controls
-  const sec3 = section(t('hu.setup.controls'))
-  sec3.append(el('p', { class: 'muted' },
-    motionSupported() ? t('hu.setup.tiltHint') : t('hu.setup.noSensor')))
-  sec3.append(el('label', { class: 'row space-between' }, [
-    el('span', {}, t('hu.setup.invert')),
-    el('input', { type: 'checkbox', checked: state.invert, onchange: e => { state.invert = e.target.checked } })
-  ]))
-
-  const startBtn = button(t('hu.setup.continue'), {
-    variant: 'primary', full: true,
-    disabled: !state.packId,
-    onClick: () => { if (state.packId) api.goPhase('ready') }
-  })
-
-  view.body.append(sec1, sec2, sec3, startBtn)
-  return view
-}
-
-// ---------- READY ----------
-export function renderReady(api) {
-  const { ctx, state } = api
-  const view = screen({ title: t('hu.ready.title'), onBack: () => api.goPhase('setup') })
-
-  view.body.append(el('div', { class: 'ready-block' }, [
-    el('div', { class: 'ready-emoji' }, '📱'),
-    el('ol', { class: 'ready-steps' }, [
-      el('li', {}, t('hu.ready.step1')),
-      el('li', {}, t('hu.ready.step2')),
-      el('li', {}, t('hu.ready.step3')),
-      el('li', {}, t('hu.ready.step4'))
-    ])
-  ]))
-
-  const startBtn = button(t('hu.ready.start'), {
-    variant: 'primary', full: true, onClick: async () => {
-      // Permission must be requested from this user gesture (iOS).
-      state.motionGranted = await ensurePermission()
-      state.words = buildWords(api.packs, state.packId)
-      state.index = 0
-      state.score = 0
-      state.results = []
-      api.goPhase('countdown')
-    }
-  })
-  view.body.append(startBtn)
-  return view
-}
 
 // ---------- COUNTDOWN ----------
 export function renderCountdown(api) {
@@ -132,6 +31,7 @@ export function renderCountdown(api) {
 // ---------- PLAY ----------
 export function renderPlay(api) {
   const { state, runtime } = api
+  const team = state.teams[state.turn % state.teams.length]
 
   const wrap = el('div', { class: 'fullscreen play-area' })
   const timerBar = el('div', { class: 'timer-bar' })
@@ -143,32 +43,37 @@ export function renderPlay(api) {
 
   wrap.append(
     el('div', { class: 'play-top' }, [timerBar, scoreEl]),
+    el('div', { class: 'play-team team-' + team.i }, team.name),
     wordEl,
     hint
   )
 
+  // The pool is the whole match's, walked straight through, so two teams never
+  // get the same word. Only if it runs dry does it shuffle and come round
+  // again — better a repeat than an empty screen.
   function showWord() {
-    if (state.index >= state.words.length) {
-      // Ran out: reshuffle and keep going.
+    if (state.cursor >= state.words.length) {
       state.words = shuffle(state.words)
-      state.index = 0
+      state.cursor = 0
     }
-    wordEl.textContent = state.words[state.index] || '—'
+    wordEl.textContent = state.words[state.cursor] || '—'
   }
 
   let locked = false
   function action(kind) {
     if (locked || state.phase !== 'play') return
     locked = true
-    const word = state.words[state.index] || ''
+    const word = state.words[state.cursor] || ''
     const correct = kind === 'correct'
     state.results.push({ word, correct })
-    if (correct) state.score++
-    scoreEl.textContent = String(state.score)
+    if (correct) {
+      team.score++
+      scoreEl.textContent = String(state.results.filter(r => r.correct).length)
+    }
     wrap.classList.add(correct ? 'flash-ok' : 'flash-pass')
     setTimeout(() => {
       wrap.classList.remove('flash-ok', 'flash-pass')
-      state.index++
+      state.cursor++
       showWord()
       locked = false
     }, 320)
@@ -204,52 +109,10 @@ export function renderPlay(api) {
     timerFill.style.width = pct + '%'
     if (state.timeLeft <= 0) {
       api.stopRuntime()
-      api.goPhase('results')
+      api.goPhase('tally')
     }
   }, 1000)
 
   showWord()
   return wrap
-}
-
-// ---------- RESULTS ----------
-export function renderResults(api) {
-  const { ctx, state } = api
-  const view = screen({ title: t('hu.results.title'), onBack: () => api.toMenu() })
-
-  const correct = state.results.filter(r => r.correct)
-  const passed = state.results.filter(r => !r.correct)
-
-  view.body.append(el('div', { class: 'result-hero' }, [
-    el('h2', { class: 'result-headline' }, t('hu.results.guessed', { n: correct.length })),
-    el('p', { class: 'muted center' }, t('hu.results.passedLine', { n: passed.length, s: state.duration }))
-  ]))
-
-  if (correct.length) {
-    view.body.append(section(t('hu.results.guessedSection'), [wordChips(correct, 'ok')]))
-  }
-  if (passed.length) {
-    view.body.append(section(t('hu.results.passedSection'), [wordChips(passed, 'pass')]))
-  }
-  if (!state.results.length) {
-    view.body.append(el('p', { class: 'muted center' }, t('hu.results.empty')))
-  }
-
-  view.body.append(el('div', { class: 'row stack' }, [
-    button(t('hu.results.replay'), { variant: 'primary', full: true, onClick: () => api.goPhase('ready') }),
-    button(t('hu.results.changeCategory'), { variant: 'secondary', full: true, onClick: () => api.goPhase('setup') }),
-    button(t('hu.results.home'), { variant: 'ghost', full: true, onClick: () => api.toMenu() })
-  ]))
-  return view
-}
-
-// ---------- helpers ----------
-function section(title, children = []) {
-  return el('section', { class: 'card-section' }, [el('h2', { class: 'section-title' }, title), ...children])
-}
-
-function wordChips(list, kind) {
-  const box = el('div', { class: 'chip-list' })
-  for (const r of list) box.append(el('span', { class: 'chip result-chip ' + kind }, r.word))
-  return box
 }
