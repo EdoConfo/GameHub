@@ -1251,8 +1251,38 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 }
 .answer-row.pickable:active { transform: scale(.985); border-color: color-mix(in srgb, var(--team) 70%, transparent); }
 
-/* The room code, typed in: four big letters and nothing else on the line. */
-.code-input { text-align: center; font-size: 30px; font-weight: 800; letter-spacing: 10px; padding-left: 10px; text-transform: uppercase; }
+/* The room code, typed in: four boxes side by side, joined into one block —
+   as many boxes as there are letters, so you can see at a glance how many are
+   still missing. Underneath them there is ONE field, transparent and stretched
+   over the lot: the letters are typed (or pasted) straight through, with no
+   focus jumping from box to box and no keyboard closing in between. */
+.code-field { position: relative; align-self: center; padding: 4px; }
+.code-boxes { display: flex; }
+.code-box {
+  width: 52px; height: 62px; display: grid; place-items: center;
+  font-size: 28px; font-weight: 800; letter-spacing: 0;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-left-width: 0;
+}
+.code-box:first-child { border-left-width: 1px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.code-box:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+/* The box waiting for the next letter carries the ring — drawn inside, so a
+   box in the middle shows it on the side it shares with its neighbour too. */
+.code-box.on { position: relative; z-index: 1; box-shadow: inset 0 0 0 2px var(--primary); }
+.code-box.on:empty::after {
+  content: ''; width: 2px; height: 28px; border-radius: 1px;
+  background: var(--primary); animation: caret 1.1s steps(1) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .code-box.on:empty::after { animation: none; } }
+/* The field itself is only there to catch the typing: what you read is the
+   boxes. 16px because anything smaller makes iOS zoom the page on focus. */
+.code-entry {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; padding: 0; border: 0; background: none; outline: none;
+  font: inherit; font-size: 16px; text-align: center;
+  color: transparent; caret-color: transparent; text-transform: uppercase;
+}
 
 /* the face you are joining as */
 .pick-cell.on .avatar { box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .3), 0 0 0 3px var(--bg), 0 0 0 5px var(--primary); }

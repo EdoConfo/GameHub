@@ -10,8 +10,8 @@
 import { el, clear, icon, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { avatar, faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
-import { openRoom, cleanCode } from '../../shared/realtime.js'
-import { writeScreen } from './screens.js'
+import { openRoom, cleanCode, CODE_LEN } from '../../shared/realtime.js'
+import { writeScreen, keepAbove } from './screens.js'
 
 const CODE_KEY = 'quiplash:room'
 const ME_KEY = 'quiplash:me'
@@ -29,6 +29,7 @@ export function mountGuest(container, ctx, { exit }) {
   let closed = false
   let writer = null
   let knock = 0
+  let stopViewport = null
 
   const myPid = () => (me ? me.id : null)
   const inMatch = () => !!(view && view.players.some(p => p.pid === myPid()))
@@ -120,44 +121,89 @@ export function mountGuest(container, ctx, { exit }) {
   ])
 
   function shell(children) {
+    if (stopViewport) { stopViewport(); stopViewport = null }
     clear(container)
     const bar = el('div', { class: 'hub-header' }, [
       el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => exit() }, icon('back')),
       el('span', { class: 'wordmark game-home-title' }, t('ql.name').toUpperCase()),
       code ? el('span', { class: 'room-code-tag' + (status === 'on' ? '' : ' off') }, code) : null
     ])
-    container.append(el('div', { class: 'guest' }, [bar, el('div', { class: 'guest-body' }, children)]))
+    const node = el('div', { class: 'guest' }, [bar, el('div', { class: 'guest-body' }, children)])
+    container.append(node)
+    // The code is typed with the keyboard up: the screen becomes what it
+    // leaves, so the faces and the way in stay reachable instead of sitting
+    // under it.
+    stopViewport = keepAbove(node)
+  }
+
+  // ---------- the code: four boxes that are one field ----------
+  // Four boxes, because a four-letter code read out loud across a table is
+  // four letters, and a single long field says nothing about how many are
+  // missing. One input, though, and not four: with one per box every letter
+  // costs a focus jump, and a phone keyboard that closes and reopens between
+  // one and the next. So the boxes are only the drawing — underneath there is
+  // one field, transparent, and you type the code straight through it (or
+  // paste it, which four inputs would not take either).
+  function codeField(onChange) {
+    const boxes = el('div', { class: 'code-boxes' })
+    const input = el('input', {
+      class: 'code-entry', type: 'text', value: code,
+      inputmode: 'text', autocapitalize: 'characters', autocomplete: 'off',
+      autocorrect: 'off', spellcheck: 'false', maxlength: String(CODE_LEN),
+      'aria-label': t('ql.join.code')
+    })
+
+    function paint() {
+      const chars = input.value.split('')
+      const here = Math.min(chars.length, CODE_LEN - 1)
+      const live = document.activeElement === input
+      boxes.replaceChildren(...Array.from({ length: CODE_LEN }, (_, i) => el('span', {
+        class: 'code-box' + (live && i === here ? ' on' : '')
+      }, chars[i] || '')))
+    }
+
+    input.addEventListener('input', () => {
+      const clean = cleanCode(input.value)
+      if (input.value !== clean) input.value = clean
+      paint()
+      onChange(clean)
+    })
+    input.addEventListener('focus', paint)
+    input.addEventListener('blur', paint)
+
+    paint()
+    // The padding around the boxes belongs to the field too: a tap anywhere on
+    // it lands the caret after the last letter, never in the middle of one.
+    return el('div', {
+      class: 'code-field',
+      onclick: () => {
+        input.focus()
+        const n = input.value.length
+        try { input.setSelectionRange(n, n) } catch { /* not a field with a caret */ }
+      }
+    }, [boxes, input])
   }
 
   // ---------- joining ----------
   function joinScreen() {
     const saved = ctx.storage.get(ME_KEY, null)
     if (!me) me = ctx.players.all().find(p => p.id === saved) || null
-    const input = el('input', {
-      class: 'text-input code-input', type: 'text', inputmode: 'text',
-      autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false',
-      placeholder: '····', maxlength: '6', value: code
-    })
-    input.addEventListener('input', () => {
-      const clean = cleanCode(input.value)
-      if (input.value !== clean) input.value = clean
-      code = clean
-      go.disabled = !(code.length >= 4 && me)
-    })
+    const ready = () => code.length === CODE_LEN && !!me
+    const field = codeField(clean => { code = clean; go.disabled = !ready() })
 
     const go = button(t('ql.join.enter'), {
       variant: 'primary', full: true, disabled: true,
-      onClick: () => { if (code.length >= 4 && me) connect() }
+      onClick: () => { if (ready()) connect() }
     })
 
     const faces = el('div', { class: 'pick-grid' })
     const paintFaces = () => {
-      const grid = faceGrid(ctx.players.all(), p => { me = p; paintFaces(); go.disabled = !(code.length >= 4 && me) },
+      const grid = faceGrid(ctx.players.all(), p => { me = p; paintFaces(); go.disabled = !ready() },
         newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => {
           if (!p) return
           me = p
           paintFaces()
-          go.disabled = !(code.length >= 4 && me)
+          go.disabled = !ready()
         })))
       faces.replaceChildren(...grid.children)
       for (const cell of faces.children) cell.classList.remove('on')
@@ -166,12 +212,11 @@ export function mountGuest(container, ctx, { exit }) {
       if (at >= 0 && faces.children[at]) faces.children[at].classList.add('on')
     }
     paintFaces()
-    go.disabled = !(code.length >= 4 && me)
+    go.disabled = !ready()
 
     shell([
       head(t('ql.join.title'), t('ql.join.hint')),
-      el('span', { class: 'field-label' }, t('ql.join.code')),
-      input,
+      field,
       el('span', { class: 'field-label' }, t('ql.join.who')),
       walls(el('div', { class: 'list-scroll' }, faces)),
       go
@@ -315,6 +360,7 @@ export function mountGuest(container, ctx, { exit }) {
 
   return () => {
     clearInterval(knock)
+    if (stopViewport) { stopViewport(); stopViewport = null }
     if (writer) { writer.stop(); writer.remove(); writer = null }
     if (wire) { wire.send('bye', { pid: myPid() }); wire.leave() }
   }

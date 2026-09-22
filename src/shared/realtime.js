@@ -23,14 +23,18 @@ const topic = code => `gamehub:quiplash:${String(code).toUpperCase()}`
 // so the letters that get misheard or mistyped are simply not in the alphabet:
 // no O/0, no I/1, no S/5, no B/8, no Z/2.
 const ALPHABET = 'ACDEFGHJKLMNPQRTUVWXY34679'
-export function newCode(len = 4) {
+// Four: enough for half a million rooms, short enough to say once and to fit
+// in four boxes on a phone. The number lives here because the screen that
+// takes the code draws one box per character (guest.js).
+export const CODE_LEN = 4
+export function newCode(len = CODE_LEN) {
   let out = ''
   const r = new Uint8Array(len)
   crypto.getRandomValues(r)
   for (let i = 0; i < len; i++) out += ALPHABET[r[i] % ALPHABET.length]
   return out
 }
-export const cleanCode = raw => String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+export const cleanCode = raw => String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LEN)
 
 // The socket is built the first time a room is opened, never at startup: an
 // app that is only ever played by passing one phone around must not open a
