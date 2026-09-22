@@ -21,7 +21,7 @@
     --page-ink: #141210;
     --page-dim: #6b6760;
     --page-line: rgba(20, 18, 16, .12);
-    --page-accent: #6f675b;
+    --page-accent: #86692f;
     --stage: #e8e5df;
 
     --trim-w: 85mm;
@@ -36,7 +36,7 @@
       --page-ink: #f1efeb;
       --page-dim: #9a968f;
       --page-line: rgba(255, 250, 240, .10);
-      --page-accent: #a39a8c;
+      --page-accent: #b0925a;
       --stage: #121110;
     }
   }
@@ -46,7 +46,7 @@
     --page-ink: #f1efeb;
     --page-dim: #9a968f;
     --page-line: rgba(255, 250, 240, .10);
-    --page-accent: #a39a8c;
+    --page-accent: #b0925a;
     --stage: #121110;
   }
 
@@ -182,18 +182,19 @@
   }
   .card.back { transform: rotateY(180deg); }
 
-  /* varianti: token locali, indipendenti dal tema della pagina */
+  /* varianti: token locali, indipendenti dal tema della pagina. */
   /* Palette del marchio: solo neutri caldi. Nero caldo, avorio,
-     pietra (la h), fumo (il testo secondario). L'oro non è un colore:
-     a schermo è pietra più il riflesso, su carta è lamina vera.
+     oro antico (la h), fumo (il testo secondario). L'oro antico è lo
+     stesso metallo ovunque: a schermo tinta più riflesso, su carta
+     lamina vera.
      Tutti gli altri colori appartengono alle app. */
   .v-dark {
     --c-bg: #141210;
     --c-ink: #faf9f7;
     --c-dim: #6b6760;
-    --c-accent: #a39a8c;      /* pietra */
-    --foil-hi: #e6cf92;       /* oro nel riflesso */
-    --foil-spark: #fff6de;    /* il punto dove batte la luce */
+    --c-accent: #b0925a;      /* oro antico, a riposo */
+    --foil-hi: #e2c683;       /* oro nel riflesso */
+    --foil-spark: #fff3d2;    /* il punto dove batte la luce */
     --c-paper: #faf9f7;
     --c-shadow: 0 24px 50px -18px rgba(0, 0, 0, .75), 0 2px 0 rgba(255, 250, 240, .05) inset;
     --c-sheen: rgba(255, 244, 220, .2);
@@ -202,9 +203,9 @@
     --c-bg: #faf9f7;
     --c-ink: #141210;
     --c-dim: #9a968f;
-    --c-accent: #6f675b;
-    --foil-hi: #b08a3e;
-    --foil-spark: #d9b765;
+    --c-accent: #86692f;
+    --foil-hi: #b8913e;
+    --foil-spark: #dcbd72;
     --c-paper: #faf9f7;
     --c-shadow: 0 24px 46px -20px rgba(40, 32, 20, .42), 0 0 0 1px rgba(20, 18, 16, .07);
     --c-sheen: rgba(255, 250, 235, .55);
@@ -231,7 +232,7 @@
     color: var(--c-ink);
   }
   /* La h è lamina. Il gradiente è largo cinque volte la lettera e a
-     riposo mostra solo la sua coda, tutta pietra; inclinando la carta
+     riposo mostra solo la sua coda, oro spento; inclinando la carta
      --glint lo fa scorrere e la banda d'oro attraversa la h. Il resto
      della carta resta opaco, come la carta vera sotto una lamina. */
   .wm i {
@@ -486,7 +487,7 @@
     /* La grana serve a simulare la carta su uno schermo. Sul cartaceo
        la carta c'è già: stamparla la sporcherebbe e basta. */
     .plate-cap, .guides, .grain { display: none; }
-    /* In tipografia la lamina è un passaggio a sé: qui la h esce pietra. */
+    /* In tipografia la lamina è un passaggio a sé: qui la h esce oro antico piatto. */
     .wm i { background: none; -webkit-text-fill-color: currentColor; }
     .plate { width: 91mm; height: 61mm; max-width: none; }
     .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -497,7 +498,7 @@
 
   <header class="masthead noprint">
     <div>
-      <p class="eyebrow">Identità · v5</p>
+      <p class="eyebrow">Identità · v6</p>
       <h1>Echo</h1>
     </div>
     <p>Il fronte porta solo il marchio. Il retro scopre da dove viene: <b>E</b>doardo <b>CO</b>nforti. Un disegno, due materie — inchiostro su carta, luce su vetro.</p>
@@ -545,7 +546,7 @@
   </dl>
 
   <h2 class="section noprint">Esecutivi per la tipografia</h2>
-  <p class="lede noprint">A misura vera sullo schermo. Il tratteggio pietra è la linea di taglio, quello grigio il margine di sicurezza: nessun elemento lo supera. «Stampa» esporta le quattro facciate, una per pagina, senza guide.</p>
+  <p class="lede noprint">A misura vera sullo schermo. Il tratteggio oro è la linea di taglio, quello grigio il margine di sicurezza: nessun elemento lo supera. «Stampa» esporta le quattro facciate, una per pagina, senza guide.</p>
 
   <div class="sheet">
     <div class="plate-wrap">
@@ -570,8 +571,8 @@
   <div class="notes noprint">
     <div class="note"><b>Marchio</b><span>Bricolage Grotesque nero, minuscolo, incassato a −5%. Il disegno a tratto precedente è caduto: a un terzo di carta un'asta sottile diventa fragile e le estremità tonde datano. Resta in <code>git</code>, al commit del fronte muto.</span></div>
     <div class="note"><b>Fronte muto</b><span>Solo il marchio, largo circa un terzo di carta. La forza di una facciata sola sta nel silenzio intorno: ingrandire il marchio la indebolisce, non la rafforza. Tutto il resto — nome, codice, indirizzo — sta dietro.</span></div>
-    <div class="note"><b>Palette</b><span>Solo neutri caldi: nero caldo <code>#141210</code>, avorio <code>#faf9f7</code>, pietra <code>#a39a8c</code>/<code>#6f675b</code> per la h, fumo <code>#6b6760</code>/<code>#9a968f</code> per il testo secondario. Ogni altro colore appartiene alle app. Rosso e verde funzionali (errori, conferme) restano esclusi dalla regola: non dicono chi sei, dicono cos'è successo.</span></div>
-    <div class="note"><b>Oro</b><span>La h è una lamina. Ferma sembra pietra; quando la carta si inclina, una banda d'oro la attraversa e il resto resta opaco — come una lamina a caldo vera, che brilla solo dove c'è metallo. In tipografia diventa un passaggio a parte, oro caldo sulla sola h: l'esecutivo stampa la h in pietra come riferimento di posizione.</span></div>
+    <div class="note"><b>Palette</b><span>Solo neutri caldi: nero caldo <code>#141210</code>, avorio <code>#faf9f7</code>, oro antico <code>#b0925a</code>/<code>#86692f</code> per la h, fumo <code>#6b6760</code>/<code>#9a968f</code> per il testo secondario. Ogni altro colore appartiene alle app. Rosso e verde funzionali (errori, conferme) restano esclusi dalla regola: non dicono chi sei, dicono cos'è successo.</span></div>
+    <div class="note"><b>Oro</b><span>La h è una lamina. Ferma è oro antico, spento; quando la carta si inclina, una banda d'oro la attraversa e il resto resta opaco — come una lamina a caldo vera, che brilla solo dove c'è metallo. In tipografia diventa un passaggio a parte, oro caldo sulla sola h: l'esecutivo stampa la h in oro antico piatto come riferimento di posizione.</span></div>
     <div class="note"><b>Grana</b><span>Due strati di <code>feTurbulence</code> incollati come data URI: uno fine per la fibra, uno larghissimo per la disomogeneità dell'impasto. Il rumore sta nel canale alfa, quindi non serve <code>mix-blend-mode</code> e non sporca i colori. Sparisce in stampa: lì la carta è vera.</span></div>
     <div class="note"><b>QR su pastiglia</b><span>Sul biglietto nero il codice sta dentro una pastiglia avorio. Un QR invertito (moduli chiari su fondo scuro) manda in crisi parecchi lettori Android: la pastiglia costa 3 mm di spazio e toglie il problema.</span></div>
     <div class="note"><b>Indirizzo sotto il QR</b><span>Hai chiesto nessun contatto in chiaro, e infatti non ci sono né mail né telefono. L'indirizzo sotto il codice non è un contatto, è la scialuppa del QR: se la fotocamera non legge, la carta resta utile. Si toglie mettendo <code>urlSottoQr: false</code>.</span></div>
