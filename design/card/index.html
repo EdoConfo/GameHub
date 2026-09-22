@@ -16,13 +16,13 @@
 
   :root {
     /* --- pagina (tema chiaro) --- */
-    --page-bg: #f2f2f4;
-    --page-panel: #ffffff;
-    --page-ink: #14161f;
-    --page-dim: #5c6270;
-    --page-line: rgba(20, 22, 32, .12);
-    --page-accent: #6d5efc;
-    --stage: #e7e7ea;
+    --page-bg: #f1efeb;
+    --page-panel: #fcfbf9;
+    --page-ink: #141210;
+    --page-dim: #6b6760;
+    --page-line: rgba(20, 18, 16, .12);
+    --page-accent: #6f675b;
+    --stage: #e8e5df;
 
     --trim-w: 85mm;
     --trim-h: 55mm;
@@ -31,23 +31,23 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --page-bg: #0b0c11;
-      --page-panel: #14161d;
-      --page-ink: #eef0f5;
-      --page-dim: #98a0ae;
-      --page-line: rgba(255, 255, 255, .12);
-      --page-accent: #8d80ff;
-      --stage: #101219;
+      --page-bg: #0e0d0b;
+      --page-panel: #171512;
+      --page-ink: #f1efeb;
+      --page-dim: #9a968f;
+      --page-line: rgba(255, 250, 240, .10);
+      --page-accent: #a39a8c;
+      --stage: #121110;
     }
   }
   :root[data-theme="dark"] {
-    --page-bg: #0b0c11;
-    --page-panel: #14161d;
-    --page-ink: #eef0f5;
-    --page-dim: #98a0ae;
-    --page-line: rgba(255, 255, 255, .12);
-    --page-accent: #8d80ff;
-    --stage: #101219;
+    --page-bg: #0e0d0b;
+    --page-panel: #171512;
+    --page-ink: #f1efeb;
+    --page-dim: #9a968f;
+    --page-line: rgba(255, 250, 240, .10);
+    --page-accent: #a39a8c;
+    --stage: #121110;
   }
 
   * { box-sizing: border-box; }
@@ -183,23 +183,31 @@
   .card.back { transform: rotateY(180deg); }
 
   /* varianti: token locali, indipendenti dal tema della pagina */
+  /* Palette del marchio: solo neutri caldi. Nero caldo, avorio,
+     pietra (la h), fumo (il testo secondario). L'oro non è un colore:
+     a schermo è pietra più il riflesso, su carta è lamina vera.
+     Tutti gli altri colori appartengono alle app. */
   .v-dark {
-    --c-bg: #0f1117;
-    --c-ink: #eef0f5;
-    --c-dim: #7d8492;
-    --c-accent: #7d6fff;
+    --c-bg: #141210;
+    --c-ink: #faf9f7;
+    --c-dim: #6b6760;
+    --c-accent: #a39a8c;      /* pietra */
+    --foil-hi: #e6cf92;       /* oro nel riflesso */
+    --foil-spark: #fff6de;    /* il punto dove batte la luce */
     --c-paper: #faf9f7;
-    --c-shadow: 0 24px 50px -18px rgba(0, 0, 0, .7), 0 2px 0 rgba(255, 255, 255, .05) inset;
-    --c-sheen: rgba(255, 255, 255, .5);
+    --c-shadow: 0 24px 50px -18px rgba(0, 0, 0, .75), 0 2px 0 rgba(255, 250, 240, .05) inset;
+    --c-sheen: rgba(255, 244, 220, .2);
   }
   .v-light {
     --c-bg: #faf9f7;
-    --c-ink: #14161f;
-    --c-dim: #9ba1af;
-    --c-accent: #5a4be0;
+    --c-ink: #141210;
+    --c-dim: #9a968f;
+    --c-accent: #6f675b;
+    --foil-hi: #b08a3e;
+    --foil-spark: #d9b765;
     --c-paper: #faf9f7;
-    --c-shadow: 0 24px 46px -20px rgba(20, 22, 40, .45), 0 0 0 1px rgba(20, 22, 32, .07);
-    --c-sheen: rgba(255, 255, 255, .85);
+    --c-shadow: 0 24px 46px -20px rgba(40, 32, 20, .42), 0 0 0 1px rgba(20, 18, 16, .07);
+    --c-sheen: rgba(255, 250, 235, .55);
   }
 
   /* --- fronte: il marchio e nient'altro --- */
@@ -222,23 +230,27 @@
     white-space: nowrap;
     color: var(--c-ink);
   }
-  .wm i { color: var(--c-accent); font-style: normal; }
-
-  /* Il marchio e le sue ripetizioni che si spengono. */
-  .mark-stack { position: relative; display: inline-block; }
-  .mark-stack .ghost {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    transition: opacity .45s ease, transform .45s ease;
+  /* La h è lamina. Il gradiente è largo cinque volte la lettera e a
+     riposo mostra solo la sua coda, tutta pietra; inclinando la carta
+     --glint lo fa scorrere e la banda d'oro attraversa la h. Il resto
+     della carta resta opaco, come la carta vera sotto una lamina. */
+  .wm i {
+    font-style: normal;
+    color: var(--c-accent);
+    background: linear-gradient(105deg,
+      var(--c-accent) 0%, var(--c-accent) 32%,
+      var(--foil-hi) 45%, var(--foil-spark) 50%, var(--foil-hi) 55%,
+      var(--c-accent) 68%, var(--c-accent) 100%);
+    background-size: 500% 100%;
+    background-position: var(--glint, 100%) 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: background-position .6s ease;
   }
-  .mark-stack .ghost i { color: var(--c-ink); }  /* l'eco non porta l'accento */
-  /* Le ripetizioni scappano a destra, quindi il blocco si sposta a
-     sinistra di metà corsa per restare otticamente al centro. */
-  .mark-stack { transition: transform .45s ease; }
-  body.echoing .mark-stack { transform: translateX(-7cqi); }
-  body.echoing .mark-stack .g1 { opacity: .20; transform: translateX(7cqi); }
-  body.echoing .mark-stack .g2 { opacity: .08; transform: translateX(14cqi); }
+  .tilt.dragging .wm i { transition: background-position .08s linear; }
+  .tilt.intro .wm i { transition: background-position 1.8s cubic-bezier(.45, 0, .2, 1); }
+
 
   /* «Edoardo Conforti» con in evidenza le lettere che formano il marchio */
   .legal {
@@ -317,7 +329,7 @@
   }
   .v-light {
     --grain-strength: .34;
-    --grain-fiber: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.09 0 0 0 0 0.12 0.6 0 0 0 -0.22'/></filter><rect width='160' height='160' filter='url(%23f)'/></svg>");
+    --grain-fiber: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.09 0 0 0 0 0.08 0 0 0 0 0.06 0.6 0 0 0 -0.22'/></filter><rect width='160' height='160' filter='url(%23f)'/></svg>");
     --grain-mottle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='620'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.30 0 0 0 0 0.22 0.22 0 0 0 -0.08'/></filter><rect width='620' height='620' filter='url(%23m)'/></svg>");
   }
   .v-dark {
@@ -474,6 +486,8 @@
     /* La grana serve a simulare la carta su uno schermo. Sul cartaceo
        la carta c'è già: stamparla la sporcherebbe e basta. */
     .plate-cap, .guides, .grain { display: none; }
+    /* In tipografia la lamina è un passaggio a sé: qui la h esce pietra. */
+    .wm i { background: none; -webkit-text-fill-color: currentColor; }
     .plate { width: 91mm; height: 61mm; max-width: none; }
     .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
@@ -483,7 +497,7 @@
 
   <header class="masthead noprint">
     <div>
-      <p class="eyebrow">Identità · v4</p>
+      <p class="eyebrow">Identità · v5</p>
       <h1>Echo</h1>
     </div>
     <p>Il fronte porta solo il marchio. Il retro scopre da dove viene: <b>E</b>doardo <b>CO</b>nforti. Un disegno, due materie — inchiostro su carta, luce su vetro.</p>
@@ -491,7 +505,6 @@
 
   <div class="controls noprint">
     <button class="ctl" id="flipAll" type="button">Gira tutte</button>
-    <button class="ctl" id="echoBtn" type="button" aria-pressed="false">Eco visivo: spento</button>
     <button class="ctl" id="themeBtn" type="button">Tema pagina: auto</button>
     <button class="ctl" id="printBtn" type="button">Stampa gli esecutivi</button>
   </div>
@@ -532,7 +545,7 @@
   </dl>
 
   <h2 class="section noprint">Esecutivi per la tipografia</h2>
-  <p class="lede noprint">A misura vera sullo schermo. Il tratteggio viola è la linea di taglio, quello grigio il margine di sicurezza: nessun elemento lo supera. «Stampa» esporta le quattro facciate, una per pagina, senza guide.</p>
+  <p class="lede noprint">A misura vera sullo schermo. Il tratteggio pietra è la linea di taglio, quello grigio il margine di sicurezza: nessun elemento lo supera. «Stampa» esporta le quattro facciate, una per pagina, senza guide.</p>
 
   <div class="sheet">
     <div class="plate-wrap">
@@ -557,8 +570,9 @@
   <div class="notes noprint">
     <div class="note"><b>Marchio</b><span>Bricolage Grotesque nero, minuscolo, incassato a −5%. Il disegno a tratto precedente è caduto: a un terzo di carta un'asta sottile diventa fragile e le estremità tonde datano. Resta in <code>git</code>, al commit del fronte muto.</span></div>
     <div class="note"><b>Fronte muto</b><span>Solo il marchio, largo circa un terzo di carta. La forza di una facciata sola sta nel silenzio intorno: ingrandire il marchio la indebolisce, non la rafforza. Tutto il resto — nome, codice, indirizzo — sta dietro.</span></div>
+    <div class="note"><b>Palette</b><span>Solo neutri caldi: nero caldo <code>#141210</code>, avorio <code>#faf9f7</code>, pietra <code>#a39a8c</code>/<code>#6f675b</code> per la h, fumo <code>#6b6760</code>/<code>#9a968f</code> per il testo secondario. Ogni altro colore appartiene alle app. Rosso e verde funzionali (errori, conferme) restano esclusi dalla regola: non dicono chi sei, dicono cos'è successo.</span></div>
+    <div class="note"><b>Oro</b><span>La h è una lamina. Ferma sembra pietra; quando la carta si inclina, una banda d'oro la attraversa e il resto resta opaco — come una lamina a caldo vera, che brilla solo dove c'è metallo. In tipografia diventa un passaggio a parte, oro caldo sulla sola h: l'esecutivo stampa la h in pietra come riferimento di posizione.</span></div>
     <div class="note"><b>Grana</b><span>Due strati di <code>feTurbulence</code> incollati come data URI: uno fine per la fibra, uno larghissimo per la disomogeneità dell'impasto. Il rumore sta nel canale alfa, quindi non serve <code>mix-blend-mode</code> e non sporca i colori. Sparisce in stampa: lì la carta è vera.</span></div>
-    <div class="note"><b>Eco visivo</b><span>Il bottone accende due ripetizioni che si spengono a destra, come fa un'eco. In stampa non è un secondo colore: sono retini dello stesso inchiostro al 20% e all'8%, quindi non costa una lastra in più. Da valutare a freddo — su carta il rischio è che sembri un errore di registro.</span></div>
     <div class="note"><b>QR su pastiglia</b><span>Sul biglietto nero il codice sta dentro una pastiglia avorio. Un QR invertito (moduli chiari su fondo scuro) manda in crisi parecchi lettori Android: la pastiglia costa 3 mm di spazio e toglie il problema.</span></div>
     <div class="note"><b>Indirizzo sotto il QR</b><span>Hai chiesto nessun contatto in chiaro, e infatti non ci sono né mail né telefono. L'indirizzo sotto il codice non è un contatto, è la scialuppa del QR: se la fotocamera non legge, la carta resta utile. Si toglie mettendo <code>urlSottoQr: false</code>.</span></div>
     <div class="note"><b>Carta vs vetro</b><span>In digitale il QR sparisce — chi ha già lo schermo in mano non inquadra niente — e il retro diventa quattro link cliccabili. Il fronte resta identico nelle due materie.</span></div>
@@ -624,16 +638,9 @@
        aria-label="Codice QR verso ${text}" shape-rendering="crispEdges">${mods}</svg>`;
   }
 
-  /* Il marchio più le sue due ripetizioni che si spengono:
-     restano nel documento e si accendono con «Eco visivo». */
-  const MARK_STACK = `<span class="mark-stack">
-      <span class="ghost g2" aria-hidden="true">${WORDMARK}</span>
-      <span class="ghost g1" aria-hidden="true">${WORDMARK}</span>
-      ${WORDMARK}
-    </span>`;
 
   const FACES = {
-    front: () => `<div class="front-grid">${MARK_STACK}</div>`,
+    front: () => `<div class="front-grid">${WORDMARK}</div>`,
 
     print: () => `
       <div class="back-print">
@@ -672,17 +679,19 @@
       const r = tilt.getBoundingClientRect();
       const px = (e.clientX - r.left) / r.width;
       const py = (e.clientY - r.top) / r.height;
+      tilt.classList.remove("intro");
       deck.style.setProperty("--ry", `${(px - .5) * 22}deg`);
       deck.style.setProperty("--rx", `${(.5 - py) * 16}deg`);
-      tilt.querySelectorAll(".sheen").forEach(s => {
-        s.style.setProperty("--mx", `${px * 100}%`);
-        s.style.setProperty("--my", `${py * 100}%`);
-      });
+      deck.style.setProperty("--mx", `${px * 100}%`);
+      deck.style.setProperty("--my", `${py * 100}%`);
+      // La banda d'oro attraversa la h quando --glint passa tra 37% e 63%.
+      deck.style.setProperty("--glint", `${20 + (px * .7 + py * .3) * 60}%`);
     });
     tilt.addEventListener("pointerleave", () => {
       tilt.classList.remove("dragging");
       deck.style.setProperty("--ry", "0deg");
       deck.style.setProperty("--rx", "0deg");
+      deck.style.removeProperty("--glint");
     });
 
     tilt.flip = () => {
@@ -693,18 +702,27 @@
     tilt.addEventListener("click", e => { if (!e.target.closest("a")) tilt.flip(); });
   });
 
+  /* Un riflesso solo, all'apertura: su un telefono non c'è il puntatore,
+     e senza questo la lamina non si vedrebbe mai. */
+  if (!reduce.matches) {
+    document.querySelectorAll(".tilt").forEach((tilt, i) => {
+      const deck = tilt.querySelector(".deck");
+      setTimeout(() => {
+        tilt.classList.add("intro");
+        deck.style.setProperty("--glint", "0%");
+        setTimeout(() => {
+          deck.style.removeProperty("--glint");
+          setTimeout(() => tilt.classList.remove("intro"), 1800);
+        }, 1800);
+      }, 700 + i * 350);
+    });
+  }
+
   document.getElementById("flipAll").addEventListener("click", () => {
     document.querySelectorAll(".tilt").forEach(t => t.flip());
   });
   document.getElementById("printBtn").addEventListener("click", () => window.print());
 
-  /* Eco visivo: il marchio si ripete due volte e si spegne. */
-  const echoBtn = document.getElementById("echoBtn");
-  echoBtn.addEventListener("click", () => {
-    const on = document.body.classList.toggle("echoing");
-    echoBtn.setAttribute("aria-pressed", String(on));
-    echoBtn.textContent = `Eco visivo: ${on ? "acceso" : "spento"}`;
-  });
 
   /* Tema della pagina: auto → chiaro → scuro. Le carte restano
      una chiara e una scura, per confronto. */
