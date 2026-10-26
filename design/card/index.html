@@ -1,0 +1,736 @@
+<meta charset="utf-8">
+<title>Echo Card</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@400..700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.js"></script>
+
+<style>
+  /* ============================================================
+     Biglietto da visita — echo / Edoardo Conforti
+     Il marchio è la sintesi del nome: E(doardo) CO(nforti).
+     La h è l'unica lettera che il nome non contiene: per questo
+     è l'unica colorata.
+     Fronte muto: solo il marchio. Tutto il resto sta sul retro.
+     ============================================================ */
+
+  :root {
+    /* --- pagina (tema chiaro) --- */
+    --page-bg: #f1efeb;
+    --page-panel: #fcfbf9;
+    --page-ink: #141210;
+    --page-dim: #6b6760;
+    --page-line: rgba(20, 18, 16, .12);
+    --page-accent: #86692f;
+    --stage: #e8e5df;
+
+    --trim-w: 85mm;
+    --trim-h: 55mm;
+    --bleed: 3mm;
+    --safe: 4mm;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: #0e0d0b;
+      --page-panel: #171512;
+      --page-ink: #f1efeb;
+      --page-dim: #9a968f;
+      --page-line: rgba(255, 250, 240, .10);
+      --page-accent: #b0925a;
+      --stage: #121110;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #0e0d0b;
+    --page-panel: #171512;
+    --page-ink: #f1efeb;
+    --page-dim: #9a968f;
+    --page-line: rgba(255, 250, 240, .10);
+    --page-accent: #b0925a;
+    --stage: #121110;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-block: 0 64px;
+    padding-inline: 20px;
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: "Archivo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  /* ---------- intestazione pagina ---------- */
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 40px 28px;
+    border-bottom: 1px solid var(--page-line);
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    margin: 0 0 6px;
+  }
+  .masthead h1 {
+    margin: 0;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 800;
+    font-variation-settings: "wdth" 108;
+    letter-spacing: -.025em;
+    text-wrap: balance;
+  }
+  .masthead p { margin: 0; max-width: 36ch; color: var(--page-dim); font-size: 14px; }
+
+  /* ---------- controlli ---------- */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 18px; }
+  .ctl {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    color: var(--page-ink);
+    background: var(--page-panel);
+    border: 1px solid var(--page-line);
+    border-radius: 999px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .ctl:hover { border-color: var(--page-accent); color: var(--page-accent); }
+  .ctl:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 2px; }
+
+  /* ---------- palco ---------- */
+  .stage {
+    background: var(--stage);
+    border: 1px solid var(--page-line);
+    border-radius: 18px;
+    padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 40px);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: clamp(28px, 5vw, 56px);
+    justify-items: center;
+  }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+  .slot-label {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    text-align: center;
+  }
+
+  /* ============================================================
+     IL BIGLIETTO
+     Un solo foglio di stile per schermo e stampa: tutto ciò che
+     sta dentro la carta è misurato in cqi (percentuale della sua
+     larghezza), così 380 px e 85 mm rendono identici.
+     ============================================================ */
+
+  .tilt {
+    width: 100%;
+    max-width: 380px;
+    aspect-ratio: 85 / 55;
+    perspective: 1400px;
+    cursor: pointer;
+    background: none;
+    border: 0;
+    padding: 0;
+    display: block;
+    text-align: left;     /* il <button> centrerebbe il testo delle facciate */
+    font: inherit;
+    color: inherit;
+  }
+  .tilt:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 10px; border-radius: 4px; }
+
+  .deck {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx, 0deg)) rotateY(calc(var(--ry, 0deg) + var(--flip, 0deg)));
+    transition: transform .7s cubic-bezier(.2, .8, .2, 1);
+  }
+  .tilt.dragging .deck { transition: transform .08s linear; }
+
+  .card {
+    container-type: inline-size;
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: grid;
+    background: var(--c-bg);
+    color: var(--c-ink);
+    border-radius: 3.2cqi;
+    box-shadow: var(--c-shadow);
+  }
+  .card.back { transform: rotateY(180deg); }
+
+  /* varianti: token locali, indipendenti dal tema della pagina. */
+  /* Palette del marchio: solo neutri caldi. Nero caldo, avorio,
+     oro antico (la h), fumo (il testo secondario). L'oro antico è lo
+     stesso metallo ovunque: a schermo tinta più riflesso, su carta
+     lamina vera.
+     Tutti gli altri colori appartengono alle app. */
+  .v-dark {
+    --c-bg: #141210;
+    --c-ink: #faf9f7;
+    --c-dim: #6b6760;
+    --c-accent: #b0925a;      /* oro antico, a riposo */
+    --foil-hi: #e2c683;       /* oro nel riflesso */
+    --foil-spark: #fff3d2;    /* il punto dove batte la luce */
+    --c-paper: #faf9f7;
+    --c-shadow: 0 24px 50px -18px rgba(0, 0, 0, .75), 0 2px 0 rgba(255, 250, 240, .05) inset;
+    --c-sheen: rgba(255, 244, 220, .2);
+  }
+  .v-light {
+    --c-bg: #faf9f7;
+    --c-ink: #141210;
+    --c-dim: #9a968f;
+    --c-accent: #86692f;
+    --foil-hi: #b8913e;
+    --foil-spark: #dcbd72;
+    --c-paper: #faf9f7;
+    --c-shadow: 0 24px 46px -20px rgba(40, 32, 20, .42), 0 0 0 1px rgba(20, 18, 16, .07);
+    --c-sheen: rgba(255, 250, 235, .55);
+  }
+
+  /* --- fronte: il marchio e nient'altro --- */
+  .front-grid {
+    display: grid;
+    place-content: center;
+    padding: 8cqi;
+  }
+  /* Il marchio è un tracciato, non più testo: un logotipo che dipende da
+     un font è un logotipo che qualcun altro può cambiare, e in offline
+     diventa Helvetica. Questi sono Bricolage Grotesque opsz 96, peso 800,
+     incassato a −5%, con la crenatura del font già applicata.
+     La lamina vive in un gradiente largo cinque volte la lettera e
+     ritagliato sulla h: a riposo sta da parte e la h è oro spento,
+     --glint lo fa scorrere attraverso. */
+  .echo-mark { width: 54cqi; height: auto; display: block; overflow: visible; }
+  .mark-ink { fill: var(--c-ink); }
+  .s-base { stop-color: var(--c-accent); }
+  .s-hi { stop-color: var(--foil-hi); }
+  .s-spark { stop-color: var(--foil-spark); }
+  .mark-foil { transform: translateX(calc(var(--glint, 0) * 1px)); transition: transform .6s ease; }
+  .tilt.dragging .mark-foil { transition: transform .08s linear; }
+  .tilt.intro .mark-foil { transition: transform 1.8s cubic-bezier(.45, 0, .2, 1); }
+
+
+
+  /* --- il retro: chi sei a sinistra, dove trovarti a destra ---
+     Il marchio non si ripete qui. Il fronte pone la domanda, il retro la
+     scioglie: in oro le lettere da cui «echo» viene. */
+  .back-print {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6cqi;
+    align-items: center;
+    padding: 8cqi;
+  }
+  .back-name {
+    margin: 0;
+    font-family: "Bricolage Grotesque", "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: 8.6cqi;
+    letter-spacing: -.04em;
+    line-height: .95;
+  }
+  .back-name b { color: var(--c-accent); font-weight: 800; }
+  .back-rule { width: 1px; height: 70%; background: var(--c-accent); opacity: .7; }
+  .back-right { display: grid; justify-items: center; gap: 2.4cqi; }
+  .qr { width: 22cqi; height: 22cqi; display: block; }
+  .qr .mod { fill: var(--c-ink); }
+  /* I tre quadrati d'aggancio in oro: sono il riferimento che la
+     fotocamera cerca per primo, quindi restano l'unica cosa colorata.
+     In stampa vanno in inchiostro oro, mai in lamina: una lamina
+     rimanda il flash e acceca la lettura proprio lì. */
+  .qr .eye-o { fill: var(--c-accent); }
+  .qr .eye-i { fill: var(--c-bg); }
+  .qr-url {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 2.7cqi;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--c-dim);
+  }
+
+  /* --- retro digitale: il QR non serve, servono i link --- */
+  .back-grid {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 5cqi;
+    align-items: center;
+    padding: 8cqi;
+  }
+  .links { display: grid; align-content: center; gap: 2.4cqi; margin: 0; padding: 0; list-style: none; min-width: 0; }
+  .links li { display: grid; grid-template-columns: 4.4cqi 1fr; align-items: center; gap: 2.6cqi; }
+  .links a {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 2.9cqi;
+    color: var(--c-ink);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+    overflow-wrap: anywhere;
+  }
+  .links a:hover { color: var(--c-accent); border-bottom-color: var(--c-accent); }
+  .links a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .ico { width: 4.4cqi; height: 4.4cqi; color: var(--c-accent); }
+
+  /* --- grana: la fibra che sul cartaceo dà la carta, qui va disegnata ---
+     Due strati di feTurbulence incollati come data URI: uno fine (la
+     fibra) e uno larghissimo (la disomogeneità dell'impasto). La
+     matrice porta il rumore nel canale alfa, così il colore resta
+     quello scelto qui sotto e non serve alcun mix-blend-mode. */
+  .grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: var(--grain-strength);
+    background-image: var(--grain-fiber), var(--grain-mottle);
+    background-size: 160px 160px, 620px 620px;
+  }
+  .v-light {
+    --grain-strength: .34;
+    --grain-fiber: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.09 0 0 0 0 0.08 0 0 0 0 0.06 0.6 0 0 0 -0.22'/></filter><rect width='160' height='160' filter='url(%23f)'/></svg>");
+    --grain-mottle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='620'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.30 0 0 0 0 0.22 0.22 0 0 0 -0.08'/></filter><rect width='620' height='620' filter='url(%23m)'/></svg>");
+  }
+  .v-dark {
+    --grain-strength: .46;
+    --grain-fiber: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.5 0 0 0 -0.2'/></filter><rect width='160' height='160' filter='url(%23f)'/></svg>");
+    --grain-mottle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='620'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.14 0 0 0 -0.05'/></filter><rect width='620' height='620' filter='url(%23m)'/></svg>");
+  }
+
+  /* --- lamina: il riflesso segue il puntatore --- */
+  .sheen {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .35s ease;
+    background: radial-gradient(36cqi 36cqi at var(--mx, 50%) var(--my, 50%), var(--c-sheen), transparent 70%);
+    mix-blend-mode: soft-light;
+  }
+  .tilt:hover .sheen, .tilt.dragging .sheen { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .deck { transition: transform .001s; }
+    .sheen { display: none; }
+  }
+
+  /* ---------- specifiche ---------- */
+  .specs {
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--page-line);
+    border: 1px solid var(--page-line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .spec { background: var(--page-panel); padding: 16px 18px; }
+  .spec dt {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    margin-bottom: 4px;
+  }
+  .spec dd {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    font-variation-settings: "wdth" 104;
+    font-variant-numeric: tabular-nums;
+  }
+
+  h2.section {
+    margin: 52px 0 6px;
+    font-size: 22px;
+    font-weight: 800;
+    font-variation-settings: "wdth" 106;
+    letter-spacing: -.02em;
+  }
+  .lede { margin: 0 0 22px; color: var(--page-dim); max-width: 62ch; font-size: 14px; }
+
+  /* ---------- la derivazione del nome, spiegata una volta ---------- */
+  .etym {
+    margin-top: 10px;
+    padding: 24px 26px;
+    background: var(--page-panel);
+    border: 1px solid var(--page-line);
+    border-radius: 14px;
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+  }
+  .etym-line {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: clamp(15px, 3.4vw, 22px);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    white-space: nowrap;
+  }
+  .etym-line b { color: var(--page-ink); font-weight: 700; }
+  .etym .echo-mark { width: clamp(150px, 34vw, 230px); }
+  .etym .mark-ink { fill: var(--page-ink); }
+  .etym .s-base, .etym .s-hi, .etym .s-spark { stop-color: var(--page-accent); }
+  .etym-line i { color: var(--page-accent); font-style: normal; font-weight: 700; }
+  .etym p { margin: 0; font-size: 14px; color: var(--page-dim); max-width: 58ch; }
+
+  /* ---------- esecutivi a misura vera ---------- */
+  .sheet { display: flex; flex-wrap: wrap; gap: 28px; }
+  .plate {
+    position: relative;
+    width: calc(var(--trim-w) + 2 * var(--bleed));
+    height: calc(var(--trim-h) + 2 * var(--bleed));
+    max-width: 100%;
+    padding: var(--bleed);
+    background: var(--c-bg);
+    color: var(--c-ink);
+  }
+  .plate .card {
+    position: absolute;
+    inset: var(--bleed);
+    border-radius: 0;
+    box-shadow: none;
+    backface-visibility: visible;
+  }
+  .guides { position: absolute; inset: var(--bleed); pointer-events: none; outline: .2mm dashed var(--c-accent); z-index: 2; }
+  .guides::after { content: ""; position: absolute; inset: var(--safe); outline: .2mm dashed var(--c-dim); }
+  .plate-cap {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+    margin-bottom: 8px;
+  }
+  .plate-wrap { max-width: 100%; }
+
+  .notes { margin-top: 22px; display: grid; gap: 10px; }
+  .note {
+    display: grid;
+    grid-template-columns: 124px 1fr;
+    gap: 14px;
+    align-items: baseline;
+    padding: 14px 16px;
+    background: var(--page-panel);
+    border-left: 2px solid var(--page-accent);
+    border-radius: 0 10px 10px 0;
+    font-size: 14px;
+  }
+  .note.open { border-left-color: #d98324; }
+  .note b {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--page-accent);
+    font-weight: 500;
+  }
+  .note.open b { color: #d98324; }
+  @media (max-width: 520px) { .note { grid-template-columns: 1fr; gap: 4px; } }
+
+  /* ---------- stampa reale ---------- */
+  @page { size: 91mm 61mm; margin: 0; }
+  @media print {
+    .noprint { display: none !important; }
+    body { background: #fff; padding: 0; }
+    .sheet { display: block; gap: 0; }
+    .plate-wrap { break-after: page; }
+    /* La grana serve a simulare la carta su uno schermo. Sul cartaceo
+       la carta c'è già: stamparla la sporcherebbe e basta. */
+    .plate-cap, .guides, .grain { display: none; }
+    /* In tipografia la lamina è un passaggio a sé: qui la h esce piatta. */
+    .mark-foil { transform: none; }
+    .plate { width: 91mm; height: 61mm; max-width: none; }
+    .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead noprint">
+    <div>
+      <p class="eyebrow">Identità · v7</p>
+      <h1>Echo</h1>
+    </div>
+    <p>Il fronte porta solo il marchio. Il retro scopre da dove viene: <b>E</b>doardo <b>CO</b>nforti. Un disegno, due materie — inchiostro su carta, luce su vetro.</p>
+  </header>
+
+  <div class="controls noprint">
+    <button class="ctl" id="flipAll" type="button">Gira tutte</button>
+    <button class="ctl" id="themeBtn" type="button">Tema pagina: auto</button>
+    <button class="ctl" id="printBtn" type="button">Stampa gli esecutivi</button>
+  </div>
+
+  <section class="stage noprint" aria-label="Biglietti interattivi">
+    <div class="slot">
+      <span class="slot-label">Notte · carta nera</span>
+      <button class="tilt" type="button" aria-label="Biglietto scuro — gira per vedere i contatti">
+        <div class="deck">
+          <article class="card v-dark front" data-face="front"></article>
+          <article class="card v-dark back" data-face="digital"></article>
+        </div>
+      </button>
+    </div>
+    <div class="slot">
+      <span class="slot-label">Giorno · carta avorio</span>
+      <button class="tilt" type="button" aria-label="Biglietto chiaro — gira per vedere i contatti">
+        <div class="deck">
+          <article class="card v-light front" data-face="front"></article>
+          <article class="card v-light back" data-face="digital"></article>
+        </div>
+      </button>
+    </div>
+  </section>
+
+  <h2 class="section noprint">Da dove viene il nome</h2>
+  <div class="etym noprint">
+    <p class="etym-line"><b>E</b>doardo&nbsp;&nbsp;<b>CO</b>nforti</p>
+    <div id="etym-mark"></div>
+    <p>Tre lettere su quattro sono prese dal nome. La <b style="color:var(--page-accent)">H</b> è l'unica che il nome non contiene: è l'aggiunta, quindi è l'unica colorata. Sul retro lo stesso codice torna al contrario — nella riga «EDOARDO CONFORTI» sono in nero solo le lettere prestate al marchio. Il fronte pone la domanda, il retro la scioglie: chi gira la carta capisce, chi non la gira vede comunque un marchio pulito.</p>
+  </div>
+
+  <dl class="specs noprint">
+    <div class="spec"><dt>Formato di taglio</dt><dd>85 × 55 mm</dd></div>
+    <div class="spec"><dt>Abbondanza</dt><dd>3 mm</dd></div>
+    <div class="spec"><dt>Margine di sicurezza</dt><dd>4 mm</dd></div>
+    <div class="spec"><dt>Lato QR</dt><dd>21 mm</dd></div>
+  </dl>
+
+  <h2 class="section noprint">Esecutivi per la tipografia</h2>
+  <p class="lede noprint">A misura vera sullo schermo. Il tratteggio oro è la linea di taglio, quello grigio il margine di sicurezza: nessun elemento lo supera. «Stampa» esporta le quattro facciate, una per pagina, senza guide.</p>
+
+  <div class="sheet">
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Notte · fronte</p>
+      <div class="plate v-dark"><div class="guides noprint"></div><article class="card v-dark" data-face="front"></article></div>
+    </div>
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Notte · retro</p>
+      <div class="plate v-dark"><div class="guides noprint"></div><article class="card v-dark" data-face="print"></article></div>
+    </div>
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Giorno · fronte</p>
+      <div class="plate v-light"><div class="guides noprint"></div><article class="card v-light" data-face="front"></article></div>
+    </div>
+    <div class="plate-wrap">
+      <p class="plate-cap noprint">Giorno · retro</p>
+      <div class="plate v-light"><div class="guides noprint"></div><article class="card v-light" data-face="print"></article></div>
+    </div>
+  </div>
+
+  <h2 class="section noprint">Note di lavorazione</h2>
+  <div class="notes noprint">
+    <div class="note"><b>Marchio</b><span>Tracciati, non testo: Bricolage Grotesque opsz 96, peso 800, incassato a −5%, con la crenatura del font già applicata e poi convertito in curve. Un logotipo che dipende da un font è un logotipo che qualcun altro può cambiare, e dentro un'app offline diventa Helvetica appena manca la rete. Il nome sul retro invece resta testo: è testo, non marchio, e nelle app prende il carattere dell'app che lo ospita.</span></div>
+    <div class="note"><b>Fronte muto</b><span>Solo il marchio, largo circa un terzo di carta. La forza di una facciata sola sta nel silenzio intorno: ingrandire il marchio la indebolisce, non la rafforza. Tutto il resto — nome, codice, indirizzo — sta dietro.</span></div>
+    <div class="note"><b>Palette</b><span>Solo neutri caldi: nero caldo <code>#141210</code>, avorio <code>#faf9f7</code>, oro antico <code>#b0925a</code>/<code>#86692f</code> per la h, fumo <code>#6b6760</code>/<code>#9a968f</code> per il testo secondario. Ogni altro colore appartiene alle app. Rosso e verde funzionali (errori, conferme) restano esclusi dalla regola: non dicono chi sei, dicono cos'è successo.</span></div>
+    <div class="note"><b>Oro</b><span>La h è una lamina. Ferma è oro antico, spento; quando la carta si inclina, una banda d'oro la attraversa e il resto resta opaco — come una lamina a caldo vera, che brilla solo dove c'è metallo. In tipografia diventa un passaggio a parte, oro caldo sulla sola h: l'esecutivo stampa la h in oro antico piatto come riferimento di posizione.</span></div>
+    <div class="note"><b>Grana</b><span>Due strati di <code>feTurbulence</code> incollati come data URI: uno fine per la fibra, uno larghissimo per la disomogeneità dell'impasto. Il rumore sta nel canale alfa, quindi non serve <code>mix-blend-mode</code> e non sporca i colori. Sparisce in stampa: lì la carta è vera.</span></div>
+    <div class="note"><b>QR integrato</b><span>Il codice è nei colori della carta, senza pastiglia: avorio sul nero, inchiostro sull'avorio. I tre quadrati d'aggancio sono in oro e vanno stampati a inchiostro, mai in lamina — una lamina rimanda il flash e acceca la lettura proprio dove serve. Il QR invertito lo leggono iPhone e le fotocamere Android recenti; i telefoni vecchi e qualche app di terze parti no, quindi prima della tiratura va provato su carta con tre o quattro telefoni.</span></div>
+    <div class="note"><b>Indirizzo sotto il QR</b><span>Hai chiesto nessun contatto in chiaro, e infatti non ci sono né mail né telefono. L'indirizzo sotto il codice non è un contatto, è la scialuppa del QR: se la fotocamera non legge, la carta resta utile. Si toglie mettendo <code>urlSottoQr: false</code>.</span></div>
+    <div class="note"><b>Carta vs vetro</b><span>In digitale il QR sparisce — chi ha già lo schermo in mano non inquadra niente — e il retro diventa quattro link cliccabili. Il fronte resta identico nelle due materie.</span></div>
+    <div class="note"><b>Terza dimensione</b><span>L'inclinazione segue il puntatore e sopra scorre una lamina: in digitale simula l'oro a caldo, che sul cartaceo si vede solo girando la carta verso la luce.</span></div>
+    <div class="note"><b>NFC</b><span>Un tag NTAG213 incollato all'interno va programmato con lo stesso indirizzo del QR. Sulla carta non si vede: nessun segno da prevedere nel disegno.</span></div>
+    <div class="note open"><b>Da decidere</b><span>L'indirizzo è un segnaposto: <code>edoconfo.github.io</code> è l'unica cosa che possiedi oggi, e la radice non ha ancora una pagina. Prima di andare in stampa serve un indirizzo definitivo — una volta stampato non si cambia più.</span></div>
+  </div>
+
+</div>
+
+<script>
+  /* ------------------------------------------------------------
+     I dati del biglietto. Cambia qui, cambiano tutte le facciate.
+     ------------------------------------------------------------ */
+  const CARD = {
+    brand: "Echo",
+    site: "edoconfo.github.io",
+    siteUrl: "https://edoconfo.github.io",
+    urlSottoQr: true,
+    links: [
+      { icon: "site",   label: "edoconfo.github.io",  href: "https://edoconfo.github.io" },
+      { icon: "code",   label: "github.com/EdoConfo", href: "https://github.com/EdoConfo" },
+      { icon: "person", label: "in/edoardo-conforti", href: "https://www.linkedin.com/in/edoardo-conforti" },
+      { icon: "mail",   label: "xpjokey@gmail.com",   href: "mailto:xpjokey@gmail.com" }
+    ]
+  };
+
+  /* Marchio: e, c, o prestate dal nome; la h è l'aggiunta, e prende
+     l'accento. Minuscolo — «ECHO» in maiuscolo squadra troppo. */
+  const MARK_H = "M99 70V42.1V0H115.2V13.2Q115.2 15.3 114.95 18.75Q114.7 22.2 114.25 26.1Q113.8 30 113.35 33.55Q112.9 37.1 112.6 39.5H113.5Q114.4 31.2 116.6 25.95Q118.8 20.7 122.6 18.25Q126.4 15.8 131.8 15.8Q140.3 15.8 144.4 21.85Q148.5 27.9 148.5 40.1V70H132.3V40.8Q132.3 35.2 130.8 32.6Q129.3 30 125.9 30Q122.9 30 120.5 32.25Q118.1 34.5 116.65 39.4Q115.2 44.3 115.2 52.1V70Z";
+  const WORDMARK = (uid) => `<svg class="echo-mark" viewBox="0 0 201.10 71.40" role="img" aria-label="echo">
+      <defs>
+        <clipPath id="h-${uid}"><path d="${MARK_H}"/></clipPath>
+        <linearGradient id="foil-${uid}" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" class="s-base"/><stop offset=".32" class="s-base"/>
+          <stop offset=".45" class="s-hi"/><stop offset=".5" class="s-spark"/><stop offset=".55" class="s-hi"/>
+          <stop offset=".68" class="s-base"/><stop offset="1" class="s-base"/>
+        </linearGradient>
+      </defs>
+      <g class="mark-ink"><path d="M26.5 71.4Q19 71.4 13.95 69.25Q8.9 67.1 5.8 63.35Q2.7 59.6 1.35 54.8Q0 50 0 44.7Q0 39 1.45 33.8Q2.9 28.6 5.95 24.55Q9 20.5 13.85 18.15Q18.7 15.8 25.5 15.8Q32.3 15.8 37.15 18.15Q42 20.5 44.9 24.7Q47.8 28.9 48.65 34.4Q49.5 39.9 48.4 46.3L10.1 46.9V38.1L36 37.6L33.9 42.7Q34.5 38.1 33.75 34.95Q33 31.8 31 30.15Q29 28.5 25.5 28.5Q21.8 28.5 19.6 30.4Q17.4 32.3 16.5 35.75Q15.6 39.2 15.6 43.9Q15.6 52 18.3 55.7Q21 59.4 26.6 59.4Q29 59.4 30.6 58.8Q32.2 58.2 33.2 57.05Q34.2 55.9 34.6 54.25Q35 52.6 34.9 50.5L49.7 51.3Q50 54.6 49.05 58.1Q48.1 61.6 45.5 64.6Q42.9 67.6 38.25 69.5Q33.6 71.4 26.5 71.4Z"/><path d="M75.4 71.4Q68.3 71.4 63.2 69.25Q58.1 67.1 54.9 63.3Q51.7 59.5 50.2 54.6Q48.7 49.7 48.7 44.2Q48.7 38.6 50.2 33.55Q51.7 28.5 54.85 24.45Q58 20.4 63.05 18.1Q68.1 15.8 75.2 15.8Q83.6 15.8 88.75 18.95Q93.9 22.1 95.95 27.1Q98 32.1 97.1 37.9L83.1 39Q83.3 35.4 82.35 33.05Q81.4 30.7 79.5 29.55Q77.6 28.4 74.9 28.4Q72.5 28.4 70.65 29.3Q68.8 30.2 67.55 32.05Q66.3 33.9 65.65 36.7Q65 39.5 65 43.4Q65 48.4 66.15 52Q67.3 55.6 69.65 57.5Q72 59.4 75.6 59.4Q79.3 59.4 81.2 57.6Q83.1 55.8 83.7 53.05Q84.3 50.3 83.9 47.6L98.8 48.3Q99.4 52.7 98.4 56.85Q97.4 61 94.55 64.3Q91.7 67.6 86.95 69.5Q82.2 71.4 75.4 71.4Z"/><path d="M174.8 71.4Q167.2 71.4 161.3 68.35Q155.4 65.3 152.1 59.15Q148.8 53 148.8 43.7Q148.8 34 152.25 27.85Q155.7 21.7 161.65 18.75Q167.6 15.8 175.1 15.8Q182.9 15.8 188.75 18.85Q194.6 21.9 197.85 28.05Q201.1 34.2 201.1 43.6Q201.1 53.3 197.65 59.45Q194.2 65.6 188.25 68.5Q182.3 71.4 174.8 71.4ZM175.2 59.5Q178.3 59.5 180.4 57.75Q182.5 56 183.6 52.6Q184.7 49.2 184.7 44.5Q184.7 39.3 183.5 35.75Q182.3 32.2 180.05 30.3Q177.8 28.4 174.6 28.4Q171.6 28.4 169.5 30.15Q167.4 31.9 166.3 35.3Q165.2 38.7 165.2 43.5Q165.2 51.1 167.85 55.3Q170.5 59.5 175.2 59.5Z"/></g>
+      <g clip-path="url(#h-${uid})">
+        <rect class="mark-foil" x="-160" y="-20" width="320" height="112" fill="url(#foil-${uid})"/>
+      </g>
+    </svg>`;
+
+  /* Icone dei contatti: stessa griglia, stesso tratto. */
+  const ICONS = {
+    site:   '<circle cx="32" cy="32" r="22"/><path d="M10 32h44"/><path d="M32 10c9 8 9 36 0 44c-9-8-9-36 0-44"/>',
+    code:   '<path d="M22 20 8 32l14 12"/><path d="M42 20l14 12-14 12"/><path d="M36 14 28 50"/>',
+    person: '<circle cx="32" cy="22" r="11"/><path d="M12 54c2-11 10-16 20-16s18 5 20 16"/>',
+    mail:   '<rect x="8" y="14" width="48" height="36" rx="5"/><path d="M10 19l22 16 22-16"/>'
+  };
+  const icon = (n) => `<svg class="ico" viewBox="0 0 64 64" fill="none" stroke="currentColor"
+      stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+  /* QR disegnato a mano in SVG: così il colore lo decide la carta. */
+  function qrSvg(text) {
+    if (typeof qrcode !== "function") return `<div class="qr" style="border:.4cqi solid currentColor"></div>`;
+    const qr = qrcode(0, "M");
+    qr.addData(text);
+    qr.make();
+    const n = qr.getModuleCount();
+    const isEye = (x, y) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7);
+    let mods = "";
+    for (let r = 0; r < n; r++)
+      for (let c = 0; c < n; c++)
+        if (qr.isDark(r, c) && !isEye(c, r)) mods += `<rect class="mod" x="${c}" y="${r}" width="1.02" height="1.02"/>`;
+    for (const [x, y] of [[0, 0], [n - 7, 0], [0, n - 7]])
+      mods += `<rect class="eye-o" x="${x}" y="${y}" width="7" height="7" rx="1.4"/>`
+            + `<rect class="eye-i" x="${x + 1}" y="${y + 1}" width="5" height="5" rx=".8"/>`
+            + `<rect class="eye-o" x="${x + 2}" y="${y + 2}" width="3" height="3" rx=".5"/>`;
+    return `<svg class="qr" viewBox="-1 -1 ${n + 2} ${n + 2}" role="img"
+       aria-label="Codice QR verso ${text}" shape-rendering="crispEdges">${mods}</svg>`;
+  }
+
+
+  const NAME = `<p class="back-name"><b>E</b>doardo<br><b>Co</b>nforti</p>`;
+
+  const FACES = {
+    front: (uid) => `<div class="front-grid">${WORDMARK(uid)}</div>`,
+
+    print: () => `
+      <div class="back-print">
+        ${NAME}
+        <div class="back-rule"></div>
+        <div class="back-right">
+          ${qrSvg(CARD.siteUrl)}
+          ${CARD.urlSottoQr ? `<span class="qr-url">${CARD.site}</span>` : ""}
+        </div>
+      </div>`,
+
+    digital: () => `
+      <div class="back-grid">
+        ${NAME}
+        <div class="back-rule"></div>
+        <ul class="links">
+          ${CARD.links.map(l => `<li>${icon(l.icon)}<a href="${l.href}" target="_blank" rel="noopener noreferrer">${l.label}</a></li>`).join("")}
+        </ul>
+      </div>`
+  };
+
+  document.getElementById("etym-mark").innerHTML = WORDMARK("etym");
+
+  document.querySelectorAll(".card[data-face]").forEach((el, i) => {
+    el.innerHTML = FACES[el.dataset.face]("c" + i)
+      + '<div class="grain" aria-hidden="true"></div>'
+      + '<div class="sheen" aria-hidden="true"></div>';
+  });
+
+  /* ------------------------------------------------------------
+     Inclinazione, lamina, ribaltamento.
+     ------------------------------------------------------------ */
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+
+  document.querySelectorAll(".tilt").forEach(tilt => {
+    const deck = tilt.querySelector(".deck");
+    let flipped = false;
+
+    tilt.addEventListener("pointerenter", () => tilt.classList.add("dragging"));
+    tilt.addEventListener("pointermove", e => {
+      if (reduce.matches) return;
+      const r = tilt.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+      tilt.classList.remove("intro");
+      deck.style.setProperty("--ry", `${(px - .5) * 22}deg`);
+      deck.style.setProperty("--rx", `${(.5 - py) * 16}deg`);
+      deck.style.setProperty("--mx", `${px * 100}%`);
+      deck.style.setProperty("--my", `${py * 100}%`);
+      // La banda d'oro attraversa la h quando --glint passa tra 37% e 63%.
+      deck.style.setProperty("--glint", `${20 + (px * .7 + py * .3) * 60}%`);
+    });
+    tilt.addEventListener("pointerleave", () => {
+      tilt.classList.remove("dragging");
+      deck.style.setProperty("--ry", "0deg");
+      deck.style.setProperty("--rx", "0deg");
+      deck.style.removeProperty("--glint");
+    });
+
+    tilt.flip = () => {
+      flipped = !flipped;
+      deck.style.setProperty("--flip", flipped ? "180deg" : "0deg");
+    };
+    // Un link sul retro resta cliccabile: non gira la carta.
+    tilt.addEventListener("click", e => { if (!e.target.closest("a")) tilt.flip(); });
+  });
+
+  /* Un riflesso solo, all'apertura: su un telefono non c'è il puntatore,
+     e senza questo la lamina non si vedrebbe mai. */
+  if (!reduce.matches) {
+    document.querySelectorAll(".tilt").forEach((tilt, i) => {
+      const deck = tilt.querySelector(".deck");
+      setTimeout(() => {
+        tilt.classList.add("intro");
+        deck.style.setProperty("--glint", "0%");
+        setTimeout(() => {
+          deck.style.removeProperty("--glint");
+          setTimeout(() => tilt.classList.remove("intro"), 1800);
+        }, 1800);
+      }, 700 + i * 350);
+    });
+  }
+
+  document.getElementById("flipAll").addEventListener("click", () => {
+    document.querySelectorAll(".tilt").forEach(t => t.flip());
+  });
+  document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+
+  /* Tema della pagina: auto → chiaro → scuro. Le carte restano
+     una chiara e una scura, per confronto. */
+  const themeBtn = document.getElementById("themeBtn");
+  const cycle = ["auto", "light", "dark"];
+  const names = { auto: "auto", light: "chiaro", dark: "scuro" };
+  let ti = 0;
+  themeBtn.addEventListener("click", () => {
+    ti = (ti + 1) % cycle.length;
+    const t = cycle[ti];
+    if (t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    themeBtn.textContent = `Tema pagina: ${names[t]}`;
+  });
+</script>

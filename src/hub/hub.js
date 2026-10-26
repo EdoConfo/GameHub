@@ -9,6 +9,7 @@ import { openProfileEditor, avatar } from './players.js'
 import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
 import { openPackEditor } from '../shared/packEditor.js'
 import { openPlayerCard } from './playerCard.js'
+import { openCredits } from './credits.js'
 import { TABLE_CLOSE_MS } from '../shared/tableStage.js'
 import { games } from '../games/registry.js'
 
@@ -222,7 +223,9 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
           : { id: 'offline', title: t('settings.install'), sub: t('settings.installSub'), lead: badge('offline') },
         // the build this page is running: the only honest answer to "did the
         // update arrive?", readable without guessing
-        { id: 'version', title: t('settings.version'), sub: versionLine(), lead: badge('tag') }
+        { id: 'version', title: t('settings.version'), sub: versionLine(), lead: badge('tag') },
+        // chi l'ha fatta: un biglietto da visita, in fondo a tutto
+        { id: 'credits', title: t('settings.credits'), sub: t('settings.creditsSub'), lead: badge('heart') }
       ]
     }
     const items = ctx.players.all().map(p => ({ id: p.id, title: p.name, sub: t('players.profile'), lead: avatar(p, 56) }))
@@ -258,6 +261,8 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
             repaint()
           } else if (it.id === 'offline') {
             openInstall()
+          } else if (it.id === 'credits') {
+            openCredits()
           }
           return
         }

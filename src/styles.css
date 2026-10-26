@@ -1287,3 +1287,84 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 /* the face you are joining as */
 .pick-cell.on .avatar { box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .3), 0 0 0 3px var(--bg), 0 0 0 5px var(--primary); }
 .pick-cell.on .pick-name { font-weight: 800; }
+
+/* ============================================================
+   Crediti — il biglietto da visita di echo dentro l'app.
+   I colori qui sono del marchio, non di GameHub: nero caldo,
+   avorio, oro antico. È l'unica superficie dell'app che
+   appartiene a chi l'ha fatta, quindi parla con la sua voce.
+   ============================================================ */
+.credits-card .modal-content { display: grid; gap: 14px; justify-items: center; }
+
+.ec-stage {
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 85 / 55;
+  perspective: 1200px;
+  cursor: pointer;
+  /* senza questo, su iOS il trascinamento scrolla la pagina
+     invece di inclinare la carta */
+  touch-action: none;
+}
+.ec-stage:focus-visible { outline: 2px solid var(--primary); outline-offset: 8px; border-radius: 6px; }
+
+.ec-deck {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(calc(var(--ry, 0deg) + var(--flip, 0deg)));
+  transition: transform .6s cubic-bezier(.2, .8, .2, 1);
+}
+.ec-stage.ec-live .ec-deck { transition: transform .1s linear; }
+
+.ec-face {
+  --ec-bg: #141210;
+  --ec-ink: #faf9f7;
+  --ec-au: #b0925a;
+  --ec-fm: #6b6760;
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 14px;
+  background: var(--ec-bg);
+  color: var(--ec-ink);
+  box-shadow: 0 18px 38px -16px rgba(0, 0, 0, .75);
+  overflow: hidden;
+}
+.ec-front { display: grid; place-content: center; }
+.ec-back { transform: rotateY(180deg); display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 18px 18px; }
+
+.echo-mark { width: 150px; height: auto; display: block; }
+.mark-ink { fill: var(--ec-ink); }
+.s-base { stop-color: var(--ec-au); }
+.s-hi { stop-color: #e2c683; }
+.s-spark { stop-color: #fff3d2; }
+/* a riposo la banda è fuori dalla lettera: la h resta oro spento */
+.mark-foil { transform: translateX(calc(var(--glint, 0) * 1px)); transition: transform .5s ease; }
+.ec-stage.ec-live .mark-foil { transition: transform .1s linear; }
+
+.ec-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -.02em;
+}
+.ec-name b { color: var(--ec-au); font-weight: 700; }
+.ec-rule { width: 1px; height: 64%; background: var(--ec-au); opacity: .7; }
+.ec-links { display: grid; gap: 10px; justify-items: end; text-align: right; min-width: 0; }
+.ec-link { text-decoration: none; display: grid; gap: 1px; }
+.ec-link-label { display: block; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ec-au); }
+/* un indirizzo spezzato a metà parola è illeggibile: sta su una riga
+   sola, e la colonna è dimensionata perché ci stia */
+.ec-link-value { display: block; font-size: 10.5px; color: var(--ec-ink); white-space: nowrap; }
+.ec-link:active .ec-link-value { color: var(--ec-au); }
+
+.ec-hint { margin: 0; font-size: 13px; color: var(--text-dim); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-deck { transition: transform .001s; }
+  .mark-foil { transition: none; }
+}
