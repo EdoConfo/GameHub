@@ -156,9 +156,11 @@ export function walls(box) {
 
 // You can push a panel anywhere it isn't something you'd touch for its own
 // sake: the grabber, yes, but also the empty space, the titles, the padding.
-// Buttons, fields and scrolling lists keep their touches to themselves.
+// Buttons, fields, scrolling lists and anything you drag in place keep their
+// touches to themselves — otherwise the panel captures the pointer on the way
+// down and the thing inside never sees the finger at all.
 export const GRIP = '.drawer-handle, .modal-grip'
-export const NO_DRAG = 'button, a, input, textarea, select, label, .list-scroll, .seat'
+export const NO_DRAG = 'button, a, input, textarea, select, label, .list-scroll, .seat, .ec-stage'
 
 // -> 'grip' | 'body' | null (this touch isn't for dragging)
 export function dragOrigin(e, { grip = GRIP, ignore = NO_DRAG } = {}) {

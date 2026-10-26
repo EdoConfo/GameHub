@@ -51,45 +51,60 @@ export function openCredits() {
     deck.style.setProperty('--flip', flipped ? '180deg' : '0deg')
   }
 
-  // Un link sul retro deve restare toccabile: non gira la carta.
-  stage.addEventListener('click', e => {
-    if (e.target.closest('a')) return
-    askMotionOnce()
-    flip()
-  })
   stage.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip() }
   })
 
   // ---- il dito ----
-  if (!still) {
-    let dragging = false
-    const aim = (e, inside) => {
-      const r = stage.getBoundingClientRect()
-      const px = (e.clientX - r.left) / r.width
-      const py = (e.clientY - r.top) / r.height
-      tilt((px - .5) * 2, (py - .5) * 2, inside)
-    }
-    stage.addEventListener('pointerdown', e => {
-      dragging = true
-      stage.setPointerCapture?.(e.pointerId)
-      stage.classList.add('ec-live')
-      aim(e, true)
-    })
-    stage.addEventListener('pointermove', e => {
-      if (dragging || e.pointerType === 'mouse') { stage.classList.add('ec-live'); aim(e, true) }
-    })
-    const release = () => { dragging = false; stage.classList.remove('ec-live'); rest() }
-    stage.addEventListener('pointerup', release)
-    stage.addEventListener('pointercancel', release)
-    stage.addEventListener('pointerleave', () => { if (!dragging) release() })
+  // Un tocco gira la carta, un trascinamento la inclina, e le due cose non
+  // devono accavallarsi: senza la soglia qui sotto ogni inclinazione finiva
+  // con un giro involontario, perché al rilascio parte comunque un click.
+  const SLOP = 10
+  let p0 = null, moved = false
+
+  const aim = e => {
+    const r = stage.getBoundingClientRect()
+    tilt((e.clientX - r.left) / r.width * 2 - 1, (e.clientY - r.top) / r.height * 2 - 1)
   }
 
-  function tilt(nx, ny, live) {
+  stage.addEventListener('pointerdown', e => {
+    if (e.target.closest('a')) return
+    p0 = { x: e.clientX, y: e.clientY }
+    moved = false
+    try { stage.setPointerCapture(e.pointerId) } catch { /* non catturabile */ }
+    if (!still && !motionOn) { stage.classList.add('ec-live'); aim(e) }
+  })
+
+  stage.addEventListener('pointermove', e => {
+    if (p0 && Math.hypot(e.clientX - p0.x, e.clientY - p0.y) > SLOP) moved = true
+    if (still || motionOn) return
+    // col mouse basta passarci sopra; col dito serve tenerlo premuto
+    if (p0 || e.pointerType === 'mouse') { stage.classList.add('ec-live'); aim(e) }
+  })
+
+  stage.addEventListener('pointerup', e => {
+    const wasTap = p0 && !moved
+    p0 = null
+    if (!motionOn) { stage.classList.remove('ec-live'); rest() }
+    if (wasTap && !e.target.closest('a')) flip()
+  })
+
+  stage.addEventListener('pointercancel', () => {
+    p0 = null
+    if (!motionOn) { stage.classList.remove('ec-live'); rest() }
+  })
+  stage.addEventListener('pointerleave', () => {
+    if (!p0 && !motionOn) { stage.classList.remove('ec-live'); rest() }
+  })
+  // il giro lo fa già pointerup: un click in più lo annullerebbe
+  stage.addEventListener('click', e => { if (!e.target.closest('a')) e.preventDefault() })
+
+  function tilt(nx, ny) {
+    nx = clamp(nx, -1, 1); ny = clamp(ny, -1, 1)
     deck.style.setProperty('--ry', `${nx * 14}deg`)
     deck.style.setProperty('--rx', `${-ny * 10}deg`)
     // La banda d'oro attraversa la h quando --glint passa da 60 a 190.
-    if (live) deck.style.setProperty('--glint', `${120 + nx * 90}`)
+    deck.style.setProperty('--glint', `${120 + nx * 90}`)
   }
   function rest() {
     deck.style.setProperty('--ry', '0deg')
@@ -98,37 +113,60 @@ export function openCredits() {
   }
 
   // ---- il telefono ----
+  // Il giroscopio ha un bottone suo. Nasconderlo dietro il tocco sulla carta
+  // voleva dire far comparire il dialogo di sistema di iOS a chi stava solo
+  // girando il biglietto — e su iOS la richiesta vale solo se parte da un
+  // gesto, quindi doveva comunque essere un gesto esplicito.
   let motionOn = false
+  let zero = null   // come il telefono era tenuto all'accensione: quello è il piano
+
   function onOrient(e) {
-    if (e.gamma == null && e.beta == null) return
-    // gamma: inclinazione sinistra/destra. beta: avanti/indietro, da cui si
-    // toglie l'angolo a cui un telefono viene tenuto davvero (circa 40°).
-    const nx = clamp((e.gamma || 0) / 32, -1, 1)
-    const ny = clamp(((e.beta || 0) - 40) / 32, -1, 1)
-    tilt(nx, ny, true)
-  }
-  function startMotion() {
-    if (motionOn) return
-    motionOn = true
-    stage.classList.add('ec-live')
-    addEventListener('deviceorientation', onOrient)
-  }
-  // Deve restare dentro il gestore del tocco: iOS rifiuta la richiesta
-  // fatta fuori da un gesto dell'utente.
-  function askMotionOnce() {
-    if (still || motionOn) return
-    if (!needsPermission) { startMotion(); return }
-    DeviceOrientationEvent.requestPermission()
-      .then(r => { if (r === 'granted') startMotion() })
-      .catch(() => {})
+    if (e.beta == null && e.gamma == null) return
+    const beta = e.beta || 0, gamma = e.gamma || 0
+    if (!zero) zero = { beta, gamma }
+    tilt((gamma - zero.gamma) / 26, (beta - zero.beta) / 26)
   }
 
+  function startMotion() {
+    motionOn = true
+    zero = null
+    stage.classList.add('ec-live')
+    motionBtn.classList.add('on')
+    motionBtn.textContent = t('credits.motionOn')
+    addEventListener('deviceorientation', onOrient)
+  }
+  function stopMotion() {
+    motionOn = false
+    removeEventListener('deviceorientation', onOrient)
+    stage.classList.remove('ec-live')
+    motionBtn.classList.remove('on')
+    motionBtn.textContent = t('credits.motion')
+    rest()
+  }
+
+  const motionBtn = el('button', {
+    class: 'ec-motion',
+    type: 'button',
+    onclick: () => {
+      if (motionOn) return stopMotion()
+      if (!needsPermission) return startMotion()
+      // deve restare qui dentro: iOS rifiuta la richiesta fatta fuori da un gesto
+      DeviceOrientationEvent.requestPermission()
+        .then(r => { if (r === 'granted') startMotion() })
+        .catch(() => {})
+    }
+  }, t('credits.motion'))
+
+  const hasMotion = !still && typeof DeviceOrientationEvent !== 'undefined' &&
+    matchMedia('(pointer: coarse)').matches
+
   const card = modal({
-    content: [stage, hint],
+    content: [stage, hint, hasMotion ? motionBtn : null].filter(Boolean),
     actions: [button(t('common.done'), { variant: 'ghost', onClick: () => card.close() })]
   })
   card.overlay.classList.add('credits-card')
 
+  // il sensore non deve restare acceso dietro un pannello chiuso
   const close = card.close
   card.close = () => { removeEventListener('deviceorientation', onOrient); close() }
   card.overlay.addEventListener('click', e => {

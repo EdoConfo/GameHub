@@ -1312,9 +1312,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   position: relative;
   width: 100%;
   height: 100%;
+  /* senza il prefisso Safari appiattisce la scena e il giro esce storto */
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   transform: rotateX(var(--rx, 0deg)) rotateY(calc(var(--ry, 0deg) + var(--flip, 0deg)));
   transition: transform .6s cubic-bezier(.2, .8, .2, 1);
+  will-change: transform;
 }
 .ec-stage.ec-live .ec-deck { transition: transform .1s linear; }
 
@@ -1363,6 +1366,19 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .ec-link:active .ec-link-value { color: var(--ec-au); }
 
 .ec-hint { margin: 0; font-size: 13px; color: var(--text-dim); text-align: center; }
+.ec-motion {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ec-motion.on { background: #b0925a; border-color: #b0925a; color: #141210; }
 
 @media (prefers-reduced-motion: reduce) {
   .ec-deck { transition: transform .001s; }
