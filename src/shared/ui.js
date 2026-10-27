@@ -40,6 +40,8 @@ const ICON_PATHS = {
   phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
   // two answers to the same question, talking past each other
   bubbles: '<path d="M4.5 3.5h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H8l-3.5 2.8V11.5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z"/><path d="M12.5 12.5h7a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2v2.6L15.5 19.5h-3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"/>',
+  // a hull on the water, with its mast: two fleets at sea
+  ship: '<path d="M3.5 14.5h17l-2.6 4.2a1.5 1.5 0 0 1-1.3.8H7.4a1.5 1.5 0 0 1-1.3-.8z"/><path d="M12 14.5V4"/><path d="M12 5l5.5 6.5H12"/><path d="M2.5 21.5c1.6 0 1.6-.9 3.2-.9s1.6.9 3.2.9 1.6-.9 3.1-.9 1.6.9 3.2.9 1.6-.9 3.2-.9 1.6.9 3.1.9"/>',
   // menu voices
   play: '<path d="M8 5.5v13l10.5-6.5z"/>',
   words: '<path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>',

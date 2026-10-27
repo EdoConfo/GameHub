@@ -11,7 +11,8 @@ import { el, clear, icon, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { avatar, faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
 import { openRoom, cleanCode, CODE_LEN } from '../../shared/realtime.js'
-import { writeScreen, keepAbove } from './screens.js'
+import { codeField, keepAbove } from '../../shared/roomUi.js'
+import { writeScreen } from './screens.js'
 
 const CODE_KEY = 'quiplash:room'
 const ME_KEY = 'quiplash:me'
@@ -136,60 +137,12 @@ export function mountGuest(container, ctx, { exit }) {
     stopViewport = keepAbove(node)
   }
 
-  // ---------- the code: four boxes that are one field ----------
-  // Four boxes, because a four-letter code read out loud across a table is
-  // four letters, and a single long field says nothing about how many are
-  // missing. One input, though, and not four: with one per box every letter
-  // costs a focus jump, and a phone keyboard that closes and reopens between
-  // one and the next. So the boxes are only the drawing — underneath there is
-  // one field, transparent, and you type the code straight through it (or
-  // paste it, which four inputs would not take either).
-  function codeField(onChange) {
-    const boxes = el('div', { class: 'code-boxes' })
-    const input = el('input', {
-      class: 'code-entry', type: 'text', value: code,
-      inputmode: 'text', autocapitalize: 'characters', autocomplete: 'off',
-      autocorrect: 'off', spellcheck: 'false', maxlength: String(CODE_LEN),
-      'aria-label': t('ql.join.code')
-    })
-
-    function paint() {
-      const chars = input.value.split('')
-      const here = Math.min(chars.length, CODE_LEN - 1)
-      const live = document.activeElement === input
-      boxes.replaceChildren(...Array.from({ length: CODE_LEN }, (_, i) => el('span', {
-        class: 'code-box' + (live && i === here ? ' on' : '')
-      }, chars[i] || '')))
-    }
-
-    input.addEventListener('input', () => {
-      const clean = cleanCode(input.value)
-      if (input.value !== clean) input.value = clean
-      paint()
-      onChange(clean)
-    })
-    input.addEventListener('focus', paint)
-    input.addEventListener('blur', paint)
-
-    paint()
-    // The padding around the boxes belongs to the field too: a tap anywhere on
-    // it lands the caret after the last letter, never in the middle of one.
-    return el('div', {
-      class: 'code-field',
-      onclick: () => {
-        input.focus()
-        const n = input.value.length
-        try { input.setSelectionRange(n, n) } catch { /* not a field with a caret */ }
-      }
-    }, [boxes, input])
-  }
-
   // ---------- joining ----------
   function joinScreen() {
     const saved = ctx.storage.get(ME_KEY, null)
     if (!me) me = ctx.players.all().find(p => p.id === saved) || null
     const ready = () => code.length === CODE_LEN && !!me
-    const field = codeField(clean => { code = clean; go.disabled = !ready() })
+    const field = codeField(code, clean => { code = clean; go.disabled = !ready() }, t('ql.join.code'))
 
     const go = button(t('ql.join.enter'), {
       variant: 'primary', full: true, disabled: true,

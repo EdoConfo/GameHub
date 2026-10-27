@@ -27,11 +27,13 @@
 import misterWhite from './mister-white/index.js'
 import headsUp from './heads-up/index.js'
 import quiplash from './quiplash/index.js'
+import battleship from './battleship/index.js'
 
 export const games = [
   misterWhite,
   headsUp,
-  quiplash
+  quiplash,
+  battleship
 ]
 
 export function getGame(id) {

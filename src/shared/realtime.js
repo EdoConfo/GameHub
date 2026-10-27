@@ -16,8 +16,10 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js'
 
 // The room's name on the wire. Prefixed, because the channel names are shared
-// with every other app on the same Supabase project.
-const topic = code => `gamehub:quiplash:${String(code).toUpperCase()}`
+// with every other app on the same Supabase project — and by game, so a
+// Quiplash code typed into Battaglia navale knocks on an empty room instead
+// of somebody else's match.
+const topic = (code, game = 'quiplash') => `gamehub:${game}:${String(code).toUpperCase()}`
 
 // Room codes are read out loud across a table and typed on a phone keyboard,
 // so the letters that get misheard or mistyped are simply not in the alphabet:
@@ -64,8 +66,8 @@ const wantsLoopback = () =>
   typeof location !== 'undefined' &&
   new URLSearchParams(location.search).has('loopback')
 
-function loopbackRoom(code, { onMessage, onStatus }) {
-  const bus = new BroadcastChannel(topic(code))
+function loopbackRoom(code, { game, onMessage, onStatus }) {
+  const bus = new BroadcastChannel(topic(code, game))
   const me = Math.random().toString(36).slice(2)
   bus.onmessage = e => {
     const m = e.data
@@ -80,14 +82,15 @@ function loopbackRoom(code, { onMessage, onStatus }) {
 }
 
 // Open the room `code`.
+//   game  whose room it is (the topic's middle piece); Quiplash by default
 //   onMessage(event, payload)  a message from another phone in it
 //   onStatus('wait' | 'on' | 'off')  is this phone actually in the room?
 //   -> { send(event, payload), leave() }
 //
 // Messages sent before the room is open wait in a queue and go as soon as it
 // is: the caller never has to know whether the socket has settled.
-export function openRoom(code, { onMessage, onStatus = () => {} } = {}) {
-  if (wantsLoopback()) return loopbackRoom(code, { onMessage, onStatus })
+export function openRoom(code, { game = 'quiplash', onMessage, onStatus = () => {} } = {}) {
+  if (wantsLoopback()) return loopbackRoom(code, { game, onMessage, onStatus })
 
   let channel = null
   let live = false
@@ -105,7 +108,7 @@ export function openRoom(code, { onMessage, onStatus = () => {} } = {}) {
   ;(async () => {
     const c = await socket()
     if (gone) return
-    channel = c.channel(topic(code), { config: { broadcast: { self: false } } })
+    channel = c.channel(topic(code, game), { config: { broadcast: { self: false } } })
     channel.on('broadcast', { event: '*' }, m => onMessage(m.event, m.payload))
     channel.subscribe(status => {
       if (gone) return

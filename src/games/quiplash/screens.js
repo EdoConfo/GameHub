@@ -7,27 +7,13 @@
 // gets out of the way of the keyboard.
 import { el, button } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
+import { keepAbove } from '../../shared/roomUi.js'
 
 const MAX = 90 // long enough for a joke, short enough to read out loud
 
-// The keyboard takes half the screen and the page cannot scroll (it is an app,
-// not a document). So the screen becomes what the keyboard leaves of it, and
-// the prompt, the field and the button stay together above it.
-export function keepAbove(node) {
-  const vv = window.visualViewport
-  if (!vv) return () => {}
-  const place = () => {
-    node.style.height = vv.height + 'px'
-    node.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : ''
-  }
-  place()
-  vv.addEventListener('resize', place)
-  vv.addEventListener('scroll', place)
-  return () => {
-    vv.removeEventListener('resize', place)
-    vv.removeEventListener('scroll', place)
-  }
-}
+// The screen that steps out of the keyboard's way lives with the room's other
+// shared pieces; it is re-exported here, where Quiplash has always found it.
+export { keepAbove }
 
 // The writing screen.
 //   title:  who is writing (the name, when the phone is being passed around)

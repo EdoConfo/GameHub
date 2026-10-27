@@ -1,16 +1,18 @@
 # GameHub
 
 Party games for people sitting at the same table. Most of them are played on
-**a single phone**, passed around (pass-and-play); Quiplash is played on
-**everybody's phone at once**, in a room they join with a four-letter code.
+**a single phone**, passed around (pass-and-play); Quiplash and Battleship are
+played on **everybody's phone at once**, in a room they join with a
+four-letter code — and on a single phone too, when there is only one.
 No accounts, runs entirely in the browser, and **works offline** as an
-installable PWA (Quiplash's rooms are the one thing that needs a network).
+installable PWA (the rooms are the one thing that needs a network).
 
 Games included:
 
 - **Mister White**: find the impostors among you before they blend in.
 - **Heads Up**: in teams. Hold the phone to your forehead and guess the word from your team's clues.
 - **Quiplash**: two people answer the same prompt, everybody else votes for the funnier one.
+- **Battleship** (Battaglia navale): two fleets, two seas, sink the other one first.
 
 The interface is available in Italian and English.
 
@@ -187,6 +189,8 @@ src/
     quiplash/          round.js (the arithmetic) + game.js (a match, as the room
                        holds it) + room.js / guest.js (several phones) +
                        match.js (one phone) + screens.js + packs.js
+    battleship/        engine.js (the rules) + game.js (a match, both fleets) +
+                       room.js (two phones) + local.js (one phone) + screens.js
 supabase/              database schema for the remote packs
 ```
 
@@ -218,6 +222,26 @@ answers.
 The room is as private as its code: anybody who knows it can join, and
 everything the room says is readable by anyone in it who opens a browser
 console. It is a game among friends, not a bank.
+
+## Battleship on two phones, or one
+
+Battleship has no word packs: the sea is the whole game. It is played the way
+Quiplash is, with the same wire ([`src/shared/realtime.js`](src/shared/realtime.js),
+on a channel of its own):
+
+- One phone opens the room (**Gioca**), picks its profile and shows a code; the
+  other goes to **Entra**, types it and picks theirs. The phone that opened
+  the room always plays — there are two admirals and two phones.
+- That phone holds the match ([`game.js`](src/games/battleship/game.js)): it
+  knows where both fleets are, so it calls every shot. The other phone is only
+  ever sent its own view — its fleet, the shots at it, what its own shots
+  found — and the other fleet ship by ship as it sinks.
+- **Un telefono solo** plays the same match on one phone passed across the
+  table. Between one turn and the next there is a screen with no sea on it,
+  that opens only when the right person says it's them.
+
+The fleet is the classic one (5, 4, 3, 3, 2) on a 10×10 sea, ships never
+touch, and a hit fires again.
 
 ## How to play Heads Up
 
