@@ -16,6 +16,17 @@ Games included:
 
 The interface is available in Italian and English.
 
+## Upcoming games
+
+- [x] Mr White
+- [x] Heads Up
+- [x] Quiplash
+- [x] Battaglia Navale
+- [ ] Tris
+- [ ] Pong
+- [ ] Forza 4
+- [ ] Nomi Cose Città
+
 Play it at **https://edoconfo.github.io/GameHub/**
 
 ## Requirements
