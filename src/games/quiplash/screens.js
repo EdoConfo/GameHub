@@ -1,27 +1,23 @@
 // Writing, wherever it happens.
 //
-// One phone or five, writing is the same screen: a prompt, a field, a button —
+// One phone or five, writing is the same page: a prompt, a field, a button —
 // and nothing else, because the prompt belongs to one person for that minute
-// and what they type must not be readable over their shoulder. Passing one
-// phone round, that is the point of the screen; on your own phone it simply
-// gets out of the way of the keyboard.
+// and what they type must not be readable over their shoulder. It rises as a
+// sheet over the table's drawer, covering it whole, and the table stays above
+// it: the scene is still there, only the drawer is somebody's for a minute.
+// The keyboard is the hub's business — the whole scene becomes what it leaves.
 import { el, button } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { keepAbove } from '../../shared/roomUi.js'
 
 const MAX = 90 // long enough for a joke, short enough to read out loud
-
-// The screen that steps out of the keyboard's way lives with the room's other
-// shared pieces; it is re-exported here, where Quiplash has always found it.
-export { keepAbove }
 
 // The writing screen.
 //   title:  who is writing (the name, when the phone is being passed around)
 //   jobs:   [{ prompt, text }] — one or more, walked in order
 //   onSave(i, text):  keep answer i. Return false and the screen stays put.
 //   onDone():         the last one is in
-//   -> the node, with node.ready() to be called once it is on the page and
-//      node.stop() when it leaves
+//   -> the node, to open with stage.openSheet(); node.ready() to be called once
+//      it is on the page, node.stop() when it leaves
 export function writeScreen({ title = '', jobs = [], onSave = () => true, onDone = () => {} } = {}) {
   let step = 0
 
@@ -35,7 +31,7 @@ export function writeScreen({ title = '', jobs = [], onSave = () => true, onDone
   const left = el('span', { class: 'write-left' })
   const go = button(t('ql.write.next'), { variant: 'primary', full: true, onClick: () => next() })
 
-  const wrap = el('div', { class: 'fullscreen write-area' }, [
+  const wrap = el('div', { class: 'drawer-page write-area' }, [
     // The prompt and the field travel together in the middle of whatever the
     // keyboard leaves of the screen; the button stays under them, which with
     // the keyboard up means right on top of it.
@@ -82,9 +78,8 @@ export function writeScreen({ title = '', jobs = [], onSave = () => true, onDone
   // Enter is "done with this one", not a newline: an answer is one line.
   field.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); next() } })
 
-  const stopViewport = keepAbove(wrap)
   paint()
   wrap.ready = () => field.focus()
-  wrap.stop = stopViewport
+  wrap.stop = () => field.blur()
   return wrap
 }

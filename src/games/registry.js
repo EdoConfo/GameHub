@@ -20,6 +20,20 @@
 //                  open(title, content) shows a page of the game's own in the drawer
 //                  seat dresses a chair before the match starts — Heads Up
 //                  colours it by team; leave it out and chairs stay plain
+//     places:      optional — screens of the game's own that aren't the shared
+//                  table ("Gioca"): a room, a way into one, a match on one phone.
+//                  { [phase]: (scene, ctx) -> optional cleanup }
+//                  A menu bead whose phase is here turns circle B into a table
+//                  and hands it over, the same morph as "Gioca"; the game never
+//                  builds a screen of its own (docs/SCENE.md).
+//                  scene: { stage, exit(), header({ code, live }), onSeat(fn), onBack(fn) }
+//                    stage:  the table stage (shared/tableStage.js) — seats on
+//                            stage.view, pages with stage.present(node, { key }),
+//                            one-off panels with stage.openSheet
+//                    exit:   fold back into the game's circle, menu beads riding in
+//                    header: what the hub's header shows besides the name (a code)
+//                    onSeat: taps on a seat · onBack: the arrow and the swipe home
+//                            (leave it out and they simply exit)
 //     mount(container, ctx, phase) -> optional cleanup function
 //       container: HTMLElement to render into (already emptied)
 //       ctx: { storage, players, table, stats, router, root, applyTheme }

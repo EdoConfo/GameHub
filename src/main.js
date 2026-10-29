@@ -57,7 +57,7 @@ function leaveCurrent() {
 router.on('/', () => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx)
+  currentCleanup = renderHub(root, ctx)
 })
 
 // Giocatori and Impostazioni are not separate screens: they're the left arc of
@@ -65,13 +65,13 @@ router.on('/', () => {
 router.on('/players', () => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx, null, { side: 'players' })
+  currentCleanup = renderHub(root, ctx, null, { side: 'players' })
 })
 
 router.on('/settings', () => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx, null, { side: 'settings' })
+  currentCleanup = renderHub(root, ctx, null, { side: 'settings' })
 })
 
 // A player opened by its own address: the arc behind, the card over it. From
@@ -81,7 +81,7 @@ router.on('/settings', () => {
 router.on('/players/:id', ({ id }) => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx, null, { side: 'players', focusId: id })
+  currentCleanup = renderHub(root, ctx, null, { side: 'players', focusId: id })
   openPlayerCard(ctx, id)
 })
 
@@ -107,22 +107,30 @@ for (const kind of ['words', 'rules', 'stats']) {
   router.on('/:game/' + kind, ({ game }) => {
     leaveCurrent()
     clear(root)
-    renderHub(root, ctx, game, { gameSide: kind })
+    currentCleanup = renderHub(root, ctx, game, { gameSide: kind })
   })
 }
 
 router.on('/:game/table', ({ game }) => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx, game, { table: true })
+  currentCleanup = renderHub(root, ctx, game, { table: true })
 })
 
-router.on('/:game/:phase', ({ game, phase }) => mountGame(game, phase))
+// A game's own places (a room, a match on one phone) stand on its table in the
+// hub too: the address opens the hub with that table already there.
+router.on('/:game/:phase', ({ game, phase }) => {
+  const g = getGame(game)
+  if (!(g && g.places && g.places[phase])) { mountGame(game, phase); return }
+  leaveCurrent()
+  clear(root)
+  currentCleanup = renderHub(root, ctx, game, { place: phase })
+})
 
 router.on('/:game', ({ game }) => {
   leaveCurrent()
   clear(root)
-  renderHub(root, ctx, game)
+  currentCleanup = renderHub(root, ctx, game)
 })
 
 router.setNotFound(() => router.go('/'))

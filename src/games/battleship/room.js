@@ -7,18 +7,19 @@
 // gets told its own view (viewFor), never the other fleet.
 //
 // Unlike Quiplash, the phone that opens the room always plays: there are two
-// admirals and two phones, and no table in the middle to put a screen on.
+// admirals and two phones. Each phone still has the table, though — the
+// game's circle become a table with two chairs — and the drawer under it.
 //
 // Everybody in the room receives every message, so a laptop with the console
 // open could read the other side's view. It's a game among friends, not a
 // bank — the same deal Quiplash makes (see shared/realtime.js).
 import { el, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { avatar, faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
+import { faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
 import { openRoom, newCode, cleanCode, CODE_LEN } from '../../shared/realtime.js'
 import { codeField } from '../../shared/roomUi.js'
 import { createGame } from './game.js'
-import { frame, unframe, head, sea, createPlacer, battle, over } from './screens.js'
+import { page, head, admirals, sea, createPlacer, battle, over } from './screens.js'
 
 const GAME = 'battleship'
 const CODE_KEY = 'battleship:room'
@@ -29,19 +30,19 @@ const KNOCK = 2000  // how often a guest says hello until the room answers
 // ---------- who am I ----------
 // Both sides start the same way: pick the face you play as. The last one
 // picked on this phone is already picked.
-function whoScreen(ctx, { me, title, hint, extra = [], go, onPick }) {
+function whoPage(ctx, { me, title, hint, extra = [], go, onPick }) {
   const all = ctx.players.all()
   const grid = faceGrid(all, p => onPick(p),
     newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) onPick(p) })))
   const at = me ? all.findIndex(p => p.id === me.id) : -1
   if (at >= 0 && grid.children[at]) grid.children[at].classList.add('on')
-  return [
+  return page([
     head(title, hint),
     ...extra,
     el('span', { class: 'field-label' }, t('bs.room.who')),
     walls(el('div', { class: 'list-scroll' }, grid)),
     go
-  ]
+  ])
 }
 
 const savedMe = ctx => {
@@ -51,29 +52,55 @@ const savedMe = ctx => {
 
 const face = p => ({ pid: p.id, name: p.name, color: p.color, emoji: p.emoji })
 
-// The match itself, from one admiral's view — the same on both phones.
+// Me at the bottom, facing my phone; the other admiral across the table.
+const chairs = (view, me) => {
+  const mine = view.players.find(p => p.pid === me)
+  return [mine, ...view.players.filter(p => p.pid !== me)].filter(Boolean)
+}
+
+// The match itself, from one admiral's view — the same on both phones: the
+// table with the two chairs, the drawer with the sea.
 //   view:    what game.viewFor said for this admiral
 //   placer:  the fleet being laid out (kept by the caller across redraws)
 //   pending: a shot sent and not answered yet
-function matchScreen(view, { placer, pending, onFire, actions }) {
+//   note:    a line of news to put on top (the other one has left)
+function showMatch(stage, view, { placer, pending, onFire, actions, note = null }) {
   const foe = view.players.find(p => p.pid === view.foe)
+  const seated = chairs(view, view.me)
+  const news = note ? el('p', { class: 'drawer-hint room-off' }, note) : null
   if (view.phase === 'place') {
+    const placed = view.players.filter(p => view.placed[p.pid]).map(p => p.pid)
     if (!view.placed[view.me] && placer) {
-      return [head(t('bs.place.titleMine'), ''), placer.node]
+      stage.view.set(admirals(seated, { names: false, dim: placed }))
+      stage.present(page([head(t('bs.place.titleMine'), ''), news, placer.node], { tall: true }), { key: 'place' })
+      return
     }
-    return [
+    stage.view.set(admirals(seated, { dim: placed.filter(pid => pid !== view.me), lit: view.me }))
+    stage.present(page([
       head(t('bs.room.waitFleet', { name: foe ? foe.name : '?' }), t('bs.room.waitFleetSub')),
-      sea({ ships: view.fleet || [] })
-    ]
+      news,
+      sea({ ships: view.fleet || [], small: true })
+    ]), { key: 'wait-fleet' })
+    return
   }
-  if (view.phase === 'battle') return battle(view, { onFire, pending })
-  return over(view, { actions })
+  if (view.phase === 'battle') {
+    stage.view.set(admirals(seated, { lit: view.turn, names: false }))
+    const children = battle(view, { onFire, pending })
+    if (news) children.splice(1, 0, news)
+    stage.present(page(children, { tall: true }), { key: 'battle' })
+    return
+  }
+  stage.view.set(admirals(seated, { lit: view.winner, dim: seated.map(p => p.pid).filter(pid => pid !== view.winner) }))
+  const children = over(view, { actions })
+  if (news) children.splice(1, 0, news)
+  stage.present(page(children, { tall: true }), { key: 'over' })
 }
 
 // =====================================================================
 // The phone that opens the room.
 // =====================================================================
-export function mountRoom(container, ctx, { exit }) {
+export function placeRoom(scene, ctx) {
+  const { stage } = scene
   let me = savedMe(ctx)
   let code = ''
   let wire = null
@@ -82,6 +109,7 @@ export function mountRoom(container, ctx, { exit }) {
   let placer = null
   let recorded = false
   let gone = null // the other admiral left mid-match: their name
+  let left = false
 
   const game = createGame({ onChange: () => { publish(); render() } })
 
@@ -148,32 +176,34 @@ export function mountRoom(container, ctx, { exit }) {
     }
   }
 
-  const show = children => frame(container, { onBack: () => exit(), code, live: status === 'on' }, children)
-
   function render() {
-    if (!container.isConnected) return
+    if (left) return
+    scene.header({ code: wire ? code : '', live: status === 'on' })
     if (!wire) {
-      show(whoScreen(ctx, {
+      stage.view.set(admirals(me ? [face(me)] : []))
+      stage.view.setCenter(null)
+      stage.present(whoPage(ctx, {
         me,
         title: t('bs.room.openTitle'),
         hint: t('bs.room.openHint'),
         onPick: p => { me = p; render() },
         go: button(t('bs.room.open'), { variant: 'primary', full: true, disabled: !me, onClick: open })
-      }))
+      }), { key: 'who' })
       return
     }
     const phase = game.state.phase
     if (phase === 'lobby') {
-      show([
+      // my chair, and an empty one across the table for whoever types the code
+      stage.view.set(admirals([face(me)], { lit: me.id }))
+      stage.present(page([
         el('div', { class: 'room-code' }, [
           el('span', { class: 'room-code-label' }, t('ql.room.codeLabel')),
           el('b', {}, code)
         ]),
         el('p', { class: 'drawer-hint' + (status === 'off' ? ' room-off' : '') },
           t(status === 'on' ? 'bs.room.codeHint' : status === 'off' ? 'bs.room.offline' : 'ql.room.opening')),
-        el('div', { class: 'guest-people' }, [el('div', { class: 'guest-person' }, [avatar(me, 44), el('span', { class: 'pick-name' }, me.name)])]),
         el('div', { class: 'guest-wait' }, t('bs.room.waiting'))
-      ])
+      ]), { key: 'lobby' })
       return
     }
     if (phase === 'place' && !game.placed(me.id) && !placer) {
@@ -183,24 +213,22 @@ export function mountRoom(container, ctx, { exit }) {
     if (phase === 'over') record()
     else recorded = false
 
-    const view = game.viewFor(me.id)
-    const children = matchScreen(view, {
+    showMatch(stage, game.viewFor(me.id), {
       placer,
       onFire: (r, c) => game.fire(me.id, r, c),
+      note: gone ? t('bs.room.gone', { name: gone }) : null,
       actions: [
         button(t('bs.over.again'), { variant: 'primary', full: true, onClick: () => game.again() }),
-        button(t('bs.room.close'), { variant: 'secondary', full: true, onClick: () => exit() })
+        button(t('bs.room.close'), { variant: 'secondary', full: true, onClick: () => scene.exit() })
       ]
     })
-    if (gone) children.splice(1, 0, el('p', { class: 'drawer-hint room-off' }, t('bs.room.gone', { name: gone })))
-    show(children)
   }
 
   render()
 
   return () => {
+    left = true
     clearInterval(beat)
-    unframe(container)
     if (wire) { wire.send('closed', { code }); wire.leave() }
   }
 }
@@ -208,7 +236,8 @@ export function mountRoom(container, ctx, { exit }) {
 // =====================================================================
 // The phone that joins it.
 // =====================================================================
-export function mountGuest(container, ctx, { exit }) {
+export function placeGuest(scene, ctx) {
+  const { stage } = scene
   let me = savedMe(ctx)
   let code = cleanCode(ctx.storage.get(CODE_KEY, '') || '')
   let wire = null
@@ -221,6 +250,7 @@ export function mountGuest(container, ctx, { exit }) {
   let fleet = null    // handed in, not yet confirmed: said again until it is
   let shot = null     // fired, not yet answered: { r, c }
   let recorded = false
+  let left = false
 
   const myPid = () => (me ? me.id : null)
 
@@ -281,38 +311,45 @@ export function mountGuest(container, ctx, { exit }) {
     }
   }
 
-  const show = children => frame(container, { onBack: () => exit(), code: wire ? code : '', live: status === 'on' }, children)
+  // A short page with one way out: the room is closed, full, or still being
+  // knocked on.
+  function notice(key, title, sub, way) {
+    stage.view.set(admirals(me ? [face(me)] : []))
+    stage.present(page([head(title, sub), way]), { key })
+  }
 
   function render() {
-    if (!container.isConnected) return
+    if (left) return
+    scene.header({ code: wire ? code : '', live: status === 'on' })
     if (!wire) {
       const ready = () => code.length === CODE_LEN && !!me
       const go = button(t('bs.join.enter'), {
         variant: 'primary', full: true, disabled: !ready(),
         onClick: () => { if (ready()) connect() }
       })
-      show(whoScreen(ctx, {
+      stage.view.set(admirals(me ? [face(me)] : []))
+      stage.view.setCenter(null)
+      stage.present(whoPage(ctx, {
         me,
         title: t('bs.join.title'),
         hint: t('bs.join.hint'),
         extra: [codeField(code, clean => { code = clean; go.disabled = !ready() }, t('ql.join.code'))],
         onPick: p => { me = p; render() },
         go
-      }))
+      }), { key: 'join' })
       return
     }
-    const back = button(t('common.back'), { variant: 'primary', full: true, onClick: () => exit() })
-    if (closed) { show([head(t('bs.join.closed'), t('bs.join.closedHint')), back]); return }
-    if (full) { show([head(t('bs.join.full'), t('bs.join.fullHint')), back]); return }
+    const back = () => button(t('common.back'), { variant: 'primary', full: true, onClick: () => scene.exit() })
+    if (closed) { notice('closed', t('bs.join.closed'), t('bs.join.closedHint'), back()); return }
+    if (full) { notice('full', t('bs.join.full'), t('bs.join.fullHint'), back()); return }
     if (!view) {
-      show([
-        head(t('ql.join.knocking', { code }), status === 'off' ? t('bs.room.offline') : t('ql.join.knockingHint')),
-        button(t('common.back'), { variant: 'ghost', full: true, onClick: () => exit() })
-      ])
+      notice('knock', t('ql.join.knocking', { code }), status === 'off' ? t('bs.room.offline') : t('ql.join.knockingHint'),
+        button(t('common.back'), { variant: 'ghost', full: true, onClick: () => scene.exit() }))
       return
     }
     if (view.phase === 'lobby') {
-      show([head(t('ql.join.inRoom'), t('bs.join.waitStart')), el('div', { class: 'guest-wait' }, t('ql.join.waitDots'))])
+      stage.view.set(admirals(chairs(view, myPid()), { lit: myPid() }))
+      stage.present(page([head(t('ql.join.inRoom'), t('bs.join.waitStart')), el('div', { class: 'guest-wait' }, t('ql.join.waitDots'))]), { key: 'lobby' })
       return
     }
     if (view.phase === 'place' && !view.placed[myPid()] && !fleet && !placer) {
@@ -325,7 +362,7 @@ export function mountGuest(container, ctx, { exit }) {
     }
     if (view.phase === 'over') record()
     else recorded = false
-    show(matchScreen(view, {
+    showMatch(stage, view, {
       placer,
       pending: shot,
       onFire: (r, c) => {
@@ -336,16 +373,16 @@ export function mountGuest(container, ctx, { exit }) {
       },
       actions: [
         button(t('bs.over.again'), { variant: 'primary', full: true, onClick: () => wire.send('again', { pid: myPid() }) }),
-        button(t('bs.join.out'), { variant: 'secondary', full: true, onClick: () => exit() })
+        button(t('bs.join.out'), { variant: 'secondary', full: true, onClick: () => scene.exit() })
       ]
-    }))
+    })
   }
 
   render()
 
   return () => {
+    left = true
     clearInterval(knock)
-    unframe(container)
     if (wire) { wire.send('bye', { pid: myPid() }); wire.leave() }
   }
 }

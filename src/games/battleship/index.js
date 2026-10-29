@@ -2,11 +2,14 @@
 //
 // Best on two phones, each admiral with their own sea in their hand: one
 // opens a room, the other joins it with the code. With one phone only, it is
-// passed across the table and a screen with no sea on it stands between one
-// turn and the next.
+// passed across the table, and between one turn and the next the sea goes
+// down with the drawer.
+//
+// All three are places on the game's own table: the menu's circle becomes it,
+// as it does for "Gioca" in the other games (see hub.js and docs/SCENE.md).
 import { t } from '../../shared/i18n.js'
-import { mountRoom, mountGuest } from './room.js'
-import { mountLocal } from './local.js'
+import { placeRoom, placeGuest } from './room.js'
+import { placeLocal } from './local.js'
 
 // Built on read so the labels follow the interface language.
 const menu = () => [
@@ -37,15 +40,11 @@ const rules = () => [
   }
 ]
 
-const SCREENS = { room: mountRoom, join: mountGuest, local: mountLocal }
-
-function mount(container, ctx, phase) {
-  const screen = SCREENS[phase]
-  const toMenu = () => (ctx.exitToMenu ? ctx.exitToMenu() : ctx.router.go('/battleship'))
-  // Anything else — an old address, a reload mid-match (the match lived in
-  // memory, as it should) — goes back to the menu.
-  if (!screen) { toMenu(); return null }
-  return screen(container, ctx, { exit: toMenu })
+// Anything else under the game's address — an old link, a phase that isn't
+// one — goes back to the menu.
+function mount(container, ctx) {
+  ctx.router.go('/battleship')
+  return null
 }
 
 export default {
@@ -56,5 +55,6 @@ export default {
   glyph: 'ship',
   get rules() { return rules() },
   get menu() { return menu() },
+  places: { room: placeRoom, join: placeGuest, local: placeLocal },
   mount
 }

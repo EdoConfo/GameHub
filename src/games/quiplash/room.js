@@ -9,7 +9,6 @@
 // works with no screen at all: five phones, one of them also the host.
 import { el, icon, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { createTableStage } from '../../shared/tableStage.js'
 import { faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
 import { openRoom, newCode } from '../../shared/realtime.js'
 import { createGame } from './game.js'
@@ -23,8 +22,10 @@ const BEAT = 2500 // how often the room repeats itself, for whoever missed it
 const page = (children, cls = '') => el('div', { class: 'drawer-page' + (cls ? ' ' + cls : '') }, children)
 const count = (big, small) => el('div', { class: 'table-count' }, [el('b', {}, big), el('span', {}, small)])
 
-// The room's screen. Returns the cleanup the router calls on the way out.
-export function mountRoom(container, ctx, { exit }) {
+// The room, on the game's own table: the hub turns the menu's circle into it
+// and hands it over (scene). Returns the cleanup the hub calls on the way out.
+export function placeRoom(scene, ctx) {
+  const { stage } = scene
   const code = newCode()
   ctx.storage.set(CODE_KEY, code) // so "Entra" on another phone of the house offers it
 
@@ -39,14 +40,13 @@ export function mountRoom(container, ctx, { exit }) {
   let writer = null       // the writing screen, while this phone is writing
   let status = 'wait'     // is this phone actually in its own room?
   let beat = 0
-  let stage = null
-  let ro = null
   let lastPhase = null
+  let left = false
   let recorded = false
 
   // ---------- the wire ----------
   const wire = openRoom(code, {
-    onStatus: s => { status = s; if (!writer) render() },
+    onStatus: s => { status = s; render() },
     onMessage: (event, msg) => {
       if (!msg || typeof msg !== 'object') return
       if (event === 'hello') {
@@ -81,16 +81,7 @@ export function mountRoom(container, ctx, { exit }) {
   }, BEAT)
 
   // ---------- the screen ----------
-  const header = el('div', { class: 'hub-header' }, [
-    el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => leave() }, icon('back')),
-    el('span', { class: 'wordmark game-home-title' }, t('ql.name').toUpperCase()),
-    el('span', { class: 'room-code-tag' }, code)
-  ])
-  const shell = el('div', { class: 'canvas' }, [header])
-  container.append(shell)
-  stage = createTableStage(shell, { top: () => header.offsetTop + header.offsetHeight })
-  ro = new ResizeObserver(() => { if (stage) stage.refit() })
-  ro.observe(shell)
+  // the code, in the corner of the hub's own header, for as long as the room
 
   // The two doors every match has — what it draws from, how long it runs —
   // in this drawer instead of the table's.
@@ -146,25 +137,29 @@ export function mountRoom(container, ctx, { exit }) {
   }
 
   // ---------- writing, when this phone is one of the players ----------
+  // A sheet over the drawer, the table still above it. Pulled down before the
+  // answers are in, it leaves them for later: the drawer has a way back.
   function openWriter() {
     if (writer || !mine) return
     const jobs = game.deal(mine.id)
     if (!jobs.length || jobs.every(j => j.text)) return
-    writer = writeScreen({
+    const node = writeScreen({
       title: mine.name,
       jobs,
       onSave: (i, text) => game.answer(mine.id, i, text),
       onDone: () => closeWriter()
     })
-    container.append(writer)
-    writer.ready()
+    writer = node
+    stage.openSheet(node, { done: () => { if (writer === node) { writer = null; node.stop(); render() } } })
+    node.ready()
   }
 
   function closeWriter() {
     if (!writer) return
-    writer.stop()
-    writer.remove()
+    const node = writer
     writer = null
+    node.stop()
+    stage.closeSheet()
     render()
   }
 
@@ -199,7 +194,7 @@ export function mountRoom(container, ctx, { exit }) {
         variant: 'primary', full: true, disabled: !!problem,
         onClick: () => game.begin()
       })
-    ]))
+    ]), { key: 'lobby' })
   }
 
   function writing() {
@@ -224,7 +219,7 @@ export function mountRoom(container, ctx, { exit }) {
           variant: names.length ? 'secondary' : 'primary', full: true,
           onClick: () => game.closeWriting()
         })
-    ]))
+    ]), { key: 'write' })
   }
 
   function duel() {
@@ -253,7 +248,7 @@ export function mountRoom(container, ctx, { exit }) {
       el('div', { class: 'answer-list' }, d.answers.map(answer)),
       el('p', { class: 'drawer-hint' }, iVote ? t('ql.room.yourVote') : t('ql.room.theirVote')),
       button(t('ql.room.closeVote'), { variant: 'secondary', full: true, onClick: () => game.closeVote() })
-    ]))
+    ]), { key: 'duel-' + d.i })
   }
 
   function tally() {
@@ -284,7 +279,7 @@ export function mountRoom(container, ctx, { exit }) {
       button(d.i + 1 < d.of ? t('ql.tally.next') : t('ql.tally.standings'), {
         variant: 'primary', full: true, onClick: () => game.next()
       })
-    ]))
+    ]), { key: 'tally-' + d.i })
   }
 
   function standings() {
@@ -328,11 +323,12 @@ export function mountRoom(container, ctx, { exit }) {
         : button(t('ql.standings.next', { n: game.state.round + 2 }), {
           variant: 'primary', full: true, onClick: () => game.next()
         })
-    ]))
+    ]), { key: 'standings-' + game.state.round })
   }
 
   function render() {
-    if (!stage || !container.isConnected) return
+    if (left) return
+    scene.header({ code, live: status === 'on' })
     const phase = game.state.phase
     const was = lastPhase
     lastPhase = phase
@@ -351,17 +347,16 @@ export function mountRoom(container, ctx, { exit }) {
 
   // The room closes with the phone that opened it: there is nowhere else the
   // match is kept, and the others are told so rather than left waiting.
-  function leave() { exit() }
+  function leave() { scene.exit() }
 
   render()
   publish()
 
   return () => {
+    left = true
     clearInterval(beat)
-    if (writer) { writer.stop(); writer.remove(); writer = null }
+    if (writer) { writer.stop(); writer = null }
     wire.send('closed', { code })
     wire.leave()
-    if (ro) ro.disconnect()
-    if (stage) stage.destroy()
   }
 }

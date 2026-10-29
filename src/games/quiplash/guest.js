@@ -6,19 +6,27 @@
 // agreeing about whose vote is still missing.
 //
 // It draws the whole match, not just the buttons: a room with no screen in the
-// middle is still a game everybody can follow, each on their own phone.
-import { el, clear, icon, button, walls } from '../../shared/ui.js'
+// middle is still a game everybody can follow, each on their own phone. And
+// it draws it the way the room does — on the game's own table, which the
+// menu's circle becomes, with everybody in the room sitting round it and the
+// drawer under it saying what is happening now.
+import { el, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
-import { avatar, faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
+import { faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
 import { openRoom, cleanCode, CODE_LEN } from '../../shared/realtime.js'
-import { codeField, keepAbove } from '../../shared/roomUi.js'
+import { codeField } from '../../shared/roomUi.js'
 import { writeScreen } from './screens.js'
 
 const CODE_KEY = 'quiplash:room'
 const ME_KEY = 'quiplash:me'
 const KNOCK = 2000 // how often we say hello until the room answers
 
-export function mountGuest(container, ctx, { exit }) {
+const page = (children, cls = '') => el('div', { class: 'drawer-page' + (cls ? ' ' + cls : '') }, children)
+const count = (big, small) => el('div', { class: 'table-count' }, [el('b', {}, big), el('span', {}, small)])
+
+export function placeGuest(scene, ctx) {
+  const { stage } = scene
+  const exit = () => scene.exit()
   let me = null
   let code = ''
   let wire = null
@@ -30,7 +38,7 @@ export function mountGuest(container, ctx, { exit }) {
   let closed = false
   let writer = null
   let knock = 0
-  let stopViewport = null
+  let left = false
 
   const myPid = () => (me ? me.id : null)
   const inMatch = () => !!(view && view.players.some(p => p.pid === myPid()))
@@ -91,9 +99,11 @@ export function mountGuest(container, ctx, { exit }) {
   }
 
   // ---------- writing ----------
+  // A sheet over the drawer, the table still above it. Pulled down before the
+  // answers are in, it leaves them for later: the drawer has a way back.
   function openWriter() {
     if (writer || !jobs.length) return
-    writer = writeScreen({
+    const node = writeScreen({
       title: '',
       jobs: jobs.map(j => ({ prompt: j.prompt, text: j.text })),
       onSave: (i, text) => {
@@ -103,38 +113,44 @@ export function mountGuest(container, ctx, { exit }) {
       },
       onDone: () => closeWriter()
     })
-    container.append(writer)
-    writer.ready()
+    writer = node
+    stage.openSheet(node, { done: () => { if (writer === node) { writer = null; node.stop(); render() } } })
+    node.ready()
   }
 
   function closeWriter() {
     if (!writer) return
-    writer.stop()
-    writer.remove()
+    const node = writer
     writer = null
+    node.stop()
+    stage.closeSheet()
     render()
   }
 
   // ---------- the screens ----------
-  const head = (title, sub) => el('div', { class: 'guest-head' }, [
-    el('div', { class: 'guest-title' }, title),
+  const head = (title, sub) => el('div', { class: 'page-head' }, [
+    el('div', { class: 'drawer-title' }, title),
     sub ? el('p', { class: 'drawer-hint' }, sub) : null
   ])
 
-  function shell(children) {
-    if (stopViewport) { stopViewport(); stopViewport = null }
-    clear(container)
-    const bar = el('div', { class: 'hub-header' }, [
-      el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => exit() }, icon('back')),
-      el('span', { class: 'wordmark game-home-title' }, t('ql.name').toUpperCase()),
-      code ? el('span', { class: 'room-code-tag' + (status === 'on' ? '' : ' off') }, code) : null
-    ])
-    const node = el('div', { class: 'guest' }, [bar, el('div', { class: 'guest-body' }, children)])
-    container.append(node)
-    // The code is typed with the keyboard up: the screen becomes what it
-    // leaves, so the faces and the way in stay reachable instead of sitting
-    // under it.
-    stopViewport = keepAbove(node)
+  // Everybody in the room round the table, as the room last told it; before
+  // that, just me, on an empty table.
+  //   look(pid) -> { cls?, note? }
+  function seats(look = () => ({})) {
+    const list = view && inMatch() ? view.players : me ? [{ pid: me.id, name: me.name, color: me.color, emoji: me.emoji }] : []
+    stage.view.set(list.map(p => ({
+      key: p.pid,
+      p: { name: p.name, color: p.color, emoji: p.emoji },
+      name: p.name + (p.pid === myPid() ? ' ' + t('ql.room.youShort') : ''),
+      ...look(p.pid)
+    })))
+  }
+
+  // One page of the drawer. `key` names it: the same page brought up to date
+  // (another vote counted) is swapped where it stands, not faded.
+  function show(key, children, cls = '') {
+    scene.header({ code: wire ? code : '', live: status === 'on' })
+    stage.present(page(children, cls), { key })
   }
 
   // ---------- joining ----------
@@ -167,7 +183,9 @@ export function mountGuest(container, ctx, { exit }) {
     paintFaces()
     go.disabled = !ready()
 
-    shell([
+    seats()
+    stage.view.setCenter(null)
+    show('join', [
       head(t('ql.join.title'), t('ql.join.hint')),
       field,
       el('span', { class: 'field-label' }, t('ql.join.who')),
@@ -182,19 +200,19 @@ export function mountGuest(container, ctx, { exit }) {
   }
 
   function waitingScreen() {
-    shell([
+    seats()
+    show('knock', [
       head(t('ql.join.knocking', { code }), status === 'off' ? t('ql.room.offline') : t('ql.join.knockingHint')),
       button(t('common.back'), { variant: 'ghost', full: true, onClick: () => exit() })
     ])
   }
 
   function lobbyScreen() {
-    shell([
+    // who is in is the table itself: the chairs fill as phones join
+    seats(pid => (pid === myPid() ? { cls: 'on' } : {}))
+    stage.view.setCenter(count(String(view.players.length), t('ql.room.inRoom')))
+    show('lobby', [
       head(t('ql.join.inRoom'), t('ql.join.waitStart')),
-      el('div', { class: 'guest-people' }, view.players.map(p => el('div', { class: 'guest-person' }, [
-        avatar(p, 44),
-        el('span', { class: 'pick-name' }, p.name)
-      ]))),
       button(t('ql.join.out'), { variant: 'ghost', full: true, onClick: () => { if (wire) wire.send('bye', { pid: myPid() }); exit() } })
     ])
   }
@@ -202,7 +220,10 @@ export function mountGuest(container, ctx, { exit }) {
   function writeScreenWaiting() {
     const still = (view.writing || []).map(nameOf)
     const mineLeft = jobs.some(j => !j.text)
-    shell([
+    const late = new Set(view.writing || [])
+    seats(pid => (late.has(pid) ? { note: t('ql.room.writing') } : { cls: 'on', note: t('ql.room.written') }))
+    stage.view.setCenter(count(`${view.players.length - late.size}/${view.players.length}`, t('ql.room.written')))
+    show('write', [
       head(mineLeft ? t('ql.join.yourTurn') : t('ql.join.written'),
         mineLeft ? '' : (still.length ? t('ql.room.waitingFor', { names: still.join(', ') }) : t('ql.room.allWritten'))),
       mineLeft
@@ -229,25 +250,33 @@ export function mountGuest(container, ctx, { exit }) {
       el('span', { class: 'answer-text' }, text)
     ])
 
-    shell([
+    const voters = new Set(d.voted)
+    seats(pid => (voters.has(pid) ? { cls: 'on', note: t('ql.room.voted') } : {}))
+    stage.view.setCenter(count(`${d.voted.length}/${d.voters.length}`, d.voters.length === 1 ? t('ql.duel.vote') : t('ql.duel.votes')))
+    show('duel-' + d.i, [
       el('p', { class: 'drawer-kicker' }, t('ql.duel.nOf', { n: d.i + 1, of: d.of })),
-      el('div', { class: 'guest-prompt' }, d.prompt),
-      el('div', { class: 'answer-list guest-answers' }, d.answers.map(row)),
+      el('div', { class: 'drawer-prompt' }, d.prompt),
+      el('div', { class: 'answer-list' }, d.answers.map(row)),
       el('p', { class: 'drawer-hint' },
         canVote ? t('ql.join.pick')
           : voted || myVote ? t('ql.join.voted')
-            : t('ql.join.yoursTwo')),
-      el('div', { class: 'guest-wait' }, `${d.voted.length}/${d.voters.length}`)
+            : t('ql.join.yoursTwo'))
     ])
   }
 
   function tallyScreen() {
     const d = view.duel
     const best = Math.max(...d.votes)
-    shell([
+    seats(pid => {
+      const slot = d.authors.indexOf(pid)
+      if (slot < 0) return { cls: 'dim' }
+      return { cls: d.votes[slot] === best && best > 0 ? 'on' : '', note: d.points[slot] ? '+' + d.points[slot] : t('ql.tally.nothing') }
+    })
+    stage.view.setCenter(count(`${d.i + 1}/${d.of}`, t('ql.duel.counter')))
+    show('tally-' + d.i, [
       el('p', { class: 'drawer-kicker' }, t('ql.duel.nOf', { n: d.i + 1, of: d.of })),
-      el('div', { class: 'guest-prompt' }, d.prompt),
-      el('div', { class: 'answer-list guest-answers' }, d.answers.map((text, slot) => el('div', {
+      el('div', { class: 'drawer-prompt' }, d.prompt),
+      el('div', { class: 'answer-list' }, d.answers.map((text, slot) => el('div', {
         class: 'answer-row team-' + slot + (d.votes[slot] === best && best > 0 ? ' won' : '')
       }, [
         el('span', { class: 'team-dot' }),
@@ -267,27 +296,32 @@ export function mountGuest(container, ctx, { exit }) {
     const leaders = rank.filter(r => r.score === best)
     const draw = leaders.length !== 1
     const last = view.phase === 'over'
-    shell([
+    const score = new Map(rank.map(r => [r.pid, r.score]))
+    const up = new Set(leaders.map(r => r.pid))
+    seats(pid => ({ cls: up.has(pid) ? 'on' : 'dim', note: String(score.get(pid) ?? 0) }))
+    stage.view.setCenter(null)
+    show('standings-' + view.round, [
       head(last
         ? (draw ? t('ql.standings.draw') : t('ql.standings.won', { name: nameOf(leaders[0].pid) }))
         : t('ql.standings.title'),
         last ? '' : t('ql.round.of', { n: view.round + 1, of: view.rounds })),
-      el('div', { class: 'rank-list' }, rank.map((r, i) => el('div', {
+      walls(el('div', { class: 'rank-list list-scroll' }, rank.map((r, i) => el('div', {
         class: 'rank-row' + (r.pid === myPid() ? ' lead' : '')
       }, [
         el('span', { class: 'rank-num' }, String(i + 1)),
         el('span', { class: 'rank-name' }, nameOf(r.pid)),
         el('b', { class: 'rank-value' }, String(r.score))
-      ]))),
+      ])))),
       el('div', { class: 'guest-wait' }, t('ql.join.waitRoom'))
     ])
   }
 
   function render() {
-    if (!container.isConnected || writer) return
+    if (left) return
     if (!wire) { joinScreen(); return }
     if (closed) {
-      shell([
+      seats()
+      show('closed', [
         head(t('ql.join.closed'), t('ql.join.closedHint')),
         button(t('common.back'), { variant: 'primary', full: true, onClick: () => exit() })
       ])
@@ -295,7 +329,8 @@ export function mountGuest(container, ctx, { exit }) {
     }
     if (!view) { waitingScreen(); return }
     if (!inMatch()) {
-      shell([
+      seats()
+      show('started', [
         head(t('ql.join.started'), t('ql.join.startedHint')),
         button(t('common.back'), { variant: 'primary', full: true, onClick: () => exit() })
       ])
@@ -312,9 +347,9 @@ export function mountGuest(container, ctx, { exit }) {
   render()
 
   return () => {
+    left = true
     clearInterval(knock)
-    if (stopViewport) { stopViewport(); stopViewport = null }
-    if (writer) { writer.stop(); writer.remove(); writer = null }
+    if (writer) { writer.stop(); writer = null }
     if (wire) { wire.send('bye', { pid: myPid() }); wire.leave() }
   }
 }

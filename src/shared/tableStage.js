@@ -38,7 +38,10 @@ let lastDrawer = 0
 //   top(): px from the host's top where the room starts (under the header)
 //   from:  { cx, cy, r } to start the table from (default: where it last was)
 //   shown: initial seat visibility (0 = seats still to appear)
-export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, onSwap, onMove, onRotate } = {}) {
+//   slide: the first present() slides the drawer up from the bottom (default:
+//          only when no drawer was up before — otherwise it picks that one up)
+//   minR:  the smallest the table may get when the drawer leaves it little room
+export function createTableStage(host, { top, from, shown: shown0 = 1, slide: slide0 = null, minR = 48, onTap, onSwap, onMove, onRotate } = {}) {
   const layer = el('div', { class: 'table-layer' })
   const handle = el('button', { class: 'drawer-handle', 'aria-label': t('table.drawerToggle') })
   const body = el('div', { class: 'drawer-body' })
@@ -122,7 +125,7 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
       const out = seatFor(r, n) * 0.55 + 7 // seat edge to name, as the view draws it
       r = Math.min(W / 2 - out - e.w - 8, (b - t) / 2 - out - e.h - 6)
     }
-    return { cx: W / 2, cy: t + (b - t) / 2, r: Math.max(48, r) }
+    return { cx: W / 2, cy: t + (b - t) / 2, r: Math.max(minR, r) }
   }
 
   // The table takes back the room a panel gives up. While a finger is dragging
@@ -182,12 +185,37 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
     return h1
   }
 
-  function setDrawer(node, animate = true) {
+  // What the drawer holds now, as the game named it. The same key again is
+  // the same page brought up to date (a shot landed, somebody joined): it is
+  // swapped where it stands, with nothing fading, because nothing left.
+  let pageKey = null
+
+  // The page that's leaving doesn't vanish: it lifts and fades on top of the
+  // one rising in, where it stood, while the drawer takes the new height.
+  function ghostOut(old) {
+    const ghost = el('div', {
+      class: 'drawer-ghost',
+      style: `top:${old.offsetTop}px;left:${old.offsetLeft}px;width:${old.offsetWidth}px;height:${old.offsetHeight}px`
+    })
+    return () => {
+      ghost.append(old)
+      drawer.append(ghost)
+      ghost.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-10px)' }],
+        { duration: 220, easing: 'ease-in' }).onfinish = () => ghost.remove()
+    }
+  }
+
+  function setDrawer(node, animate = true, key = null) {
+    const same = key != null && key === pageKey
+    pageKey = key
+    const old = body.firstElementChild
+    const leave = animate && isOpen && !same && old && old !== node ? ghostOut(old) : null
     morph(() => {
       body.replaceChildren(node)
+      if (leave) leave()
       handle.hidden = !body.querySelector('.drawer-more')
     }, animate)
-    if (animate && isOpen) {
+    if (animate && isOpen && !same && old !== node) {
       body.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
         { duration: 260, easing: 'ease-out' })
     }
@@ -214,10 +242,11 @@ export function createTableStage(host, { top, from, shown: shown0 = 1, onTap, on
   }
 
   // Show `node` in the drawer; the first time, bring the drawer in too.
-  function present(node) {
-    if (isOpen) { setDrawer(node); return }
-    setDrawer(node, false)
-    const h = open({ slide: !lastDrawer })
+  //   key: names the page, so the same page brought up to date isn't a change
+  function present(node, { key = null } = {}) {
+    if (isOpen) { setDrawer(node, true, key); return }
+    setDrawer(node, false, key)
+    const h = open({ slide: slide0 != null ? slide0 : !lastDrawer })
     glide(room(h), { ms: geo ? 440 : 0 })
   }
 

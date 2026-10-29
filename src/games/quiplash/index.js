@@ -4,8 +4,9 @@ import { el, clear, icon } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { createTableStage } from '../../shared/tableStage.js'
 import * as match from './match.js'
-import { mountRoom } from './room.js'
-import { mountGuest } from './guest.js'
+import { placeRoom } from './room.js'
+import { placeGuest } from './guest.js'
+import { keepAbove } from '../../shared/roomUi.js'
 import { MIN_PLAYERS } from './round.js'
 import packs from './packs.js'
 
@@ -50,15 +51,13 @@ const rules = () => [
   }
 ]
 
-// Whose turn it is to write, the duels and the standings happen around the
-// table. Writing takes the whole screen: the prompt belongs to one person for
-// that minute, and the table would be reading over their shoulder.
-const TABLE_PHASES = ['pass', 'duel', 'tally', 'standings']
-const FULL_PHASES = ['write']
-// The two screens of a match played across phones: the room and the way in.
-// They own everything they draw, this file only puts them up and takes them
-// down (room.js, guest.js).
-const NET_PHASES = ['room', 'join']
+// Everything happens around the table. Writing too: the prompt belongs to one
+// person for that minute, so it rises as a sheet that covers the drawer whole,
+// with the table still standing above it.
+const TABLE_PHASES = ['pass', 'write', 'duel', 'tally', 'standings']
+// The two places of a match played across phones — the room and the way in —
+// are not phases of this screen: they stand on the game's own table in the
+// hub (`places` below, room.js, guest.js).
 
 function mount(container, ctx, initialPhase) {
   const state = { phase: initialPhase || 'start' }
@@ -66,13 +65,11 @@ function mount(container, ctx, initialPhase) {
   const runtime = { viewport: null }
   let stage = null
   let ro = null
-  let net = null // the room's own cleanup, while a room is up
+  let keep = null // the scene following the keyboard, while somebody writes
 
   function stopRuntime() {
     if (runtime.viewport) { runtime.viewport(); runtime.viewport = null }
   }
-
-  function stopNet() { if (net) { net(); net = null } }
 
   const api = {
     ctx,
@@ -112,35 +109,47 @@ function mount(container, ctx, initialPhase) {
     if (stage) { stage.destroy(); stage = null }
   }
 
+  // Somebody writing on the phone passed round: their sheet over the table,
+  // and the scene shortened to what the keyboard leaves. Pulled down before
+  // the answers are in, it gives the phone back to the same person.
+  function writeSheet() {
+    const st = tableScreen()
+    match.pass(api, st)
+    const node = match.write(api)
+    const shell = container.querySelector('.canvas')
+    if (shell && !keep) keep = keepAbove(shell)
+    runtime.viewport = () => {
+      node.stop()
+      if (keep) { keep(); keep = null }
+      if (shell) { shell.style.height = ''; shell.style.transform = '' }
+    }
+    st.openSheet(node, {
+      done: () => {
+        if (state.phase !== 'write') return
+        stopRuntime()
+        api.goPhase('pass')
+      }
+    })
+    // Still inside the tap that asked for this sheet: the keyboard comes up
+    // with it instead of costing a second tap.
+    node.ready()
+  }
+
   function render() {
     api.onSeat = null
-    stopNet()
-    if (NET_PHASES.includes(state.phase)) {
-      teardown()
-      clear(container)
-      const mountNet = state.phase === 'room' ? mountRoom : mountGuest
-      net = mountNet(container, ctx, { exit: () => api.toMenu() })
+    if (state.phase === 'room' || state.phase === 'join') {
+      // an old address: the rooms live on the game's table in the hub now
+      ctx.router.go('/quiplash/' + state.phase)
       return
     }
     if (state.phase === 'start') { match.start(api); return }
     // A reload lands on an address with no match behind it (the answers lived
     // in memory, as they should). The table is where that address starts again.
     if (state.phase === 'setup' || !state.duels) { teardown(); clear(container); api.toTable(); return }
+    if (state.phase === 'write') { writeSheet(); return }
+    // the sheet goes down with what it held, whichever way the phase moved on
+    if (stage && runtime.viewport) { stopRuntime(); stage.closeSheet() }
     if (TABLE_PHASES.includes(state.phase)) { match[state.phase](api, tableScreen()); return }
-    if (FULL_PHASES.includes(state.phase)) {
-      // The table steps aside while somebody writes and is built again after,
-      // from where it last stood, so coming back it glides instead of jumping.
-      stopRuntime()
-      teardown()
-      clear(container)
-      const node = match.write(api)
-      runtime.viewport = node.stop
-      container.append(node)
-      // Still inside the tap that asked for this screen: the keyboard comes up
-      // with it instead of costing a second tap.
-      if (node.ready) node.ready()
-      return
-    }
     teardown()
     clear(container)
     api.toMenu()
@@ -155,10 +164,11 @@ function mount(container, ctx, initialPhase) {
   // looking at it, so it is asked for here.
   const offPacks = packs.remote && packs.remote.onChange(() => {
     if (!container.isConnected) { offPacks(); return }
-    if (TABLE_PHASES.includes(state.phase)) render()
+    // not while somebody writes: that would start their sheet over
+    if (TABLE_PHASES.includes(state.phase) && state.phase !== 'write') render()
   })
 
-  return () => { stopRuntime(); stopNet(); teardown(); if (offPacks) offPacks() }
+  return () => { stopRuntime(); teardown(); if (offPacks) offPacks() }
 }
 
 export default {
@@ -177,5 +187,8 @@ export default {
     options: match.tableOptions,
     start: ctx => ctx.router.go('/quiplash/start')
   },
+  // a room on this phone, or a way into one on another: both stand on the
+  // game's own table, which the menu's circle becomes
+  places: { room: placeRoom, join: placeGuest },
   mount
 }

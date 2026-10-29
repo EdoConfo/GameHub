@@ -10,7 +10,8 @@ import { openTableScene, TABLE_MORPH_MS } from './tableScene.js'
 import { openPackEditor } from '../shared/packEditor.js'
 import { openPlayerCard } from './playerCard.js'
 import { openCredits } from './credits.js'
-import { TABLE_CLOSE_MS } from '../shared/tableStage.js'
+import { TABLE_CLOSE_MS, createTableStage } from '../shared/tableStage.js'
+import { keepAbove } from '../shared/roomUi.js'
 import { games } from '../games/registry.js'
 
 // The hub is a fixed scene with TWO still circles; the app is a window panning
@@ -27,7 +28,11 @@ import { games } from '../games/registry.js'
 //
 // "Gioca" doesn't leave the scene: circle B shrinks to the top of the screen
 // and becomes the table, with a drawer rising from below (tableScene.js).
+// A game's own places — a room to open, a room to join, a match on one phone —
+// are made the same way: circle B becomes their table, and the game is handed
+// it (game.places, see registry.js). Nothing a game shows replaces the scene.
 // The header is not part of the scene: it stays put and swaps content.
+// See docs/SCENE.md.
 const V_SIDE = 0, V_GAMES = 1, V_MENU = 2, V_GAME = 3
 
 // A line icon in a round badge that sits on the circle like a bead.
@@ -39,11 +44,12 @@ const badge = name => el('span', { class: 'arc-badge' }, icon(name))
 // you left that page a second ago.
 const lastFocus = { players: null, settings: null }
 
-export function renderHub(root, ctx, startMenuId, { table: startTable = false, side: startSide = null, gameSide: startGameSide = null, focusId = null } = {}) {
+export function renderHub(root, ctx, startMenuId, { table: startTable = false, place: startPlace = null, side: startSide = null, gameSide: startGameSide = null, focusId = null } = {}) {
   let index = V_GAMES
   let selected = 0
   let sideKind = 'players'
   let table = null // the game's table ("Gioca"), while it's open
+  let place = null // a place of the game's own on that same table, while it's open
   let sideWheel = null
   let menuWheel = null
   let gameWheel = null
@@ -74,6 +80,13 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   const header = el('div', { class: 'hub-header' })
   canvas.append(header)
   root.append(canvas)
+  // The scene moves only by the camera. overflow:hidden still lets the browser
+  // scroll the canvas on its own — to bring a focused field into view, say,
+  // with the keyboard coming up — and the whole world would lurch sideways
+  // under the header. Put it straight back.
+  canvas.addEventListener('scroll', () => {
+    if (canvas.scrollLeft || canvas.scrollTop) { canvas.scrollLeft = 0; canvas.scrollTop = 0 }
+  })
 
   // ---- scene geometry ----
   function measure() {
@@ -108,6 +121,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     hosts.forEach((h, i) => { h.style.left = cam[i] + 'px'; h.style.width = W + 'px' })
     moveCamera(index, animate)
     if (table) table.refit()
+    if (place) place.stage.refit()
   }
 
   // Where you are in the scene, written in the address bar. Panning isn't a
@@ -116,7 +130,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // write a hash.
   function hashHere() {
     if (index === V_GAME) return '#/' + games[selected].id + '/' + gameKind
-    if (index === V_MENU) return '#/' + games[selected].id + (table ? '/table' : '')
+    if (index === V_MENU) return '#/' + games[selected].id + (table ? '/table' : place ? '/' + place.phase : '')
     if (index === V_SIDE) return sideKind === 'settings' ? '#/settings' : '#/players'
     return '#/'
   }
@@ -175,10 +189,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       )
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
-      header.replaceChildren(
-        el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => (table ? closeTable() : goto(V_GAMES)) }, icon('back')),
-        el('span', { class: 'wordmark game-home-title' }, games[selected].name.toUpperCase())
-      )
+      const tag = place && place.code
+      header.replaceChildren(...[
+        el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => back() }, icon('back')),
+        el('span', { class: 'wordmark game-home-title' }, games[selected].name.toUpperCase()),
+        // a room's code lives in the corner while there is a room
+        // (replaceChildren would print a null, so it's left out instead)
+        tag ? el('span', { class: 'room-code-tag' + (place.live ? '' : ' off') }, tag) : null
+      ].filter(Boolean))
     } else {
       // page on the left of its circle: mirrored — name left, arrow right
       header.replaceChildren(
@@ -455,6 +473,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
       onActivate: j => {
         const phase = menu[j].phase
         if (phase === 'setup' && game.table) openTable()
+        else if (game.places && game.places[phase]) openPlace(phase)
         // these two live on the arc next door: pan there, don't rebuild the hub
         else if (phase === 'words' || phase === 'rules' || phase === 'stats') { buildGameSide(phase); moveCamera(V_GAME) }
         else ctx.router.go('/' + game.id + '/' + phase)
@@ -509,6 +528,97 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     t.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
   }
 
+  // The way back from the menu's circle, whatever is standing on it: the table
+  // folds, a place asks its game first (a match may be under way), and with
+  // nothing up the camera goes back to the games.
+  function back() {
+    if (place) place.back()
+    else if (table) closeTable()
+    else goto(V_GAMES)
+  }
+
+  // ---- a place of the game's own: circle B becomes its table ----
+  // Same morph as "Gioca": the circle shrinks into the table, the menu beads
+  // leave with it, a drawer rises. The game is handed the stage and fills it;
+  // it never builds a screen of its own. Arriving straight on the address (a
+  // reload) there is nothing to morph out of, so the table is simply there.
+  //   game.places[phase](scene, ctx) -> cleanup
+  function openPlace(phase, morph = true) {
+    const game = games[selected]
+    const make = game.places && game.places[phase]
+    if (!make || table || place) return
+    if (morph && menuWheel) {
+      canvas.style.setProperty('--tabling-out', TABLE_MORPH_MS + 'ms')
+      menuWheel.exit({ ms: TABLE_MORPH_MS })
+    } else {
+      canvas.style.removeProperty('--tabling-out')
+    }
+    canvas.classList.add('tabling')
+    circleB.style.visibility = 'hidden'
+    const from = morph ? circleBOnScreen() : null
+    let onSeat = null
+    let onBack = null
+    const stage = createTableStage(canvas, {
+      top: () => header.offsetTop + header.offsetHeight,
+      from,
+      shown: from ? 0 : 1,
+      slide: true,
+      // a place may need most of the screen (a sea to fire into): the table
+      // gets small before it gets in the way
+      minR: 22,
+      onTap: i => { if (onSeat) onSeat(i) }
+    })
+    const here = { phase, stage, code: '', live: true, back: () => (onBack ? onBack() : closePlace()), cleanup: null, stopKeep: null }
+    place = here
+    // Places are where codes and answers get typed: the scene becomes what the
+    // keyboard leaves of the screen, and the drawer stays on top of it.
+    here.stopKeep = keepAbove(canvas)
+    const scene = {
+      stage,
+      exit: () => { if (place === here) closePlace() },
+      // what the header says besides the game's name: the room's code
+      header({ code = '', live = true } = {}) {
+        if (here.code === code && here.live === live) return
+        here.code = code
+        here.live = live
+        if (place === here) renderHeader()
+      },
+      onSeat: fn => { onSeat = fn },
+      // the header's arrow and the swipe home: a game may want to ask first
+      onBack: fn => { onBack = fn }
+    }
+    here.cleanup = make(scene, ctx) || null
+    dockAbove(canvas.querySelector('.drawer:not(.sheet)'))
+    stage.glide(stage.room(), from ? { ms: TABLE_MORPH_MS, span: [0.3, 1] } : { ms: 0 })
+    syncHash()
+    renderHeader()
+    paintBar()
+  }
+
+  function releaseKeyboard(p) {
+    if (p.stopKeep) { p.stopKeep(); p.stopKeep = null }
+    canvas.style.height = ''
+    canvas.style.transform = ''
+  }
+
+  // Back to the menu: the table grows back into the game's circle and the beads
+  // ride in with it, exactly as leaving "Gioca".
+  function closePlace() {
+    if (!place) return
+    const p = place
+    place = null
+    if (typeof p.cleanup === 'function') p.cleanup()
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur()
+    releaseKeyboard(p)
+    dockAbove(null)
+    canvas.classList.remove('tabling')
+    syncHash()
+    renderHeader()
+    if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
+    p.stage.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
+    paintBar()
+  }
+
   buildSide('players')
   buildMenu()
 
@@ -517,10 +627,10 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   // you're back at the game's menu, the circle reforming the way it came. It
   // has to start on the background, though — the seats, the table top and the
   // drawer all own their own gestures, and a swipe there belongs to them.
-  const TABLE_OWN = '.drawer, .seat, .table-pad'
+  const TABLE_OWN = '.drawer, .seat, .table-pad, .sheet-scrim'
   let sx = 0, sy = 0, tracking = false, hSwipe = false
   canvas.addEventListener('pointerdown', e => {
-    if (table && e.target && e.target.closest && e.target.closest(TABLE_OWN)) { tracking = false; return }
+    if ((table || place) && e.target && e.target.closest && e.target.closest(TABLE_OWN)) { tracking = false; return }
     sx = e.clientX; sy = e.clientY; tracking = true; hSwipe = false
   }, true)
   canvas.addEventListener('pointermove', e => {
@@ -533,7 +643,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     tracking = false
     if (!hSwipe) return
     const dx = e.clientX - sx
-    if (table) { if (dx > 55) closeTable(); return }
+    if (table || place) { if (dx > 55) back(); return }
     if (dx > 55) goto(index - 1)
     else if (dx < -55) goto(index + 1)
   }, true)
@@ -561,8 +671,8 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
 
   // A new build is ready, and taking it means reloading. It's offered here and
   // only here: the hub is the one place where a reload costs nothing. Start a
-  // match and this whole scene is torn down, button included — which is exactly
-  // the guarantee we want, and it costs no check of its own.
+  // match and this whole scene is torn down, button included; open a place (a
+  // room lives in this page) and the pill steps aside until it folds away.
   //
   // The same pill says one of two things. A new version of the app wins — it
   // reloads, and the words are checked again on the way back up — and otherwise
@@ -611,8 +721,10 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
     dockWatch = () => { ro.disconnect(); drawer.removeEventListener('transitionend', place) }
   }
 
+  // Not while a place is up: a room lives in this page, and a reload is the
+  // end of it. The pill comes back the moment the table folds away.
   function paintBar() {
-    const kind = appReady ? 'app' : wordsReady && !taking ? 'words' : null
+    const kind = place ? null : appReady ? 'app' : wordsReady && !taking ? 'words' : null
     if (kind) label.textContent = t(kind === 'app' ? 'update.ready' : 'update.words')
     bar.classList.toggle('on', !!kind)
   }
@@ -649,4 +761,15 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, s
   layout(false)
   requestAnimationFrame(() => layout(false))
   if (startTable && index === V_MENU) openTable(false)
+  if (startPlace && index === V_MENU) openPlace(startPlace, false)
+
+  // Torn down by the router (another address typed, a reload of the route):
+  // whatever the place holds open — a room, a timer — is let go of.
+  return () => {
+    if (!place) return
+    const p = place
+    place = null
+    if (typeof p.cleanup === 'function') p.cleanup()
+    releaseKeyboard(p)
+  }
 }

@@ -84,15 +84,32 @@ next thing?) and fall back on a plain camera pan only when nothing can.
 
 ## How a game uses the world
 
-A game does not own the screen; the hub hands it places.
+A game does not own the screen; the hub hands it a place.
 
-- `ctx.scene.place(id)` → a window-sized host in the world, next to this
-  game's circle. The game renders into it.
-- `ctx.scene.go(id)` → the camera travels there (and writes the address).
-- `ctx.scene.header({ title, back })` → the shared header shows this, sliding.
-- `ctx.scene.back()` → the reverse of the last move.
-- Table games keep using the hub's table: the match is played on the same
-  table that circle B became, not on a copy of it.
+- **"Gioca" with the shared table** — `game.table` (see `registry.js`): circle
+  B becomes the table where people are seated, the game fills the drawer's
+  options.
+- **Anything else of the game's own** — a room, a way into one, a match on one
+  phone — `game.places[phase](scene, ctx)`. The menu bead turns circle B into a
+  table exactly like "Gioca" does, and hands it to the game:
+  - `scene.stage` — the table and its drawer (`shared/tableStage.js`). Seats go
+    on `stage.view`, pages go in the drawer with `stage.present(node, { key })`,
+    one thing at a time (writing an answer, picking a face) rises as
+    `stage.openSheet(node)`.
+  - `key` names the page. A new key is a new page: the old one lifts and fades
+    over the new one rising in. The same key is the same page brought up to date
+    (a vote counted, a shot fired): it is swapped where it stands.
+  - A page marked `tall` (`.drawer-page.tall`) may take most of the screen — a
+    sea to fire into — and the table shrinks above it instead of going away.
+  - `scene.header({ code, live })` puts a room's code in the shared header,
+    `scene.onBack(fn)` decides what the arrow and the swipe home do,
+    `scene.exit()` folds the table back into the circle with the menu beads
+    riding in.
+  - The keyboard is the hub's: while a place is up the scene is shortened to
+    what the keyboard leaves, so the drawer and the sheet stay above it.
+
+Battaglia navale (`room`, `join`, `local`) and Quiplash (`room`, `join`) are
+built this way: start there when adding a game.
 
 Before shipping any new screen or transition, check it against the rule:
 pause the transition at its first frame and at its middle frame. Everything
@@ -103,19 +120,13 @@ changed — not gone.
 
 Known places to bring into line (as of this document):
 
-- `src/main.js` — every route does `clear(root)` and rebuilds the hub;
-  `mountGame` replaces the whole world with a `.game-root` that slides in
-  (`game-in` in `styles.css`). Every entry into a game and every return is a
-  cut.
-- `ctx.exitToMenu` is called by every game but never defined, so leaving a
+- `src/main.js` `mountGame` — a match started from the shared table (Mister
+  White, Heads Up, Quiplash on one phone) still replaces the whole world with a
+  `.game-root` holding a second `.canvas` and its own copy of the table. It
+  looks continuous only because that table starts from the last geometry, and
+  the hub's circles are gone behind it. The fix is the one the places use: the
+  hub keeps its table and hands it to the match.
+- `ctx.exitToMenu` is called by those games but never defined, so leaving a
   match goes through the router and rebuilds the hub from scratch.
-- `src/games/battleship/screens.js` `frame()` — a fixed `.guest` layer with
-  its own header, cleared on every step (pick → cover → place → battle):
-  each step is a cut, and so are Crea stanza / Entra / Un telefono.
-- `src/games/quiplash/` — the room and guest screens (`NET_PHASES`,
-  `guest.js`) do the same.
 - `src/games/heads-up/index.js` — `FULL_PHASES` tear the table down for the
-  countdown and the turn.
-- Mister White, Quiplash, Heads Up `tableScreen()` — the match builds a
-  second `.canvas` with its own table; it looks continuous only because it
-  starts from the last geometry, and the hub's circles are gone behind it.
+  countdown and the turn, and put up a `.fullscreen` layer.
