@@ -52,6 +52,27 @@ export function fits(ship, others = []) {
   return true
 }
 
+// Laying out a fleet, ships may sit wherever the finger leaves them —
+// on top of each other, side by side — and the sea shows where they clash.
+// These are the squares that do: every square of a ship that lies on, or
+// right next to, another one. An empty set means the fleet can sail.
+export function clashes(ships) {
+  const out = new Set()
+  ships.forEach((s, i) => {
+    const near = new Set()
+    ships.forEach((o, j) => { if (j !== i) for (const k of halo(o)) near.add(k) })
+    for (const [r, c] of cells(s)) if (near.has(key(r, c))) out.add(key(r, c))
+  })
+  return out
+}
+
+// A ship pulled back inside the sea, however far off it was dropped.
+export function clamp(ship) {
+  const maxR = SIZE - (ship.dir === 'v' ? ship.len : 1)
+  const maxC = SIZE - (ship.dir === 'h' ? ship.len : 1)
+  return { ...ship, r: Math.min(Math.max(ship.r, 0), maxR), c: Math.min(Math.max(ship.c, 0), maxC) }
+}
+
 // A whole fleet, as a player hands it in: the right ships, all at sea, none
 // touching. What a phone sends is checked here and not trusted.
 export function validFleet(ships) {

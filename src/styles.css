@@ -1310,10 +1310,19 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   border-radius: 3px; background: var(--surface); color: inherit; font: inherit;
 }
 .bs-sea.small .bs-cell { border-radius: 2px; }
+/* Your turn: the sea you fire into lights its edge, and breathes, so the
+   phone says where to tap before anybody reads a word. */
+.bs-sea.live {
+  box-shadow: 0 0 0 2px var(--primary), 0 0 22px color-mix(in srgb, var(--primary) 55%, transparent);
+  animation: bs-glow 1.6s ease-in-out infinite;
+}
+@keyframes bs-glow {
+  50% { box-shadow: 0 0 0 2px var(--primary), 0 0 8px color-mix(in srgb, var(--primary) 25%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .bs-sea.live { animation: none; } }
 .bs-sea.live button.bs-cell { cursor: pointer; }
 .bs-sea.live button.bs-cell:active { background: color-mix(in srgb, var(--primary) 35%, var(--surface)); }
 .bs-cell.ship { background: color-mix(in srgb, var(--text) 42%, var(--surface)); }
-.bs-cell.pick { background: var(--primary); }
 .bs-cell.calm { background: color-mix(in srgb, var(--surface) 55%, transparent); }
 .bs-cell.miss::after, .bs-cell.calm::after {
   content: ''; position: absolute; inset: 0; margin: auto;
@@ -1340,9 +1349,32 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .bs-place .row { margin-top: auto; }
 .bs-place .row .btn { flex: 1; }
 .bs-hint { text-align: center; min-height: 2.6em; }
-.bs-place.nope .bs-sea { animation: bs-nope .3s ease; }
-@keyframes bs-nope { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-@media (prefers-reduced-motion: reduce) { .bs-place.nope .bs-sea { animation: none; } }
+.bs-hint.bad { color: var(--danger); }
+
+/* Laying out the fleet. The finger owns the sea here: no scrolling, no
+   text selection, just ships. */
+.bs-sea.arrange { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+.bs-sea.arrange .bs-cell.ship { cursor: grab; }
+/* ships lying on or against each other: ringed, not filled, so you can
+   still see which ship is which */
+.bs-cell.clash { box-shadow: inset 0 0 0 2px var(--danger); background: color-mix(in srgb, var(--danger) 22%, var(--surface)); }
+.bs-cell.ship.clash { background: color-mix(in srgb, var(--danger) 45%, color-mix(in srgb, var(--text) 42%, var(--surface))); }
+/* the squares a ship was lifted from go quiet while it's in the air */
+.bs-cell.ship.lifted { background: color-mix(in srgb, var(--text) 14%, var(--surface)); box-shadow: none; }
+/* …and the ones it would land on light up underneath it */
+.bs-cell.drop { box-shadow: inset 0 0 0 2px var(--primary); background: color-mix(in srgb, var(--primary) 28%, var(--surface)); }
+.bs-cell.drop-bad { box-shadow: inset 0 0 0 2px var(--danger); background: color-mix(in srgb, var(--danger) 28%, var(--surface)); }
+/* The ship in the air: bigger, see-through, with a shadow under it — lifted
+   off the sea, so the squares below stay readable through it. */
+.bs-ghost {
+  position: absolute; left: 0; top: 0; z-index: 2; display: grid;
+  pointer-events: none; will-change: transform;
+}
+.bs-ghost .bs-cell {
+  transform: scale(1.12); opacity: .78;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, .28);
+  background: color-mix(in srgb, var(--text) 55%, var(--surface));
+}
 
 .bs-cover { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
 

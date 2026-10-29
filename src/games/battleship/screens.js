@@ -8,7 +8,7 @@ import { el, clear, icon, button } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { avatar } from '../../hub/players.js'
 import { keepAbove } from '../../shared/roomUi.js'
-import { SIZE, FLEET, key, cells, fits, randomFleet, around, label } from './engine.js'
+import { SIZE, FLEET, key, cells, clashes, clamp, randomFleet, around, label } from './engine.js'
 
 // ---------- the frame every screen sits in ----------
 // A column under the game's header, like a phone that joined a Quiplash
@@ -44,9 +44,10 @@ export const head = (title, sub) => el('div', { class: 'guest-head' }, [
 //   sunk:    ships that are down — drawn as wrecks, with the water round them
 //            marked, since nothing can be there
 //   last:    { r, c } the square to ring: the shot everybody is reading
-//   pick:    index of the ship picked up (laying out the fleet)
+//   clash:   Set of square keys where ships lie on or against each other
+//            (laying out the fleet): ringed in red
 //   onTap(r, c)  makes every square a button; canTap(r, c) narrows it
-export function sea({ ships = [], shots = [], sunk = [], last = null, pick = -1, onTap = null, canTap = null, small = false } = {}) {
+export function sea({ ships = [], shots = [], sunk = [], last = null, clash = null, onTap = null, canTap = null, small = false } = {}) {
   const ship = new Map()
   ships.forEach((s, i) => { for (const [r, c] of cells(s)) ship.set(key(r, c), i) })
   const shot = new Map(shots.map(s => [key(s.r, s.c), s]))
@@ -64,7 +65,7 @@ export function sea({ ships = [], shots = [], sunk = [], last = null, pick = -1,
       const s = shot.get(k)
       const cls = ['bs-cell']
       if (ship.has(k)) cls.push('ship')
-      if (ship.has(k) && ship.get(k) === pick) cls.push('pick')
+      if (clash && clash.has(k)) cls.push('clash')
       if (wreck.has(k)) cls.push('sunk')
       else if (s && s.hit) cls.push('hit')
       else if (s) cls.push('miss')
@@ -83,55 +84,148 @@ export function sea({ ships = [], shots = [], sunk = [], last = null, pick = -1,
 
 // ---------- laying out the fleet ----------
 // The fleet starts at sea already, thrown at random: most people just want
-// to play, and the ones who care move what they don't like. Tap a ship to
-// pick it up, tap water to put it there (the bow goes where you tap), tap it
-// again to turn it round.
+// to play, and the ones who care move what they don't like.
+//
+// A ship is dragged where you want it: it lifts off the sea under your
+// finger — a little bigger, a little see-through, with a shadow — and the
+// squares it would land on light up underneath. A tap, without dragging,
+// turns it round its bow. Ships may be left on top of or against each other
+// while you work; the squares where they clash are ringed in red, and the
+// fleet can't sail until there are none.
 //   onReady(ships)
 //   -> { node } — kept across redraws, so a message from the room arriving
 //      while you're arranging doesn't throw your arrangement away
+const TAP = 8 // px: a finger that moved less than this tapped, it didn't drag
+
 export function createPlacer({ onReady }) {
   let ships = randomFleet()
-  let pick = -1
   let sent = false
+  let drag = null
   const node = el('div', { class: 'bs-place' })
 
-  const others = i => ships.filter((_, j) => j !== i)
+  const shipOn = (r, c) => ships.findIndex(s => cells(s).some(([sr, sc]) => sr === r && sc === c))
 
-  function tap(r, c) {
-    if (sent) return
-    const at = ships.findIndex(s => cells(s).some(([sr, sc]) => sr === r && sc === c))
-    if (at >= 0) {
-      if (at !== pick) { pick = at; paint(); return }
-      // the same ship again: turn it round its bow, if it has room to
-      const turned = { ...ships[at], dir: ships[at].dir === 'h' ? 'v' : 'h' }
-      if (fits(turned, others(at))) ships[at] = turned
-      else nudge()
-      paint()
-      return
-    }
-    if (pick < 0) return
-    const moved = { ...ships[pick], r, c }
-    if (fits(moved, others(pick))) ships[pick] = moved
-    else nudge()
+  // The grid's own measures, read off the page: where a square starts and
+  // how far apart two of them are.
+  function metrics(grid) {
+    const rect = grid.getBoundingClientRect()
+    const cs = getComputedStyle(grid)
+    const pad = parseFloat(cs.paddingLeft) || 0
+    const gap = parseFloat(cs.columnGap) || 0
+    const step = (rect.width - 2 * pad + gap) / SIZE
+    return { rect, pad, gap, step }
+  }
+
+  function turn(i) {
+    const s = ships[i]
+    ships[i] = clamp({ ...s, dir: s.dir === 'h' ? 'v' : 'h' })
     paint()
   }
 
-  // A move that can't be made says so with the board, not with words.
-  function nudge() {
-    node.classList.remove('nope')
-    void node.offsetWidth
-    node.classList.add('nope')
+  function down(e, grid) {
+    if (sent || drag) return
+    const m = metrics(grid)
+    const c = Math.floor((e.clientX - m.rect.left - m.pad) / m.step)
+    const r = Math.floor((e.clientY - m.rect.top - m.pad) / m.step)
+    const i = shipOn(r, c)
+    if (i < 0) return
+    e.preventDefault()
+    grid.setPointerCapture(e.pointerId)
+    const s = ships[i]
+    drag = {
+      i, grid, m, id: e.pointerId, moved: false,
+      x0: e.clientX, y0: e.clientY,
+      // where on the ship the finger took hold, so it stays under the finger
+      dx: e.clientX - (m.rect.left + m.pad + s.c * m.step),
+      dy: e.clientY - (m.rect.top + m.pad + s.r * m.step),
+      ghost: null, at: null
+    }
+  }
+
+  function move(e) {
+    if (!drag || e.pointerId !== drag.id) return
+    const { m, grid } = drag
+    if (!drag.moved) {
+      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < TAP) return
+      drag.moved = true
+      lift()
+    }
+    // the ship's top-left corner, in the grid's own coordinates
+    const x = e.clientX - drag.dx - m.rect.left
+    const y = e.clientY - drag.dy - m.rect.top
+    drag.ghost.style.transform = `translate(${x}px, ${y}px)`
+    const at = clamp({
+      ...ships[drag.i],
+      r: Math.round((y - m.pad) / m.step),
+      c: Math.round((x - m.pad) / m.step)
+    })
+    if (drag.at && drag.at.r === at.r && drag.at.c === at.c) return
+    drag.at = at
+    preview(grid, at)
+  }
+
+  function up(e) {
+    if (!drag || e.pointerId !== drag.id) return
+    const d = drag
+    drag = null
+    if (!d.moved) { turn(d.i); return }
+    if (d.at) ships[d.i] = d.at
+    paint()
+  }
+
+  // The ship comes off the sea: a copy of it under the finger, and the
+  // squares it left behind go quiet.
+  function lift() {
+    const { i, grid, m } = drag
+    const s = ships[i]
+    const size = n => n * m.step - m.gap
+    const ghost = el('div', {
+      class: 'bs-ghost',
+      style: `width:${size(s.dir === 'h' ? s.len : 1)}px;height:${size(s.dir === 'v' ? s.len : 1)}px;` +
+        `grid-template-${s.dir === 'h' ? 'columns' : 'rows'}:repeat(${s.len}, 1fr);gap:${m.gap}px`
+    }, Array.from({ length: s.len }, () => el('span', { class: 'bs-cell ship' })))
+    grid.append(ghost)
+    drag.ghost = ghost
+    for (const [r, c] of cells(s)) grid.children[key(r, c)].classList.add('lifted')
+    grid.classList.add('dragging')
+  }
+
+  // Where it would land if you let go now — and whether it would clash there.
+  function preview(grid, at) {
+    const rest = ships.map((s, j) => (j === drag.i ? at : s))
+    const bad = clashes(rest)
+    for (let k = 0; k < SIZE * SIZE; k++) grid.children[k].classList.remove('drop', 'drop-bad')
+    for (const [r, c] of cells(at)) {
+      const k = key(r, c)
+      grid.children[k].classList.add(bad.has(k) ? 'drop-bad' : 'drop')
+    }
   }
 
   function paint() {
-    const hint = sent ? t('bs.place.sent')
-      : pick < 0 ? t('bs.place.hint') : t('bs.place.picked', { n: ships[pick].len })
+    const clash = clashes(ships)
+    const hint = sent ? t('bs.place.sent') : clash.size ? t('bs.place.clash') : t('bs.place.hint')
+    const grid = sea({ ships, clash: sent ? null : clash })
+    if (!sent) {
+      grid.classList.add('arrange')
+      grid.addEventListener('pointerdown', e => down(e, grid))
+      grid.addEventListener('pointermove', move)
+      grid.addEventListener('pointerup', up)
+      grid.addEventListener('pointercancel', () => { drag = null; paint() })
+    }
     node.replaceChildren(
-      el('p', { class: 'drawer-hint bs-hint' }, hint),
-      sea({ ships, pick, onTap: sent ? null : tap }),
+      el('p', { class: 'drawer-hint bs-hint' + (clash.size && !sent ? ' bad' : '') }, hint),
+      grid,
       sent ? null : el('div', { class: 'row' }, [
-        button(t('bs.place.shuffle'), { variant: 'secondary', onClick: () => { ships = randomFleet(); pick = -1; paint() } }),
-        button(t('bs.place.ready'), { variant: 'primary', onClick: () => { sent = true; pick = -1; paint(); onReady(ships.map(s => ({ ...s }))) } })
+        button(t('bs.place.shuffle'), { variant: 'secondary', onClick: () => { ships = randomFleet(); paint() } }),
+        button(t('bs.place.ready'), {
+          variant: 'primary', disabled: clash.size > 0,
+          onClick: () => {
+            if (clashes(ships).size) return
+            sent = true
+            paint()
+            onReady(ships.map(s => ({ ...s })))
+          }
+        })
       ])
     )
   }
