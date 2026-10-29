@@ -12,6 +12,14 @@ The one rule everything else follows from:
 > into what comes next, or leaves the frame moving — and you can tell where
 > it went.
 
+The camera is not the only thing that moves. **The world is alive, not a
+static backdrop to pan across**: its things move, change shape and turn into
+one another as they are used. Circle B shrinks into the table, seats glide
+round it, beads slide in and out along their arc, the drawer folds with the
+finger. Motion is how the app explains what just happened, so a new
+transition should look for the morph first (what on screen can *become* the
+next thing?) and fall back on a plain camera pan only when nothing can.
+
 ## The rules
 
 1. **The world is mounted once.** `#app` holds a single `.canvas` for the
@@ -33,6 +41,11 @@ The one rule everything else follows from:
      tapped bead into the header title, the drawer changing height;
    - **it leaves, travelling**: in a direction that agrees with the camera
      (it goes the way the world is going), over the same duration.
+
+   Prefer them in reverse order of stillness: a morph says more than a
+   departure, and a departure more than standing still. A transition where
+   the camera moves and nothing else does is allowed, but it is the plainest
+   option, not the default.
 
    Forbidden: an opacity cut, `replaceChildren` on a visible area with no
    motion, fading to empty and then fading a new thing in.
