@@ -143,10 +143,24 @@ function devTag(size, { at = [0.7, 0.82], w = 0.46 } = {}) {
 // side by side looking the same, tag aside.
 //   t: 0 at the top of the icon, 1 at the bottom
 const lerp = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
-// Measured twice: iOS still lays a faint sheen of its own over the dev icon
-// (a little lighter behind, a little duller on top), so these sit that much
-// the other way — side by side on the Home screen, the two then match.
-const IOS_GLASS = t => ({ bg: lerp([31, 31, 31], [12, 12, 12], t), fg: lerp([244, 245, 249], [207, 208, 211], t) })
+// Measured three times: iOS still lays a faint sheen of its own over the dev
+// icon (a little lighter behind, a little duller on top), so these sit that
+// much the other way. Its shading isn't a straight line either, so the last
+// round is a correction per stretch of height rather than a single slope.
+//   t: 0 at the top, 1 at the bottom · [t, Δbackground, Δmark]
+const IOS_FIX = [[0, 0, 0], [0.3, 0, 0], [0.45, 1, -2], [0.6, 2, -5], [0.75, 2, -5], [0.85, 3, -2], [1, 5, 0]]
+function fix(t) {
+  for (let i = 1; i < IOS_FIX.length; i++) {
+    const [t1, b1, m1] = IOS_FIX[i], [t0, b0, m0] = IOS_FIX[i - 1]
+    if (t <= t1) { const k = (t - t0) / (t1 - t0); return [b0 + (b1 - b0) * k, m0 + (m1 - m0) * k] }
+  }
+  return [0, 0]
+}
+const shift = (c, d) => c.map(v => Math.max(0, Math.min(255, Math.round(v + d))))
+const IOS_GLASS = t => {
+  const [db, dm] = fix(t)
+  return { bg: shift(lerp([31, 31, 31], [12, 12, 12], t), db), fg: shift(lerp([244, 245, 249], [207, 208, 211], t), dm) }
+}
 
 function makeIcon(size, { scale = 1, palette = DARK, field = distanceField(), half = params.stroke / 2, tag = null, look = null } = {}) {
   const buf = Buffer.alloc(size * size * 4)
