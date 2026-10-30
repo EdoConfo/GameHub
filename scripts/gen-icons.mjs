@@ -112,9 +112,7 @@ function boxDist(x, y, cx, cy, hw, hh, r) {
 //   at: where its centre sits, as a fraction of the icon; w: its width, too
 // It is a pill in the mark's own white with the letters in the tile's colour,
 // and a ring of the tile round it so it reads as stuck on, not merged into the
-// monogram. No colour of its own, on purpose: iOS reworks an icon that is
-// nearly black and white (it greys it and adds a sheen) and leaves a coloured
-// one alone — a gold tag made the two apps look different on the Home screen.
+// monogram.
 function devTag(size, { at = [0.7, 0.82], w = 0.46 } = {}) {
   const hw = (w * size) / 2, hh = hw * 0.42
   const cx = at[0] * size, cy = at[1] * size
@@ -135,12 +133,26 @@ function devTag(size, { at = [0.7, 0.82], w = 0.46 } = {}) {
 // icon with their own mask; an icon that ships with its corners already cut has
 // transparent ones, and they come back as white slivers wherever the platform's
 // curve does not match the one baked into the png.
-function makeIcon(size, { scale = 1, palette = DARK, field = distanceField(), half = params.stroke / 2, tag = null } = {}) {
+// ---- the look iOS gives the real icon ----
+// Added to the Home screen, the real icon doesn't stay as drawn: iOS turns it
+// into its own glass — a neutral grey background darkening downwards, the mark
+// a soft white that dims the same way. It leaves an icon with the DEV tag on it
+// alone, though (tried: without the tag the dev icon went grey too; neither a
+// shaded nor a grainy background changed that). So the dev icon is drawn the
+// way iOS shows the real one — measured off a Home screen — and the two sit
+// side by side looking the same, tag aside.
+//   t: 0 at the top of the icon, 1 at the bottom
+const lerp = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
+const IOS_GLASS = t => ({ bg: lerp([35, 35, 35], [16, 16, 16], t), fg: lerp([232, 233, 237], [206, 207, 211], t) })
+
+function makeIcon(size, { scale = 1, palette = DARK, field = distanceField(), half = params.stroke / 2, tag = null, look = null } = {}) {
   const buf = Buffer.alloc(size * size * 4)
   const unit = size / GRID           // one grid unit, in pixels
   const halfPx = half * unit
   const aa = 0.8                     // edge softening, in pixels
   for (let y = 0; y < size; y++) {
+    // a look that changes down the icon replaces the flat palette, row by row
+    if (look) palette = look(y / (size - 1))
     for (let x = 0; x < size; x++) {
       let [r, g, b] = palette.bg
       let a = 255
@@ -182,9 +194,10 @@ writeFileSync(join(OUT, 'maskable-512.png'), makeIcon(512, { scale: 0.78 }))
 // The dev site's set: the same, with DEV in the bottom-right corner — inside
 // it, since iOS and Android round the corner off. A maskable icon may be cut
 // down to a circle, so there the tag moves to the bottom middle, in the safe zone.
-for (const size of [192, 512]) writeFileSync(join(OUT_DEV, `icon-${size}.png`), makeIcon(size, { tag: devTag(size) }))
-writeFileSync(join(OUT_DEV, 'apple-touch-icon.png'), makeIcon(180, { tag: devTag(180) }))
-writeFileSync(join(OUT_DEV, 'maskable-512.png'), makeIcon(512, { scale: 0.78, tag: devTag(512, { at: [0.5, 0.76], w: 0.36 }) }))
+// Drawn in the look iOS gives the real icon (IOS_GLASS above).
+for (const size of [192, 512]) writeFileSync(join(OUT_DEV, `icon-${size}.png`), makeIcon(size, { tag: devTag(size), look: IOS_GLASS }))
+writeFileSync(join(OUT_DEV, 'apple-touch-icon.png'), makeIcon(180, { tag: devTag(180), look: IOS_GLASS }))
+writeFileSync(join(OUT_DEV, 'maskable-512.png'), makeIcon(512, { scale: 0.78, tag: devTag(512, { at: [0.5, 0.76], w: 0.36 }), look: IOS_GLASS }))
 // ...and the favicon, from the same numbers, so the tab and the home screen can
 // never drift apart. Four strokes while the corners are sharp; a traced outline
 // once they are rounded, because a fillet belongs to no single stroke.
