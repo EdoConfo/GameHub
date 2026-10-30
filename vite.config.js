@@ -3,23 +3,49 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
 
 // Which build this is, readable from inside the app (Impostazioni). Without it,
-// "is my phone on the new version?" can only be guessed at. In CI the commit is
-// handed to us; locally we ask git, and a checkout without git is just "dev".
+// "is my phone on the new version?" can only be guessed at. Git is asked first:
+// the deploy builds two branches in one run, and the commit CI hands over is
+// only the one that was pushed. A checkout without git falls back on that, and
+// then on just "dev".
 function buildId() {
-  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7)
   try { return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() }
-  catch { return 'dev' }
+  catch { return process.env.GITHUB_SHA ? process.env.GITHUB_SHA.slice(0, 7) : 'dev' }
 }
+
+// Two sites from one repo: `main` is the real one, `dev` is where a change is
+// tried on a phone before it goes there. The deploy builds each branch and
+// serves dev in a folder of the real site (.github/workflows/deploy.yml).
+const CHANNEL = process.env.GAMEHUB_CHANNEL === 'dev' ? 'dev' : 'prod'
+const DEV = CHANNEL === 'dev'
 
 // IMPORTANT: base path must match the GitHub repo name for GitHub Pages.
 // Repo: https://github.com/EdoConfo/GameHub  ->  site served at /GameHub/
-// If you rename the repo, change BASE here (keep the leading and trailing slash).
-const BASE = '/GameHub/'
+// If you rename the repo, change ROOT here (keep the leading and trailing slash).
+const ROOT = '/GameHub/'
+const BASE = DEV ? ROOT + 'dev/' : ROOT
 
 // Publishes version.json next to the app: the build this deploy is. The app
 // polls it (see src/shared/update.js) to notice a new deploy while it's open,
 // without waiting for the service worker's own, much lazier, check.
 const BUILD = buildId()
+
+// The dev site's icons carry a DEV tag (scripts/gen-icons.mjs), so the two apps
+// can sit side by side on the Home screen and never be told apart by guessing.
+const ICONS = DEV ? 'icons-dev/' : 'icons/'
+
+// index.html names the iOS icon and the title — the name under the icon on
+// the Home screen. For the dev site, both are its own.
+function devPage() {
+  return {
+    name: 'gamehub-dev-page',
+    transformIndexHtml(html) {
+      if (!DEV) return html
+      return html
+        .replace('href="icons/apple-touch-icon.png"', 'href="icons-dev/apple-touch-icon.png"')
+        .replace('<title>GameHub</title>', '<title>GameHub Dev</title>')
+    }
+  }
+}
 function versionFile() {
   return {
     name: 'gamehub-version',
@@ -31,19 +57,20 @@ function versionFile() {
 
 export default defineConfig({
   base: BASE,
-  define: { __BUILD__: JSON.stringify(BUILD) },
+  define: { __BUILD__: JSON.stringify(BUILD), __CHANNEL__: JSON.stringify(CHANNEL) },
   // Always the same address (bookmarked on the phone): if 5173 is taken,
   // fail loudly instead of quietly moving to 5174.
   server: { port: 5173, strictPort: true },
   plugins: [
     versionFile(),
+    devPage(),
     VitePWA({
       // The new version waits instead of taking over: the app offers it with a
       // button, outside a match, because a reload mid-round loses the roles that
       // were dealt. src/shared/update.js does the asking.
       registerType: 'prompt',
       injectRegister: null,
-      includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'],
+      includeAssets: ['favicon.svg', ICONS + 'icon-192.png', ICONS + 'icon-512.png', ICONS + 'maskable-512.png'],
       workbox: {
         // Precache everything the build emits. No words among it any more —
         // both games download theirs — but the pattern stays as it is: it
@@ -51,11 +78,17 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,json,woff2}'],
         // never from the cache: it's the one file that has to say what's live
         globIgnores: ['**/version.json'],
-        navigateFallback: BASE + 'index.html'
+        navigateFallback: BASE + 'index.html',
+        // The real site's worker covers every address under it, dev's folder
+        // included: without this, a phone with the real app installed would be
+        // handed the real app every time it opened the dev one.
+        navigateFallbackDenylist: DEV ? [] : [new RegExp('^' + ROOT + 'dev/')]
       },
       manifest: {
-        name: 'GameHub',
-        short_name: 'GameHub',
+        // its own name and id, so both can sit on the Home screen side by side
+        id: BASE,
+        name: DEV ? 'GameHub Dev' : 'GameHub',
+        short_name: DEV ? 'GameHub Dev' : 'GameHub',
         description: 'Hub di giochi da tavolo per feste. Funziona offline, un solo dispositivo.',
         lang: 'it',
         start_url: BASE,
@@ -65,9 +98,9 @@ export default defineConfig({
         background_color: '#0f1117',
         theme_color: '#0f1117',
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: ICONS + 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: ICONS + 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: ICONS + 'maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       }
     })

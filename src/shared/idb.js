@@ -4,7 +4,8 @@
 // and player photos alone can fill it. IndexedDB gets far more room. It's
 // asynchronous, so what's kept here is read once into memory at startup and
 // written back when it changes.
-const DB = 'gamehub'
+// the dev site keeps a shelf of its own (see storage.js)
+const DB = typeof __CHANNEL__ === 'string' && __CHANNEL__ === 'dev' ? 'gamehub-dev' : 'gamehub'
 const STORE = 'kv'
 let opening = null
 

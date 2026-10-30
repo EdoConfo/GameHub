@@ -1,7 +1,11 @@
 // Namespaced localStorage wrapper. All persistent state goes through here.
 // Safe against private-mode / disabled storage: falls back to in-memory.
 
-const PREFIX = 'gamehub:'
+// The dev site lives on the same address as the real one, so it would share
+// its storage: players, packs, settings. It keeps its own instead — whatever a
+// change being tried does to the data, the real app never sees it.
+const DEV = typeof __CHANNEL__ === 'string' && __CHANNEL__ === 'dev'
+const PREFIX = DEV ? 'gamehub-dev:' : 'gamehub:'
 const memory = new Map()
 let available = true
 
