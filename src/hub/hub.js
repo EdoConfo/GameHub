@@ -173,7 +173,8 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
   function renderHeader() {
     if (index === V_GAMES) {
       header.replaceChildren(
-        el('span', { class: 'wordmark' }, 'GAMEHUB'),
+        // the dev site says so, so it's never mistaken for the real one
+        el('span', { class: 'wordmark' }, ['GAMEHUB', typeof __CHANNEL__ === 'string' && __CHANNEL__ === 'dev' ? el('span', { class: 'dev-tag' }, 'DEV') : null]),
         el('div', { class: 'hub-header-actions' }, [
           el('button', { class: 'icon-btn', 'aria-label': t('hub.players'), onclick: () => { buildSide('players'); moveCamera(V_SIDE) } }, icon('players')),
           el('button', { class: 'icon-btn', 'aria-label': t('hub.settings'), onclick: () => { buildSide('settings'); moveCamera(V_SIDE) } }, icon('settings'))
