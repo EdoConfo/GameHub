@@ -28,6 +28,24 @@ const BASE = DEV ? ROOT + 'dev/' : ROOT
 // polls it (see src/shared/update.js) to notice a new deploy while it's open,
 // without waiting for the service worker's own, much lazier, check.
 const BUILD = buildId()
+
+// The dev site's icons carry a DEV tag (scripts/gen-icons.mjs), so the two apps
+// can sit side by side on the Home screen and never be told apart by guessing.
+const ICONS = DEV ? 'icons-dev/' : 'icons/'
+
+// index.html names the iOS icon and the title — the name under the icon on
+// the Home screen. For the dev site, both are its own.
+function devPage() {
+  return {
+    name: 'gamehub-dev-page',
+    transformIndexHtml(html) {
+      if (!DEV) return html
+      return html
+        .replace('href="icons/apple-touch-icon.png"', 'href="icons-dev/apple-touch-icon.png"')
+        .replace('<title>GameHub</title>', '<title>GameHub Dev</title>')
+    }
+  }
+}
 function versionFile() {
   return {
     name: 'gamehub-version',
@@ -45,13 +63,14 @@ export default defineConfig({
   server: { port: 5173, strictPort: true },
   plugins: [
     versionFile(),
+    devPage(),
     VitePWA({
       // The new version waits instead of taking over: the app offers it with a
       // button, outside a match, because a reload mid-round loses the roles that
       // were dealt. src/shared/update.js does the asking.
       registerType: 'prompt',
       injectRegister: null,
-      includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'],
+      includeAssets: ['favicon.svg', ICONS + 'icon-192.png', ICONS + 'icon-512.png', ICONS + 'maskable-512.png'],
       workbox: {
         // Precache everything the build emits. No words among it any more —
         // both games download theirs — but the pattern stays as it is: it
@@ -79,9 +98,9 @@ export default defineConfig({
         background_color: '#0f1117',
         theme_color: '#0f1117',
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: ICONS + 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: ICONS + 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: ICONS + 'maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       }
     })
