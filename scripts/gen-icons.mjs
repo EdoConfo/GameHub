@@ -70,8 +70,6 @@ function encodePNG(width, height, rgba) {
 const byte = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
 const paletteOf = p => ({ bg: byte(p.dark.tile), fg: byte(p.dark.mark) })
 const DARK = paletteOf(params)
-// the app's accent (--accent in styles.css, dark theme): the colour of the DEV tag
-const ACCENT = byte('#e6b23a')
 
 // ---- the DEV tag ----
 // Three letters drawn as strokes on a small grid, so they need no font: each
@@ -112,8 +110,11 @@ function boxDist(x, y, cx, cy, hw, hh, r) {
 
 // The tag as a painter: given a pixel, what goes on top of the icon there.
 //   at: where its centre sits, as a fraction of the icon; w: its width, too
-// It is a gold pill with the letters in the tile's own colour, and a ring of
-// the tile round it so it reads as stuck on, not merged into the monogram.
+// It is a pill in the mark's own white with the letters in the tile's colour,
+// and a ring of the tile round it so it reads as stuck on, not merged into the
+// monogram. No colour of its own, on purpose: iOS reworks an icon that is
+// nearly black and white (it greys it and adds a sheen) and leaves a coloured
+// one alone — a gold tag made the two apps look different on the Home screen.
 function devTag(size, { at = [0.7, 0.82], w = 0.46 } = {}) {
   const hw = (w * size) / 2, hh = hw * 0.42
   const cx = at[0] * size, cy = at[1] * size
@@ -160,7 +161,7 @@ function makeIcon(size, { scale = 1, palette = DARK, field = distanceField(), ha
       if (over) {
         const mix = (c, k) => { r = Math.round(r + (c[0] - r) * k); g = Math.round(g + (c[1] - g) * k); b = Math.round(b + (c[2] - b) * k) }
         mix(palette.bg, over.ring)
-        mix(ACCENT, over.pill)
+        mix(palette.fg, over.pill)
         mix(palette.bg, over.text * over.pill)
       }
 
