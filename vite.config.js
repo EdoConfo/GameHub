@@ -92,7 +92,7 @@ export default defineConfig({
         // The real site's worker covers every address under it, dev's folder
         // included: without this, a phone with the real app installed would be
         // handed the real app every time it opened the dev one.
-        navigateFallbackDenylist: DEV ? [] : [new RegExp('^' + ROOT + 'dev/')]
+        navigateFallbackDenylist: [/\/icon-test\//, ...(DEV ? [] : [new RegExp('^' + ROOT + 'dev/')])]
       },
       manifest: {
         // its own name and id, so both can sit on the Home screen side by side
