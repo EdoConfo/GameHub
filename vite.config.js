@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 
 // Which build this is, readable from inside the app (Impostazioni). Without it,
 // "is my phone on the new version?" can only be guessed at. Git is asked first:
@@ -33,16 +35,24 @@ const BUILD = buildId()
 // can sit side by side on the Home screen and never be told apart by guessing.
 const ICONS = DEV ? 'icons-dev/' : 'icons/'
 
+// An icon's address carries a fingerprint of what is in it. The file names
+// never change, so a phone that once fetched an icon kept handing back that
+// copy — the Home screen showed the old DEV tag long after a new one was up.
+// A new picture is a new address, and no old copy can answer for it.
+const icon = name => {
+  const file = new URL('./public/' + ICONS + name, import.meta.url)
+  const v = createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 8)
+  return ICONS + name + '?v=' + v
+}
+
 // index.html names the iOS icon and the title — the name under the icon on
-// the Home screen. For the dev site, both are its own.
-function devPage() {
+// the Home screen. The dev site has its own of both.
+function iconPage() {
   return {
-    name: 'gamehub-dev-page',
+    name: 'gamehub-icon-page',
     transformIndexHtml(html) {
-      if (!DEV) return html
-      return html
-        .replace('href="icons/apple-touch-icon.png"', 'href="icons-dev/apple-touch-icon.png"')
-        .replace('<title>GameHub</title>', '<title>GameHub Dev</title>')
+      html = html.replace('href="icons/apple-touch-icon.png"', `href="${icon('apple-touch-icon.png')}"`)
+      return DEV ? html.replace('<title>GameHub</title>', '<title>GameHub Dev</title>') : html
     }
   }
 }
@@ -63,7 +73,7 @@ export default defineConfig({
   server: { port: 5173, strictPort: true },
   plugins: [
     versionFile(),
-    devPage(),
+    iconPage(),
     VitePWA({
       // The new version waits instead of taking over: the app offers it with a
       // button, outside a match, because a reload mid-round loses the roles that
@@ -98,9 +108,9 @@ export default defineConfig({
         background_color: '#0f1117',
         theme_color: '#0f1117',
         icons: [
-          { src: ICONS + 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: ICONS + 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: ICONS + 'maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: icon('icon-192.png'), sizes: '192x192', type: 'image/png' },
+          { src: icon('icon-512.png'), sizes: '512x512', type: 'image/png' },
+          { src: icon('maskable-512.png'), sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       }
     })
