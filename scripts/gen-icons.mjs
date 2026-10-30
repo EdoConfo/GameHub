@@ -143,7 +143,10 @@ function devTag(size, { at = [0.7, 0.82], w = 0.46 } = {}) {
 // side by side looking the same, tag aside.
 //   t: 0 at the top of the icon, 1 at the bottom
 const lerp = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t))
-const IOS_GLASS = t => ({ bg: lerp([35, 35, 35], [16, 16, 16], t), fg: lerp([232, 233, 237], [206, 207, 211], t) })
+// Measured twice: iOS still lays a faint sheen of its own over the dev icon
+// (a little lighter behind, a little duller on top), so these sit that much
+// the other way — side by side on the Home screen, the two then match.
+const IOS_GLASS = t => ({ bg: lerp([31, 31, 31], [12, 12, 12], t), fg: lerp([244, 245, 249], [207, 208, 211], t) })
 
 function makeIcon(size, { scale = 1, palette = DARK, field = distanceField(), half = params.stroke / 2, tag = null, look = null } = {}) {
   const buf = Buffer.alloc(size * size * 4)
