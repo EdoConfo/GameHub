@@ -50,12 +50,27 @@ They are created by a plain Node script (`scripts/gen-icons.mjs`) with no depend
 
 ## Deploying to GitHub Pages
 
-Every push to `main` is deployed automatically by GitHub Actions.
+Every push to `main` or `dev` is deployed automatically by GitHub Actions, and
+each deploy publishes both:
+
+- `main` is the real app, at `https://<user>.github.io/GameHub/`;
+- `dev` is where a change is tried on a phone first, at
+  `https://<user>.github.io/GameHub/dev/`. It says **DEV** next to the
+  wordmark, installs as a separate app (*GameHub Dev*) and keeps its own
+  players, packs and settings, so nothing tried there touches the real ones.
+
+A change goes to `dev` first; once it works on the phone, `dev` is merged into
+`main`.
+
+To set it up once:
 
 1. Open the repository's **Settings → Pages**.
 2. Under **Build and deployment → Source**, choose **GitHub Actions**.
-3. Push to `main`: the `.github/workflows/deploy.yml` workflow builds and publishes the site.
-4. The site is served at `https://<user>.github.io/GameHub/`.
+3. Open **Settings → Environments → github-pages** and, under **Deployment
+   branches and tags**, allow `dev` as well as `main`: a run started by a push
+   to `dev` deploys too.
+4. Push: the `.github/workflows/deploy.yml` workflow builds both branches and
+   publishes them together.
 
 ### Base path
 
@@ -63,10 +78,12 @@ The app is served from a subfolder (the repository name), so
 [`vite.config.js`](vite.config.js) sets:
 
 ```js
-const BASE = '/GameHub/'
+const ROOT = '/GameHub/'
 ```
 
-If you **rename the repository**, change `BASE` to `/<new-name>/` (keep the leading and trailing slashes).
+The dev build (`GAMEHUB_CHANNEL=dev`) goes one folder further down, in
+`/GameHub/dev/`. If you **rename the repository**, change `ROOT` to
+`/<new-name>/` (keep the leading and trailing slashes).
 
 ## Installing as an app
 

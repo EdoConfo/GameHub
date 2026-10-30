@@ -1,8 +1,12 @@
 name: Deploy to GitHub Pages
 
+# One Pages site, two apps: `main` at the root (/GameHub/), the real one, and
+# `dev` in a folder of it (/GameHub/dev/), where a change is tried on a phone
+# before it goes to main. Pages takes the whole site at every deploy, so every
+# run builds both branches, whichever of the two was pushed.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -19,15 +23,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
+          path: prod
+      # dev may not exist (deleted after a release): the real site still goes up
+      - id: dev
+        uses: actions/checkout@v7
+        continue-on-error: true
+        with:
+          ref: dev
+          path: dev
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm run build
+          cache-dependency-path: '*/package-lock.json'
+      # Each build names itself after its own commit (vite.config.js asks git).
+      - name: Build main
+        working-directory: prod
+        run: npm ci && npm run build
+      - name: Build dev
+        if: steps.dev.outcome == 'success'
+        working-directory: dev
+        env:
+          GAMEHUB_CHANNEL: dev
+        run: npm ci && npm run build
+      - name: Put the two together
+        run: |
+          mkdir site
+          cp -r prod/dist/. site/
+          if [ -d dev/dist ]; then cp -r dev/dist site/dev; fi
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build
