@@ -5,8 +5,9 @@
 // passed across the table, and between one turn and the next the sea goes
 // down with the drawer.
 //
-// All three are places on the game's own table: the menu's circle becomes it,
-// as it does for "Gioca" in the other games (see hub.js and docs/SCENE.md).
+// All three are places of the game's own, and none of them needs a table: the
+// menu's circle swells out of the frame and a panel takes the whole screen
+// under the header (`panel` below, hub.js, docs/SCENE.md).
 import { t } from '../../shared/i18n.js'
 import { placeRoom, placeGuest } from './room.js'
 import { placeLocal } from './local.js'
@@ -55,6 +56,7 @@ export default {
   glyph: 'ship',
   get rules() { return rules() },
   get menu() { return menu() },
+  panel: true,
   places: { room: placeRoom, join: placeGuest, local: placeLocal },
   mount
 }

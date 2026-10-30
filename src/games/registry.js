@@ -27,6 +27,10 @@
 //                  and hands it over, the same morph as "Gioca"; the game never
 //                  builds a screen of its own (docs/SCENE.md).
 //                  scene: { stage, exit(), header({ code, live }), onSeat(fn), onBack(fn) }
+//     panel:       optional — true for a game whose places have no use for a
+//                  table (Battaglia navale): circle B swells out of the frame
+//                  and a still panel takes the screen under the header instead.
+//                  scene.panel replaces scene.stage: panel.present(node, { key })
 //                    stage:  the table stage (shared/tableStage.js) — seats on
 //                            stage.view, pages with stage.present(node, { key }),
 //                            one-off panels with stage.openSheet

@@ -2,23 +2,22 @@
 //
 // The same match as across two phones (game.js), with the phone itself as
 // the wall between the two seas: whoever isn't holding it mustn't see the
-// fleet of whoever is. So between one admiral and the other the sea goes down
-// with the drawer, the table turns to put the next one's chair at the bottom,
-// and the sea comes back up only when they say it's them.
+// fleet of whoever is. So between one admiral and the other the sea leaves the
+// panel, and comes back only when the next one says it's them.
 import { el, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
 import { createGame, PLAYERS } from './game.js'
-import { page, head, admirals, createPlacer, battle, over, cover } from './screens.js'
+import { page, head, createPlacer, battle, over, cover } from './screens.js'
 
 const PAIR_KEY = 'battleship:pair'
 
 const face = p => ({ pid: p.id, name: p.name, color: p.color, emoji: p.emoji })
 
-// The place the hub gives this game for "Un telefono": the table circle B
-// became, and its drawer.
+// The place the hub gives this game for "Un telefono": the panel that rises
+// as the game's circle swells out of the frame.
 export function placeLocal(scene, ctx) {
-  const { stage } = scene
+  const { panel } = scene
   const game = createGame()
   let step = 'pick'   // pick · cover · place · battle · pass · over
   let holder = null   // pid of whoever has the phone
@@ -32,8 +31,6 @@ export function placeLocal(scene, ctx) {
 
   const player = pid => game.state.players.find(p => p.pid === pid)
   const other = pid => game.state.players.find(p => p.pid !== pid).pid
-  // whoever holds the phone first: their chair is the one at the bottom
-  const round = () => [player(holder), player(other(holder))]
 
   // ---------- who plays ----------
   function pick() {
@@ -41,10 +38,7 @@ export function placeLocal(scene, ctx) {
     const grid = faceGrid(all, p => toggle(p.id),
       newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) toggle(p.id, true) })))
     all.forEach((p, i) => { if (pair.includes(p.id) && grid.children[i]) grid.children[i].classList.add('on') })
-    // the chairs fill as the faces are picked
-    stage.view.set(admirals(pair.map(id => face(ctx.players.get(id)))))
-    stage.view.setCenter(null)
-    stage.present(page([
+    panel.present(page([
       head(t('bs.local.title'), t('bs.local.hint')),
       walls(el('div', { class: 'list-scroll' }, grid)),
       button(pair.length === PLAYERS ? t('bs.local.start') : t('bs.local.need', { n: PLAYERS - pair.length }), {
@@ -116,8 +110,7 @@ export function placeLocal(scene, ctx) {
     if (step === 'cover') {
       const p = player(holder)
       const placing = game.state.phase === 'place'
-      stage.view.set(admirals(round(), { lit: holder }))
-      stage.present(page(cover(p, {
+      panel.present(page(cover(p, {
         title: t('bs.local.passTo', { name: p.name }),
         sub: placing ? t('bs.local.placeSub', { name: p.name }) : t('bs.local.fireSub', { name: p.name }),
         onGo: uncover
@@ -125,15 +118,13 @@ export function placeLocal(scene, ctx) {
       return
     }
     if (step === 'place') {
-      stage.view.set(admirals(round(), { lit: holder, names: false }))
-      stage.present(page([head(t('bs.place.title', { name: player(holder).name }), ''), placer.node], { tall: true }), { key: 'place' })
+      panel.present(page([head(t('bs.place.title', { name: player(holder).name }), ''), placer.node]), { key: 'place' })
       return
     }
     const view = game.viewFor(holder)
     if (step === 'over') {
       record()
-      stage.view.set(admirals(round(), { lit: game.state.winner, dim: [other(game.state.winner)] }))
-      stage.present(page(over(view, {
+      panel.present(page(over(view, {
         actions: [
           button(t('bs.over.again'), {
             variant: 'primary', full: true,
@@ -141,17 +132,16 @@ export function placeLocal(scene, ctx) {
           }),
           button(t('bs.over.menu'), { variant: 'secondary', full: true, onClick: () => scene.exit() })
         ]
-      }), { tall: true }), { key: 'over' })
+      })), { key: 'over' })
       return
     }
     const next = other(holder)
-    stage.view.set(admirals(round(), { lit: game.state.turn, names: false }))
-    stage.present(page(battle(view, {
+    panel.present(page(battle(view, {
       onFire: fire,
       after: step === 'pass'
         ? button(t('bs.local.give', { name: player(next).name }), { variant: 'primary', full: true, onClick: () => handTo(next) })
         : null
-    }), { tall: true }), { key: 'battle' })
+    })), { key: 'battle' })
   }
 
   render()

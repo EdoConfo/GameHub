@@ -923,6 +923,34 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 /* A page that needs most of the screen (a sea to fire into) may have it: the
    table gets small above it, but keeps a band of its own under the header. */
 .drawer:not(.sheet):has(.drawer-page.tall) { max-height: calc(100% - var(--hub-top, 64px) - 96px); }
+
+/* The panel: a game with no table gets the whole room under the header. Same
+   surface as the drawer, but it stands still — nothing to grab, nothing to
+   fold. Its top is set in JS, just under the header (shared/panel.js). */
+.panel {
+  position: absolute; left: 0; right: 0; bottom: 0; top: var(--hub-top, 64px); z-index: 4;
+  max-width: 560px; margin: 0 auto;
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border); border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -12px 34px rgba(0, 0, 0, .22);
+  overflow: hidden;
+  transform: translateY(104%);
+  transition: transform .62s var(--pan-ease);
+}
+:root[data-theme="light"] .panel { box-shadow: 0 -6px 24px rgba(30, 35, 60, .08); }
+.panel.open { transform: none; }
+.panel.instant { transition: none; }
+.panel-body {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+}
+.panel-body > .drawer-page { flex: 1 1 auto; min-height: 0; }
+/* the way on sits at the bottom of the room, whatever is above it */
+.panel .drawer-page > .btn:last-child, .panel .drawer-page > .row:last-child { margin-top: auto; }
+.panel-ghost { position: absolute; z-index: 2; display: flex; flex-direction: column; pointer-events: none; }
+.panel-ghost > .drawer-page { flex: 1 1 auto; min-height: 0; }
 .drawer-handle {
   flex: 0 0 auto; align-self: center; position: relative;
   width: 72px; height: 22px; margin: 0; padding: 0; border: 0; background: none;
@@ -1279,8 +1307,8 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    meanings: danger for a hit, the dimmed text for water. The seas are sized
    by whatever is smaller, the width or the height left over, so on a short
    phone the two of them still fit one above the other without scrolling. */
-.drawer-page.bs { --bs-w: min(100%, 36dvh); --bs-small: min(30%, 13dvh); gap: 10px; }
-.drawer-page.bs .row.stack { margin-top: 2px; }
+.drawer-page.bs { --bs-w: min(100%, 40dvh); --bs-small: min(60%, 22dvh); gap: 10px; }
+.drawer-page.bs .row.stack { margin-top: auto; }
 .bs-sea {
   width: var(--bs-w); aspect-ratio: 1; align-self: center; flex: none;
   display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px;
@@ -1288,7 +1316,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   background: color-mix(in srgb, var(--primary) 18%, var(--bg));
 }
 .bs-sea.small { width: var(--bs-small); gap: 1px; padding: 2px; }
-.bs-place { --bs-w: min(100%, 44dvh); }
+.bs-place { --bs-w: min(100%, 56dvh); }
 .bs-cell {
   position: relative; display: block; min-width: 0; padding: 0; border: 0;
   border-radius: 3px; background: var(--surface); color: inherit; font: inherit;
@@ -1325,14 +1353,16 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 .bs-label { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); width: var(--bs-w); align-self: center; }
 .bs-label b { font-weight: 800; color: var(--text); }
-.bs-own { display: flex; gap: 14px; align-items: center; justify-content: center; width: var(--bs-w); align-self: center; }
-.bs-own-label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
-.bs-own-label b { font-weight: 800; color: var(--text); }
+.bs-own { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.bs-own .bs-label { width: var(--bs-small); }
+.bs-own .bs-label, .bs-own .bs-sea { align-self: center; }
 
 .bs-place { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
 .bs-place .row { margin-top: auto; }
 .bs-place .row .btn { flex: 1; }
 .bs-hint { text-align: center; min-height: 2.6em; }
+.bs-cover { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.bs-who { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .bs-hint.bad { color: var(--danger); }
 
 /* Laying out the fleet. The finger owns the sea here: no scrolling, no

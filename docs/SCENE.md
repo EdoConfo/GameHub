@@ -108,8 +108,19 @@ A game does not own the screen; the hub hands it a place.
   - The keyboard is the hub's: while a place is up the scene is shortened to
     what the keyboard leaves, so the drawer and the sheet stay above it.
 
-Battaglia navale (`room`, `join`, `local`) and Quiplash (`room`, `join`) are
-built this way: start there when adding a game.
+- **A game with no use for a table** — `panel: true` next to `places`. A
+  table that only stands there eats half the screen for nothing, so there is
+  none: circle B swells past the edges of the screen and out of the frame
+  while a still panel rises in its place, from under the header to the bottom
+  edge. No grabber, nothing folds — the whole room is the game's. Leaving, the
+  panel goes down and the circle comes back in from beyond the edge to where
+  it was. The game gets `scene.panel` instead of `scene.stage`, and fills it
+  the same way: `panel.present(node, { key })`.
+
+Quiplash (`room`, `join`) is built on the table: the people in the room are
+the point. Battaglia navale (`room`, `join`, `local`) is built on the panel:
+two admirals need a sea, not a table. Start from one of them when adding a
+game, and pick by asking whether the table shows anything the game needs.
 
 Before shipping any new screen or transition, check it against the rule:
 pause the transition at its first frame and at its middle frame. Everything

@@ -6,41 +6,26 @@
 // draws what it is given and reports taps; the deciding is in game.js.
 import { el, button } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
+import { avatar } from '../../hub/players.js'
 import { SIZE, FLEET, key, cells, clashes, clamp, randomFleet, around, label } from './engine.js'
 
-// ---------- the table it is played on ----------
-// Battaglia navale has no screen of its own: the game's circle becomes a
-// table with two chairs, one per admiral, and everything else rises in the
-// drawer under it (docs/SCENE.md). The page is the drawer's; a page marked
-// `tall` may take most of the screen — a sea needs it — and the table gets
-// small above it instead of going anywhere.
-export const page = (children, { tall = false } = {}) =>
-  el('div', { class: 'drawer-page bs' + (tall ? ' tall' : '') }, children)
+// ---------- the panel it is played in ----------
+// Battaglia navale has no table: two admirals don't need one, and the sea
+// needs the room. So the game's circle swells out of the frame and a panel
+// rises in its place, from under the header to the bottom edge (hub.js,
+// docs/SCENE.md). Everything here is a page of that panel.
+export const page = children => el('div', { class: 'drawer-page bs' }, children)
 
 export const head = (title, sub) => el('div', { class: 'page-head' }, [
   el('div', { class: 'drawer-title' }, title),
   sub ? el('p', { class: 'drawer-hint' }, sub) : null
 ])
 
-// The two chairs. Whoever holds this phone sits at the bottom, facing it, so
-// when the phone changes hands the table turns and the chairs glide round it.
-//   players: up to two faces { pid, name, color, emoji }; a missing one is an
-//            empty chair, waiting
-//   lit:     pid whose chair is lit (whose turn it is, who won)
-//   dim:     pids whose chairs go quiet
-//   names:   off while a sea fills the drawer: the table is small then, and
-//            the drawer already says who is who
-export function admirals(players, { lit = null, dim = [], names = true, notes = {} } = {}) {
-  const chairs = players.slice(0, 2)
-  while (chairs.length < 2) chairs.push(null)
-  return chairs.map((p, i) => ({
-    key: p ? p.pid : 'chair-' + i,
-    p: p ? { name: p.name, color: p.color, emoji: p.emoji } : null,
-    name: names ? (p ? p.name : t('table.free')) : '',
-    note: names && p ? notes[p.pid] || '' : '',
-    cls: p && p.pid === lit ? 'on' : p && dim.includes(p.pid) ? 'dim' : ''
-  }))
-}
+// A face and its name, for whoever the page is about.
+export const admiral = (p, size = 44) => el('div', { class: 'bs-who' }, [
+  avatar(p, size),
+  el('span', { class: 'pick-name' }, p.name)
+])
 
 // ---------- the sea ----------
 // One grid of SIZE × SIZE squares, and what is known about each of them.
@@ -292,14 +277,12 @@ export function battle(view, { onFire, after = null, pending = null }) {
       onTap: mine ? onFire : null,
       canTap: (r, c) => !fired.has(key(r, c)) && !calm.has(key(r, c))
     }),
-    // yours beside its label rather than under it: the drawer is tall
-    // already, and the table above needs the line it would take
     el('div', { class: 'bs-own' }, [
-      sea({ ships: view.fleet || [], shots: view.incoming, last: lastAtMe, small: true }),
-      el('div', { class: 'bs-own-label' }, [
+      el('div', { class: 'bs-label' }, [
         el('span', {}, t('bs.battle.yourSea')),
         el('b', {}, t('bs.battle.afloat', { n: view.myAfloat ?? FLEET.length }))
-      ])
+      ]),
+      sea({ ships: view.fleet || [], shots: view.incoming, last: lastAtMe, small: true })
     ]),
     after
   ]
@@ -317,12 +300,14 @@ export function over(view, { actions = [] } = {}) {
   ]
 }
 
-// Somebody's turn on a phone passed across the table: the sea has gone down
-// with the drawer, and comes back up only when the right person says they're
-// holding it. Their chair is the lit one, at the bottom, facing them.
+// Somebody's turn on a phone passed across the table: the page shows no sea
+// at all until the right person says they're holding it.
 export function cover(player, { title, sub, onGo }) {
   return [
-    head(title, sub),
+    el('div', { class: 'bs-cover' }, [
+      avatar(player, 96),
+      head(title, sub)
+    ]),
     button(t('bs.local.itsMe', { name: player.name }), { variant: 'primary', full: true, onClick: onGo })
   ]
 }

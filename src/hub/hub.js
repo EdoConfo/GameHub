@@ -12,6 +12,7 @@ import { openPlayerCard } from './playerCard.js'
 import { openCredits } from './credits.js'
 import { TABLE_CLOSE_MS, createTableStage } from '../shared/tableStage.js'
 import { keepAbove } from '../shared/roomUi.js'
+import { createPanel } from '../shared/panel.js'
 import { games } from '../games/registry.js'
 
 // The hub is a fixed scene with TWO still circles; the app is a window panning
@@ -121,7 +122,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     hosts.forEach((h, i) => { h.style.left = cam[i] + 'px'; h.style.width = W + 'px' })
     moveCamera(index, animate)
     if (table) table.refit()
-    if (place) place.stage.refit()
+    if (place) place.view.refit()
   }
 
   // Where you are in the scene, written in the address bar. Panning isn't a
@@ -537,11 +538,39 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     else goto(V_GAMES)
   }
 
+  // ---- a game with no table: circle B swells out of the frame ----
+  // The circle grows past every corner of the screen while the panel rises,
+  // so the line you were looking at sweeps across and out instead of blinking
+  // away; leaving, it comes back in from beyond the edge and settles where it
+  // was. Same curve and length as the table's morph.
+  let swellRaf = 0
+  function swell(out, ms = TABLE_MORPH_MS) {
+    cancelAnimationFrame(swellRaf)
+    const { R, H } = world
+    const c = circleBOnScreen()
+    const cx = c.cx, cy = H / 2 // the circle's centre, in the scene under the header
+    const far = Math.max(...[[0, 0], [world.W, 0], [0, H], [world.W, H]].map(([x, y]) => Math.hypot(x - cx, y - cy))) + 24
+    const from = out ? R : far, to = out ? far : R
+    circleB.style.visibility = ''
+    if (ms <= 0) { circleB.setAttribute('r', String(to)); if (out) circleB.style.visibility = 'hidden'; return }
+    const ease = p => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+    const t0 = performance.now()
+    const step = now => {
+      const p = Math.min(1, (now - t0) / ms)
+      circleB.setAttribute('r', String(from + (to - from) * ease(p)))
+      if (p < 1) swellRaf = requestAnimationFrame(step)
+      else if (out) circleB.style.visibility = 'hidden'
+    }
+    swellRaf = requestAnimationFrame(step)
+  }
+
   // ---- a place of the game's own: circle B becomes its table ----
   // Same morph as "Gioca": the circle shrinks into the table, the menu beads
   // leave with it, a drawer rises. The game is handed the stage and fills it;
   // it never builds a screen of its own. Arriving straight on the address (a
   // reload) there is nothing to morph out of, so the table is simply there.
+  // A game that has no use for a table (game.panel) gets the whole screen
+  // instead: the circle swells out of the frame and a panel rises in its place.
   //   game.places[phase](scene, ctx) -> cleanup
   function openPlace(phase, morph = true) {
     const game = games[selected]
@@ -554,10 +583,18 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
       canvas.style.removeProperty('--tabling-out')
     }
     canvas.classList.add('tabling')
-    circleB.style.visibility = 'hidden'
-    const from = morph ? circleBOnScreen() : null
     let onSeat = null
     let onBack = null
+    const topBand = () => header.offsetTop + header.offsetHeight
+    if (game.panel) {
+      swell(true, morph ? TABLE_MORPH_MS : 0)
+      const panel = createPanel(canvas, { top: topBand })
+      openWith(phase, make, panel, { panel }, () => (onBack ? onBack() : closePlace()), fn => { onBack = fn })
+      panel.open({ slide: morph })
+      return
+    }
+    circleB.style.visibility = 'hidden'
+    const from = morph ? circleBOnScreen() : null
     const stage = createTableStage(canvas, {
       top: () => header.offsetTop + header.offsetHeight,
       from,
@@ -568,13 +605,22 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
       minR: 22,
       onTap: i => { if (onSeat) onSeat(i) }
     })
-    const here = { phase, stage, code: '', live: true, back: () => (onBack ? onBack() : closePlace()), cleanup: null, stopKeep: null }
+    openWith(phase, make, stage, { stage, onSeat: fn => { onSeat = fn } }, () => (onBack ? onBack() : closePlace()), fn => { onBack = fn })
+    dockAbove(canvas.querySelector('.drawer:not(.sheet)'))
+    stage.glide(stage.room(), from ? { ms: TABLE_MORPH_MS, span: [0.3, 1] } : { ms: 0 })
+  }
+
+  // What a place is, whichever shape it takes: hand the game its scene, and
+  // keep what's needed to take it down again.
+  //   view: the table stage or the panel — whatever the hub has to refit and fold
+  function openWith(phase, make, view, own, back, setBack) {
+    const here = { phase, view, code: '', live: true, back, cleanup: null, stopKeep: null }
     place = here
     // Places are where codes and answers get typed: the scene becomes what the
     // keyboard leaves of the screen, and the drawer stays on top of it.
     here.stopKeep = keepAbove(canvas)
     const scene = {
-      stage,
+      ...own,
       exit: () => { if (place === here) closePlace() },
       // what the header says besides the game's name: the room's code
       header({ code = '', live = true } = {}) {
@@ -583,13 +629,10 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
         here.live = live
         if (place === here) renderHeader()
       },
-      onSeat: fn => { onSeat = fn },
       // the header's arrow and the swipe home: a game may want to ask first
-      onBack: fn => { onBack = fn }
+      onBack: setBack
     }
     here.cleanup = make(scene, ctx) || null
-    dockAbove(canvas.querySelector('.drawer:not(.sheet)'))
-    stage.glide(stage.room(), from ? { ms: TABLE_MORPH_MS, span: [0.3, 1] } : { ms: 0 })
     syncHash()
     renderHeader()
     paintBar()
@@ -615,7 +658,13 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     syncHash()
     renderHeader()
     if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
-    p.stage.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
+    if (!p.view.room) {
+      // the panel goes down, the circle comes back in from beyond the edge
+      p.view.close()
+      swell(false, TABLE_CLOSE_MS)
+    } else {
+      p.view.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
+    }
     paintBar()
   }
 
@@ -627,7 +676,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
   // you're back at the game's menu, the circle reforming the way it came. It
   // has to start on the background, though — the seats, the table top and the
   // drawer all own their own gestures, and a swipe there belongs to them.
-  const TABLE_OWN = '.drawer, .seat, .table-pad, .sheet-scrim'
+  const TABLE_OWN = '.drawer, .seat, .table-pad, .sheet-scrim, .panel'
   let sx = 0, sy = 0, tracking = false, hSwipe = false
   canvas.addEventListener('pointerdown', e => {
     if ((table || place) && e.target && e.target.closest && e.target.closest(TABLE_OWN)) { tracking = false; return }

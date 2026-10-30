@@ -7,8 +7,8 @@
 // gets told its own view (viewFor), never the other fleet.
 //
 // Unlike Quiplash, the phone that opens the room always plays: there are two
-// admirals and two phones. Each phone still has the table, though — the
-// game's circle become a table with two chairs — and the drawer under it.
+// admirals and two phones, and no table in the middle — so on both of them the
+// game's circle swells out of the frame and a panel takes the screen.
 //
 // Everybody in the room receives every message, so a laptop with the console
 // open could read the other side's view. It's a game among friends, not a
@@ -19,7 +19,7 @@ import { faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
 import { openRoom, newCode, cleanCode, CODE_LEN } from '../../shared/realtime.js'
 import { codeField } from '../../shared/roomUi.js'
 import { createGame } from './game.js'
-import { page, head, admirals, sea, createPlacer, battle, over } from './screens.js'
+import { page, head, admiral, sea, createPlacer, battle, over } from './screens.js'
 
 const GAME = 'battleship'
 const CODE_KEY = 'battleship:room'
@@ -52,55 +52,42 @@ const savedMe = ctx => {
 
 const face = p => ({ pid: p.id, name: p.name, color: p.color, emoji: p.emoji })
 
-// Me at the bottom, facing my phone; the other admiral across the table.
-const chairs = (view, me) => {
-  const mine = view.players.find(p => p.pid === me)
-  return [mine, ...view.players.filter(p => p.pid !== me)].filter(Boolean)
-}
-
-// The match itself, from one admiral's view — the same on both phones: the
-// table with the two chairs, the drawer with the sea.
+// The match itself, from one admiral's view — the same on both phones.
 //   view:    what game.viewFor said for this admiral
 //   placer:  the fleet being laid out (kept by the caller across redraws)
 //   pending: a shot sent and not answered yet
 //   note:    a line of news to put on top (the other one has left)
-function showMatch(stage, view, { placer, pending, onFire, actions, note = null }) {
+function showMatch(panel, view, { placer, pending, onFire, actions, note = null }) {
   const foe = view.players.find(p => p.pid === view.foe)
-  const seated = chairs(view, view.me)
   const news = note ? el('p', { class: 'drawer-hint room-off' }, note) : null
   if (view.phase === 'place') {
-    const placed = view.players.filter(p => view.placed[p.pid]).map(p => p.pid)
     if (!view.placed[view.me] && placer) {
-      stage.view.set(admirals(seated, { names: false, dim: placed }))
-      stage.present(page([head(t('bs.place.titleMine'), ''), news, placer.node], { tall: true }), { key: 'place' })
+      panel.present(page([head(t('bs.place.titleMine'), ''), news, placer.node]), { key: 'place' })
       return
     }
-    stage.view.set(admirals(seated, { dim: placed.filter(pid => pid !== view.me), lit: view.me }))
-    stage.present(page([
+    panel.present(page([
       head(t('bs.room.waitFleet', { name: foe ? foe.name : '?' }), t('bs.room.waitFleetSub')),
       news,
-      sea({ ships: view.fleet || [], small: true })
+      sea({ ships: view.fleet || [] })
     ]), { key: 'wait-fleet' })
     return
   }
   if (view.phase === 'battle') {
-    stage.view.set(admirals(seated, { lit: view.turn, names: false }))
     const children = battle(view, { onFire, pending })
     if (news) children.splice(1, 0, news)
-    stage.present(page(children, { tall: true }), { key: 'battle' })
+    panel.present(page(children), { key: 'battle' })
     return
   }
-  stage.view.set(admirals(seated, { lit: view.winner, dim: seated.map(p => p.pid).filter(pid => pid !== view.winner) }))
   const children = over(view, { actions })
   if (news) children.splice(1, 0, news)
-  stage.present(page(children, { tall: true }), { key: 'over' })
+  panel.present(page(children), { key: 'over' })
 }
 
 // =====================================================================
 // The phone that opens the room.
 // =====================================================================
 export function placeRoom(scene, ctx) {
-  const { stage } = scene
+  const { panel } = scene
   let me = savedMe(ctx)
   let code = ''
   let wire = null
@@ -180,9 +167,7 @@ export function placeRoom(scene, ctx) {
     if (left) return
     scene.header({ code: wire ? code : '', live: status === 'on' })
     if (!wire) {
-      stage.view.set(admirals(me ? [face(me)] : []))
-      stage.view.setCenter(null)
-      stage.present(whoPage(ctx, {
+      panel.present(whoPage(ctx, {
         me,
         title: t('bs.room.openTitle'),
         hint: t('bs.room.openHint'),
@@ -194,14 +179,14 @@ export function placeRoom(scene, ctx) {
     const phase = game.state.phase
     if (phase === 'lobby') {
       // my chair, and an empty one across the table for whoever types the code
-      stage.view.set(admirals([face(me)], { lit: me.id }))
-      stage.present(page([
+      panel.present(page([
         el('div', { class: 'room-code' }, [
           el('span', { class: 'room-code-label' }, t('ql.room.codeLabel')),
           el('b', {}, code)
         ]),
         el('p', { class: 'drawer-hint' + (status === 'off' ? ' room-off' : '') },
           t(status === 'on' ? 'bs.room.codeHint' : status === 'off' ? 'bs.room.offline' : 'ql.room.opening')),
+        admiral(me),
         el('div', { class: 'guest-wait' }, t('bs.room.waiting'))
       ]), { key: 'lobby' })
       return
@@ -213,7 +198,7 @@ export function placeRoom(scene, ctx) {
     if (phase === 'over') record()
     else recorded = false
 
-    showMatch(stage, game.viewFor(me.id), {
+    showMatch(panel, game.viewFor(me.id), {
       placer,
       onFire: (r, c) => game.fire(me.id, r, c),
       note: gone ? t('bs.room.gone', { name: gone }) : null,
@@ -237,7 +222,7 @@ export function placeRoom(scene, ctx) {
 // The phone that joins it.
 // =====================================================================
 export function placeGuest(scene, ctx) {
-  const { stage } = scene
+  const { panel } = scene
   let me = savedMe(ctx)
   let code = cleanCode(ctx.storage.get(CODE_KEY, '') || '')
   let wire = null
@@ -314,8 +299,7 @@ export function placeGuest(scene, ctx) {
   // A short page with one way out: the room is closed, full, or still being
   // knocked on.
   function notice(key, title, sub, way) {
-    stage.view.set(admirals(me ? [face(me)] : []))
-    stage.present(page([head(title, sub), way]), { key })
+    panel.present(page([head(title, sub), way]), { key })
   }
 
   function render() {
@@ -327,9 +311,7 @@ export function placeGuest(scene, ctx) {
         variant: 'primary', full: true, disabled: !ready(),
         onClick: () => { if (ready()) connect() }
       })
-      stage.view.set(admirals(me ? [face(me)] : []))
-      stage.view.setCenter(null)
-      stage.present(whoPage(ctx, {
+      panel.present(whoPage(ctx, {
         me,
         title: t('bs.join.title'),
         hint: t('bs.join.hint'),
@@ -348,8 +330,7 @@ export function placeGuest(scene, ctx) {
       return
     }
     if (view.phase === 'lobby') {
-      stage.view.set(admirals(chairs(view, myPid()), { lit: myPid() }))
-      stage.present(page([head(t('ql.join.inRoom'), t('bs.join.waitStart')), el('div', { class: 'guest-wait' }, t('ql.join.waitDots'))]), { key: 'lobby' })
+      panel.present(page([head(t('ql.join.inRoom'), t('bs.join.waitStart')), el('div', { class: 'guest-wait' }, t('ql.join.waitDots'))]), { key: 'lobby' })
       return
     }
     if (view.phase === 'place' && !view.placed[myPid()] && !fleet && !placer) {
@@ -362,7 +343,7 @@ export function placeGuest(scene, ctx) {
     }
     if (view.phase === 'over') record()
     else recorded = false
-    showMatch(stage, view, {
+    showMatch(panel, view, {
       placer,
       pending: shot,
       onFire: (r, c) => {
