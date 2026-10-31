@@ -219,6 +219,13 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
       const r = g.packs && g.packs.remote
       if (r) parts.push(t('settings.wordsRev', { game: g.name, n: r.revision() ?? '—' }))
     }
+    // The dev site also says how tall it thinks the screen is, and what it
+    // stretched to make up for it (--ios-gap, main.js): read on the phone,
+    // since that's the only place those numbers mean anything.
+    if (typeof __CHANNEL__ === 'string' && __CHANNEL__ === 'dev') {
+      const gap = getComputedStyle(document.documentElement).getPropertyValue('--ios-gap').trim() || '0px'
+      parts.push(`${screen.width}×${screen.height} · ${window.innerWidth}×${window.innerHeight} · +${gap}`)
+    }
     return parts.join(' · ')
   }
 

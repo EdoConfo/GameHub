@@ -567,16 +567,12 @@ input, textarea { user-select: text; -webkit-user-select: text; }
    Pinned to exactly the visible screen (on iOS 100vh is taller than the view
    while Safari's bars show): nothing to scroll, nothing hidden under the bars. */
 .canvas { position: fixed; inset: 0; overflow: hidden; }
-/* Opened from the Home screen, iOS can measure the screen without the strip
-   along the bottom edge: everything set at bottom 0 — the canvas, and with it
-   the drawers — stopped above it, and a band of bare page showed underneath.
-   There is no browser bar in that mode, so the large viewport is exactly the
-   whole screen: the canvas takes it, edge to edge. (Not in a browser tab: there
-   the large viewport counts the bar as hidden, and the drawer would slip
-   under it.) */
-@media (display-mode: standalone) {
-  .canvas { bottom: auto; height: 100lvh; }
-}
+/* Opened from the Home screen, iOS tells the page the screen is shorter than
+   it is — short by the status bar's height — so everything set at bottom 0
+   (the canvas, and with it every drawer) stopped that much above the bottom
+   edge, over a band of bare page. main.js measures what's missing (--ios-gap)
+   and the canvas reaches down by that much; where nothing is missing it's 0. */
+.canvas { bottom: calc(-1 * var(--ios-gap, 0px)); }
 /* The scene lives below the header, not behind it: --hub-top is the header's
    measured height (hub.js sets it), so the circles are tangent to the bottom of
    that band and to the bottom of the screen. Centred on the whole viewport they

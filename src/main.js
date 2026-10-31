@@ -30,6 +30,23 @@ document.addEventListener('touchmove', e => {
   if (t && t.closest && t.closest('.canvas') && !t.closest('.drawer-body')) e.preventDefault()
 }, { passive: false })
 
+// Opened from the Home screen, iOS can report a window shorter than the screen
+// — by the status bar's height — and whatever stands on the bottom edge stops
+// short of it. Measured, not assumed: the screen's own height against the one
+// the page is given, in an app window only (a browser tab has bars of its own
+// to leave room for), and only a status bar's worth (a bigger difference is
+// something else — the keyboard, a split screen — and not ours to fill).
+function measureGap() {
+  const app = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
+  const portrait = window.innerHeight >= window.innerWidth
+  const tall = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height)
+  const gap = Math.round(tall - window.innerHeight)
+  document.documentElement.style.setProperty('--ios-gap', (app && gap > 0 && gap <= 64 ? gap : 0) + 'px')
+}
+measureGap()
+window.addEventListener('resize', measureGap)
+window.addEventListener('orientationchange', measureGap)
+
 // Paint in the chosen theme before any content shows. No choice yet means
 // following the system, so a fresh install matches the phone.
 applyTheme(getTheme())
