@@ -10,9 +10,13 @@ import { cleanCode, CODE_LEN } from './realtime.js'
 export function keepAbove(node) {
   const vv = window.visualViewport
   if (!vv) return () => {}
+  // Only while the keyboard is actually up: otherwise the node keeps its own
+  // height (the whole screen, see .canvas), which the visual viewport can
+  // measure a strip short of, from the Home screen on iOS.
   const place = () => {
-    node.style.height = vv.height + 'px'
-    node.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : ''
+    const keyboard = vv.height < window.innerHeight - 80
+    node.style.height = keyboard ? vv.height + 'px' : ''
+    node.style.transform = keyboard && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : ''
   }
   place()
   vv.addEventListener('resize', place)
