@@ -89,6 +89,10 @@ A game does not own the screen; the hub hands it a place.
 - **"Gioca" with the shared table** — `game.table` (see `registry.js`): circle
   B becomes the table where people are seated, the game fills the drawer's
   options.
+- **More than one way to play** — `game.modes`: playing is still one bead on
+  the menu. It pans to the right arc of circle B, where the ways ride (open a
+  room, join one, one phone, the computer); the table or the place grows out
+  of the circle from that side, and folds back to it.
 - **Anything else of the game's own** — a room, a way into one, a match on one
   phone — `game.places[phase](scene, ctx)`. The menu bead turns circle B into a
   table exactly like "Gioca" does, and hands it to the game:

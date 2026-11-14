@@ -207,7 +207,8 @@ src/
                        holds it) + room.js / guest.js (several phones) +
                        match.js (one phone) + screens.js + packs.js
     battleship/        engine.js (the rules) + game.js (a match, both fleets) +
-                       room.js (two phones) + local.js (one phone) + screens.js
+                       room.js (two phones) + local.js (one phone) +
+                       solo.js + ai.js (against the computer) + screens.js
 supabase/              database schema for the remote packs
 ```
 
@@ -217,11 +218,11 @@ Quiplash is the one game here that is better on more than one device: writing
 is private and simultaneous, which a single phone can only imitate by taking
 turns. So it has a **room**.
 
-- One phone opens it (**Gioca**) and gets a four-letter code. That phone holds
+- One phone opens it (**Gioca → Crea una partita**) and gets a four-letter code. That phone holds
   the match: it decides what is going on and tells the others. It is also the
   screen — the table, the prompt, the two answers — so a tablet in the middle
   of the table plays like Quiplash always has.
-- The others open GameHub → Quiplash → **Entra**, type the code and pick their
+- The others open GameHub → Quiplash → **Gioca → Entra in una partita**, type the code and pick their
   profile. They write and vote on their own phone, and they see the whole match
   as well, so a room with no screen in the middle works just as well. The phone
   that opened the room can hold a player of its own (**Gioco anch'io**).
@@ -240,14 +241,14 @@ The room is as private as its code: anybody who knows it can join, and
 everything the room says is readable by anyone in it who opens a browser
 console. It is a game among friends, not a bank.
 
-## Battleship on two phones, or one
+## Battleship on two phones, one, or against the computer
 
 Battleship has no word packs: the sea is the whole game. It is played the way
 Quiplash is, with the same wire ([`src/shared/realtime.js`](src/shared/realtime.js),
 on a channel of its own):
 
-- One phone opens the room (**Gioca**), picks its profile and shows a code; the
-  other goes to **Entra**, types it and picks theirs. The phone that opened
+- One phone opens the room (**Gioca → Crea una partita**), picks its profile and
+  shows a code; the other goes to **Gioca → Entra in una partita**, types it and picks theirs. The phone that opened
   the room always plays — there are two admirals and two phones.
 - That phone holds the match ([`game.js`](src/games/battleship/game.js)): it
   knows where both fleets are, so it calls every shot. The other phone is only
@@ -256,6 +257,21 @@ on a channel of its own):
 - **Un telefono solo** plays the same match on one phone passed across the
   table. Between one turn and the next there is a screen with no sea on it,
   that opens only when the right person says it's them.
+
+- **Gioca da solo** plays it against the computer
+  ([`ai.js`](src/games/battleship/ai.js)), at three levels. It is handed its own
+  view of the match and nothing else, like a phone that joined a room: it never
+  sees your fleet. *Facile* fires at random and often forgets a ship it has
+  hit; *Media* hunts on a chessboard and follows a hit to the end of the ship;
+  *Difficile* counts, square by square, the ways the ships still afloat could
+  lie there, and fires where there are most. These matches stay out of the
+  stats, which are about who wins at the table.
+
+A game is played from **one** bead on its menu. When there is more than one way
+to play it — these two games — that bead pans to the other side of the game's
+circle, where the ways ride the arc (`modes` in
+[`registry.js`](src/games/registry.js)). A room's code is typed afresh every
+time: the last one is never offered again.
 
 The fleet is the classic one (5, 4, 3, 3, 2) on a 10×10 sea, ships never
 touch, and a hit fires again.

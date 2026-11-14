@@ -35,7 +35,7 @@ export function keepAbove(node) {
 // one and the next. So the boxes are only the drawing — underneath there is
 // one field, transparent, and you type the code straight through it (or
 // paste it, which four inputs would not take either).
-//   initial:   the code already there (the last one typed on this phone)
+//   initial:   the code already there (none, usually: a code is typed afresh)
 //   onChange(clean)
 //   label:     what a screen reader calls the field
 export function codeField(initial, onChange, label) {

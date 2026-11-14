@@ -16,21 +16,20 @@
 import { el, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
-import { openRoom, newCode, cleanCode, CODE_LEN } from '../../shared/realtime.js'
+import { openRoom, newCode, CODE_LEN } from '../../shared/realtime.js'
 import { codeField } from '../../shared/roomUi.js'
 import { createGame } from './game.js'
 import { page, head, admiral, sea, createPlacer, battle, over } from './screens.js'
 
 const GAME = 'battleship'
-const CODE_KEY = 'battleship:room'
-const ME_KEY = 'battleship:me'
+export const ME_KEY = 'battleship:me'
 const BEAT = 2500   // how often the room repeats itself, for whoever missed it
 const KNOCK = 2000  // how often a guest says hello until the room answers
 
 // ---------- who am I ----------
 // Both sides start the same way: pick the face you play as. The last one
 // picked on this phone is already picked.
-function whoPage(ctx, { me, title, hint, extra = [], go, onPick }) {
+export function whoPage(ctx, { me, title, hint, extra = [], go, onPick }) {
   const all = ctx.players.all()
   const grid = faceGrid(all, p => onPick(p),
     newFaceCell(t('common.new'), () => openProfileEditor(ctx, null, p => { if (p) onPick(p) })))
@@ -45,12 +44,12 @@ function whoPage(ctx, { me, title, hint, extra = [], go, onPick }) {
   ])
 }
 
-const savedMe = ctx => {
+export const savedMe = ctx => {
   const id = ctx.storage.get(ME_KEY, null)
   return ctx.players.all().find(p => p.id === id) || null
 }
 
-const face = p => ({ pid: p.id, name: p.name, color: p.color, emoji: p.emoji })
+export const face = p => ({ pid: p.id, name: p.name, color: p.color, emoji: p.emoji })
 
 // The match itself, from one admiral's view — the same on both phones.
 //   view:    what game.viewFor said for this admiral
@@ -224,7 +223,7 @@ export function placeRoom(scene, ctx) {
 export function placeGuest(scene, ctx) {
   const { panel } = scene
   let me = savedMe(ctx)
-  let code = cleanCode(ctx.storage.get(CODE_KEY, '') || '')
+  let code = '' // always typed afresh: the last room's code opens nothing any more
   let wire = null
   let view = null
   let status = 'wait'
@@ -244,7 +243,6 @@ export function placeGuest(scene, ctx) {
   }
 
   function connect() {
-    ctx.storage.set(CODE_KEY, code)
     ctx.storage.set(ME_KEY, me.id)
     wire = openRoom(code, {
       game: GAME,

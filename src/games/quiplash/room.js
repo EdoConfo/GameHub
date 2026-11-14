@@ -16,7 +16,6 @@ import { writeScreen } from './screens.js'
 import { matchOptions, loadOptions } from './match.js'
 import packs from './packs.js'
 
-const CODE_KEY = 'quiplash:room'
 const BEAT = 2500 // how often the room repeats itself, for whoever missed it
 
 const page = (children, cls = '') => el('div', { class: 'drawer-page' + (cls ? ' ' + cls : '') }, children)
@@ -27,7 +26,6 @@ const count = (big, small) => el('div', { class: 'table-count' }, [el('b', {}, b
 export function placeRoom(scene, ctx) {
   const { stage } = scene
   const code = newCode()
-  ctx.storage.set(CODE_KEY, code) // so "Entra" on another phone of the house offers it
 
   const options = loadOptions(ctx)
   const game = createGame({

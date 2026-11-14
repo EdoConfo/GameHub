@@ -20,12 +20,18 @@ import { games } from '../games/registry.js'
 // ride them live in the same world and move together, 1:1 with the camera.
 //
 //   circle A: left arc = Giocatori / Impostazioni · right arc = GIOCHI
-//   circle B: left arc = menu del gioco           · right arc = parole / regole /
-//                                                   statistiche
+//   circle B: left arc = menu del gioco           · right arc = modi di giocare /
+//                                                   parole / regole / statistiche
 //
 // Both side arcs hold more than one thing: which one you see depends on the
-// voice you came in from — Giocatori or Impostazioni on the left of A, Parole
-// or Come si gioca on the right of B.
+// voice you came in from — Giocatori or Impostazioni on the left of A, Gioca,
+// Parole or Come si gioca on the right of B.
+//
+// Playing is one bead on a game's menu, however many ways there are to do it:
+// a game with more than one (a room to open, one to join, one phone, the
+// computer) lists them as `modes`, and "Gioca" pans to the right arc where
+// they ride. The table, or the place, then grows out of the circle from there
+// and folds back to there.
 //
 // "Gioca" doesn't leave the scene: circle B shrinks to the top of the screen
 // and becomes the table, with a drawer rising from below (tableScene.js).
@@ -55,6 +61,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
   let menuWheel = null
   let gameWheel = null
   let gameKind = 'words' // what the right arc of the game's circle is showing
+  let tableSide = false  // the table was opened from the modes arc: it folds back there
   let world = { W: 0, H: 0, R: 0, xA: 0, xB: 0, top: 0, cam: [0, 0, 0], width: 0 }
 
   const canvas = el('div', { class: 'canvas' })
@@ -162,8 +169,15 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     })
   }
 
+  // What the right arc shows for a game nobody has asked anything of yet: the
+  // ways to play it if it has several, its words if it has any, its rules.
+  const firstKind = game => (game.modes ? 'play' : game.packs ? 'words' : 'rules')
+
   function goto(i) {
-    if (i === V_MENU) { selected = gamesWheel.getActive(); buildMenu() }
+    if (i === V_MENU) {
+      if (index === V_GAMES) gameKind = firstKind(games[gamesWheel.getActive()])
+      selected = gamesWheel.getActive(); buildMenu()
+    }
     if (i === V_SIDE) buildSide(sideKind)
     if (i === V_GAME) buildGameSide(gameKind)
     moveCamera(i)
@@ -185,9 +199,10 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
       header.replaceChildren(
         el('button', { class: 'icon-btn', 'aria-label': t('common.back'), onclick: () => goto(V_MENU) }, icon('back')),
         el('span', { class: 'wordmark game-home-title' },
-          (gameKind === 'rules' ? t('rules.title')
-            : gameKind === 'stats' ? t('stats.title')
-              : t('packs.title')).toUpperCase())
+          (gameKind === 'play' ? t('play.title')
+            : gameKind === 'rules' ? t('rules.title')
+              : gameKind === 'stats' ? t('stats.title')
+                : t('packs.title')).toUpperCase())
       )
     } else if (index === V_MENU) {
       // page on the right of its circle: back arrow left, name right
@@ -383,7 +398,12 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     }))
   }
 
+  // The ways to play this game, a bead each: open a room, join one, pass one
+  // phone around, play the computer. Whatever the game says it has.
+  const modeItems = () => (games[selected].modes || []).map(m => ({ id: m.phase, title: m.title, sub: m.sub, lead: badge(m.glyph || 'play') }))
+
   function gameSideItems(kind) {
+    if (kind === 'play') return modeItems()
     if (kind === 'rules') return rulesItems()
     if (kind === 'stats') return statsItems()
     return wordsItems()
@@ -445,12 +465,17 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
       onActivate: i => {
         const it = items[i]
         if (!it) return
+        if (kind === 'play') { launch(it.id); return }
         if (kind === 'rules') { openRules(game.rules[i]); return }
         if (kind === 'stats') {
           // through the route, not openTable(): that one grows the table out of
           // circle B as it stands on screen, and from here the camera is two
           // views away from it
-          if (it.id === 'none') { if (game.table) ctx.router.go('/' + game.id + '/table'); return }
+          if (it.id === 'none') {
+            if (game.modes) buildGameSide('play')
+            else if (game.table) ctx.router.go('/' + game.id + '/table')
+            return
+          }
           // the card comes up over the ranking, and closing it leaves you on
           // the ranking — not on the players arc, which is where a page went
           openPlayerCard(ctx, it.id, { onChanged: () => buildGameSide('stats') })
@@ -481,21 +506,60 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
       items: menuItems(),
       onActivate: j => {
         const phase = menu[j].phase
-        if (phase === 'setup' && game.table) openTable()
-        else if (game.places && game.places[phase]) openPlace(phase)
-        // these two live on the arc next door: pan there, don't rebuild the hub
-        else if (phase === 'words' || phase === 'rules' || phase === 'stats') { buildGameSide(phase); moveCamera(V_GAME) }
-        else ctx.router.go('/' + game.id + '/' + phase)
+        // these live on the arc next door: pan there, don't rebuild the hub
+        if ((phase === 'play' && game.modes) || phase === 'words' || phase === 'rules' || phase === 'stats') { buildGameSide(phase); moveCamera(V_GAME) }
+        else launch(phase)
       }
     })
   }
 
+  // Start playing, from whichever arc asked: the menu's own "Gioca", or one of
+  // the modes on the other side of the circle.
+  function launch(phase) {
+    const game = games[selected]
+    if (phase === 'setup' && game.table) openTable()
+    else if (game.places && game.places[phase]) openPlace(phase)
+    else ctx.router.go('/' + game.id + '/' + phase)
+  }
+
+  // Is this way of playing one of the game's modes? Then it was picked on the
+  // right arc, and that is where leaving it goes back to.
+  const isMode = phase => (games[selected].modes || []).some(m => m.phase === phase)
+
+  // Back on the modes arc, with the bead you left from under your finger.
+  function toModes(phase) {
+    if (gameKind !== 'play' || !gameWheel) {
+      buildGameSide('play')
+      const at = (games[selected].modes || []).findIndex(m => m.phase === phase)
+      if (at >= 0) gameWheel.setActive(at)
+    }
+    moveCamera(V_GAME)
+  }
+
   // ---- "Gioca": circle B becomes the table ----
-  function circleBOnScreen() {
+  //   view: where the camera stands — the circle is on the right of the screen
+  //         from its menu, on the left from its right arc
+  function circleBOnScreen(view = V_MENU) {
     const { H, R, xB, cam, top } = world
     // in canvas coordinates, so the table can morph out of it: the scene's own
     // centre plus however far down the scene starts
-    return { cx: xB - cam[V_MENU], cy: top + H / 2, r: R }
+    return { cx: xB - cam[view], cy: top + H / 2, r: R }
+  }
+
+  // The beads on screen leave with the circle. From the menu they slide out
+  // the way they came in; from the modes arc the camera crosses back to the
+  // menu's side while the circle changes, and they pan away with the scene.
+  function clearArc(morph) {
+    if (morph && index === V_MENU && menuWheel) {
+      // the host's own fade would blank the beads in .22s, before they've gone
+      // anywhere: stretch it over the circle's travel instead
+      canvas.style.setProperty('--tabling-out', TABLE_MORPH_MS + 'ms')
+      menuWheel.exit({ ms: TABLE_MORPH_MS })
+    } else {
+      canvas.style.removeProperty('--tabling-out')
+    }
+    canvas.classList.add('tabling')
+    if (index !== V_MENU) moveCamera(V_MENU)
   }
 
   // "Gioca": the circle shrinks into the table and the menu beads leave with
@@ -505,17 +569,11 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
   function openTable(morph = true) {
     const game = games[selected]
     if (table || !game.table) return
-    if (morph && menuWheel) {
-      // the host's own fade would blank the beads in .22s, before they've gone
-      // anywhere: stretch it over the circle's travel instead
-      canvas.style.setProperty('--tabling-out', TABLE_MORPH_MS + 'ms')
-      menuWheel.exit({ ms: TABLE_MORPH_MS })
-    } else {
-      canvas.style.removeProperty('--tabling-out')
-    }
-    canvas.classList.add('tabling')
+    const from = morph ? circleBOnScreen(index) : null
+    tableSide = isMode('setup')
+    clearArc(morph)
     circleB.style.visibility = 'hidden' // the table's own circle takes over, same place
-    table = openTableScene(canvas, header, ctx, game, { from: morph ? circleBOnScreen() : null })
+    table = openTableScene(canvas, header, ctx, game, { from })
     dockAbove(canvas.querySelector('.drawer:not(.sheet)'))
     syncHash()
     renderHeader()
@@ -533,8 +591,9 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     canvas.classList.remove('tabling')
     syncHash()
     renderHeader()
-    if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
-    t.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
+    if (tableSide) toModes('setup')
+    else if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
+    t.close(circleBOnScreen(index), () => { circleB.style.visibility = '' })
   }
 
   // The way back from the menu's circle, whatever is standing on it: the table
@@ -555,9 +614,13 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
   function swell(out, ms = TABLE_MORPH_MS) {
     cancelAnimationFrame(swellRaf)
     const { R, H } = world
-    const c = circleBOnScreen()
-    const cx = c.cx, cy = H / 2 // the circle's centre, in the scene under the header
-    const far = Math.max(...[[0, 0], [world.W, 0], [0, H], [world.W, H]].map(([x, y]) => Math.hypot(x - cx, y - cy))) + 24
+    // the circle's centre, in the scene under the header — from either side of
+    // it, since the camera may be crossing from one to the other meanwhile
+    const cy = H / 2
+    const far = Math.max(...[V_MENU, V_GAME].flatMap(v => {
+      const cx = circleBOnScreen(v).cx
+      return [[0, 0], [world.W, 0], [0, H], [world.W, H]].map(([x, y]) => Math.hypot(x - cx, y - cy))
+    })) + 24
     const from = out ? R : far, to = out ? far : R
     circleB.style.visibility = ''
     if (ms <= 0) { circleB.setAttribute('r', String(to)); if (out) circleB.style.visibility = 'hidden'; return }
@@ -584,13 +647,8 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     const game = games[selected]
     const make = game.places && game.places[phase]
     if (!make || table || place) return
-    if (morph && menuWheel) {
-      canvas.style.setProperty('--tabling-out', TABLE_MORPH_MS + 'ms')
-      menuWheel.exit({ ms: TABLE_MORPH_MS })
-    } else {
-      canvas.style.removeProperty('--tabling-out')
-    }
-    canvas.classList.add('tabling')
+    const from = morph ? circleBOnScreen(index) : null
+    clearArc(morph)
     let onSeat = null
     let onBack = null
     const topBand = () => header.offsetTop + header.offsetHeight
@@ -602,7 +660,6 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
       return
     }
     circleB.style.visibility = 'hidden'
-    const from = morph ? circleBOnScreen() : null
     const stage = createTableStage(canvas, {
       top: () => header.offsetTop + header.offsetHeight,
       from,
@@ -622,7 +679,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
   // keep what's needed to take it down again.
   //   view: the table stage or the panel — whatever the hub has to refit and fold
   function openWith(phase, make, view, own, back, setBack) {
-    const here = { phase, view, code: '', live: true, back, cleanup: null, stopKeep: null }
+    const here = { phase, view, side: isMode(phase), code: '', live: true, back, cleanup: null, stopKeep: null }
     place = here
     // Places are where codes and answers get typed: the scene becomes what the
     // keyboard leaves of the screen, and the drawer stays on top of it.
@@ -665,13 +722,14 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
     canvas.classList.remove('tabling')
     syncHash()
     renderHeader()
-    if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
+    if (p.side) toModes(p.phase)
+    else if (menuWheel) menuWheel.enter({ ms: TABLE_CLOSE_MS })
     if (!p.view.room) {
       // the panel goes down, the circle comes back in from beyond the edge
       p.view.close()
       swell(false, TABLE_CLOSE_MS)
     } else {
-      p.view.close(circleBOnScreen(), () => { circleB.style.visibility = '' })
+      p.view.close(circleBOnScreen(index), () => { circleB.style.visibility = '' })
     }
     paintBar()
   }
@@ -809,7 +867,7 @@ export function renderHub(root, ctx, startMenuId, { table: startTable = false, p
 
   if (startMenuId) {
     const i = games.findIndex(g => g.id === startMenuId)
-    if (i >= 0) { gamesWheel.setActive(i); selected = i; buildMenu(); index = V_MENU }
+    if (i >= 0) { gamesWheel.setActive(i); selected = i; gameKind = firstKind(games[i]); buildMenu(); index = V_MENU }
   } else if (startSide) {
     buildSide(startSide, focusId)
     index = V_SIDE

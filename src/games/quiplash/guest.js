@@ -13,11 +13,10 @@
 import { el, button, walls } from '../../shared/ui.js'
 import { t } from '../../shared/i18n.js'
 import { faceGrid, newFaceCell, openProfileEditor } from '../../hub/players.js'
-import { openRoom, cleanCode, CODE_LEN } from '../../shared/realtime.js'
+import { openRoom, CODE_LEN } from '../../shared/realtime.js'
 import { codeField } from '../../shared/roomUi.js'
 import { writeScreen } from './screens.js'
 
-const CODE_KEY = 'quiplash:room'
 const ME_KEY = 'quiplash:me'
 const KNOCK = 2000 // how often we say hello until the room answers
 
@@ -50,7 +49,6 @@ export function placeGuest(scene, ctx) {
   }
 
   function connect() {
-    ctx.storage.set(CODE_KEY, code)
     ctx.storage.set(ME_KEY, me.id)
     wire = openRoom(code, {
       onStatus: s => { status = s; render() },
@@ -343,7 +341,7 @@ export function placeGuest(scene, ctx) {
     standingsScreen()
   }
 
-  code = cleanCode(ctx.storage.get(CODE_KEY, '') || '')
+  // The code is typed afresh every time: the last room's opens nothing any more.
   render()
 
   return () => {

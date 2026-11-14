@@ -14,6 +14,14 @@
 //     glyph:       string  line icon name (shared/ui.js) shown on the hub circle
 //     menu:        [{ title, sub, phase, glyph }]  the game's own menu wheel
 //                  each phase is an address of its own: #/<id>/<phase>
+//                  A game is played from ONE bead. If there is only one way
+//                  to play it, that bead's phase starts it ('setup' for the
+//                  shared table, or a place); if there are several, its phase
+//                  is 'play' and the ways are listed in `modes`.
+//     modes:       optional — [{ title, sub, phase, glyph }], the ways to play:
+//                  open a room, join one, one phone, the computer. They ride
+//                  the right arc of the game's circle, where "Gioca" pans to;
+//                  each phase is 'setup' (the shared table) or one of `places`.
 //     table:       optional — "Gioca" opens the shared table in the hub:
 //                  { min, options(ctx, { changed, open }) -> { node, check(n) },
 //                    seat?(ctx, seat, i) -> { cls?, note? }, start(ctx) }

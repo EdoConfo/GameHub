@@ -13,15 +13,21 @@ import packs from './packs.js'
 // Built on read so the labels follow the interface language.
 // Quiplash is the one game here played on several phones at once: writing is
 // private and simultaneous, which one phone passed around can only imitate by
-// taking turns. So the room comes first, joining one second, and the single
-// phone stays underneath for when there is no network — or no second phone.
+// taking turns. Playing is one bead all the same: the ways of doing it ride
+// the arc on the other side of the circle (`modes`), the room first, joining
+// one second, and the single phone underneath for when there is no network —
+// or no second phone.
 const menu = () => [
-  { title: t('ql.menu.play'), sub: t('ql.menu.playSub'), phase: 'room', glyph: 'play' },
-  { title: t('ql.menu.join'), sub: t('ql.menu.joinSub'), phase: 'join', glyph: 'enter' },
-  { title: t('ql.menu.alone'), sub: t('ql.menu.aloneSub'), phase: 'setup', glyph: 'phone' },
+  { title: t('ql.menu.play'), sub: t('ql.menu.playSub'), phase: 'play', glyph: 'play' },
   { title: t('ql.menu.words'), sub: t('ql.menu.wordsSub'), phase: 'words', glyph: 'bubbles' },
   { title: t('ql.menu.rules'), sub: t('ql.menu.rulesSub'), phase: 'rules', glyph: 'help' },
   { title: t('ql.menu.stats'), sub: t('ql.menu.statsSub'), phase: 'stats', glyph: 'stats' }
+]
+
+const modes = () => [
+  { title: t('ql.mode.host'), sub: t('ql.mode.hostSub'), phase: 'room', glyph: 'home' },
+  { title: t('ql.mode.join'), sub: t('ql.mode.joinSub'), phase: 'join', glyph: 'enter' },
+  { title: t('ql.mode.alone'), sub: t('ql.mode.aloneSub'), phase: 'setup', glyph: 'phone' }
 ]
 
 // The rules as data: the hub rides them on the arc (see mister-white/index.js).
@@ -180,6 +186,7 @@ export default {
   packs, // the hub shows them on the right arc of this game's circle
   get rules() { return rules() }, // …and the rules on the same arc
   get menu() { return menu() },
+  get modes() { return modes() },
   // "Gioca": the hub turns the game's circle into the table; these are this
   // game's options in its drawer, and how a match starts.
   table: {

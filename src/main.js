@@ -120,8 +120,12 @@ function mountGame(id, phase) {
 // Words, rules and stats are views of the hub's scene too — the same right arc
 // of that game's circle, showing one of the three — so they go to renderHub,
 // like the menu and the table.
-for (const kind of ['words', 'rules', 'stats']) {
+// "Gioca" is a fourth, for a game with more than one way to be played: the
+// modes ride that same arc.
+for (const kind of ['play', 'words', 'rules', 'stats']) {
   router.on('/:game/' + kind, ({ game }) => {
+    const g = getGame(game)
+    if (kind === 'play' && !(g && g.modes)) { mountGame(game, kind); return }
     leaveCurrent()
     clear(root)
     currentCleanup = renderHub(root, ctx, game, { gameSide: kind })
